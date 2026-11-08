@@ -451,7 +451,7 @@ function MasterBathLounge() {
         hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
         onClick={() => useStore.getState().toggleBathFullMirrorLight()}
       >
-        <G p={[-15.54, 1.6, 1.4]}>
+        <G p={[-15.52, 1.6, 1.4]}>
           {/* Viền đèn LED ấm phía sau gương */}
           <B
             p={[0.01, 0, 0]}

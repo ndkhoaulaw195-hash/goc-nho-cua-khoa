@@ -197,8 +197,6 @@ export function Room() {
         polyOffset
       />
       <B p={[-15.54, 0.07, 0.0]} s={[0.04, 0.14, 11.9]} c="#8a7968" shadow={false} polyOffset />
-      <B p={[-15.54, 3.25, 2.2]} s={[0.03, 0.65, 1.8]} c="#dbeafe" opacity={0.65} rough={0.2} metal={0.3} shadow={false} polyOffset />
-      <B p={[-15.55, 3.25, 2.2]} s={[0.02, 0.72, 1.88]} c="#27272a" shadow={false} polyOffset />
 
       {/* 3. Vách ngăn giữa phòng tắm và phòng ngủ (tại x = -10, có ô cửa thông phòng tại z = -3.4) */}
       <B p={[-10.0, h / 2, -5.05]} s={[0.22, h, 1.9]} c={darkMode ? '#a59382' : '#e4d4c2'} rough={0.92} shadow />
@@ -312,18 +310,18 @@ export function Lights() {
     <>
       <hemisphereLight
         args={[
-          darkMode ? '#3b4d7a' : '#fff6ea',
-          darkMode ? '#1a1410' : '#5c4532',
-          darkMode ? 0.32 : 0.62,
+          darkMode ? '#1e2538' : '#fff6ea',
+          darkMode ? '#08090e' : '#5c4532',
+          darkMode ? 0.10 : 0.62,
         ]}
       />
-      <ambientLight intensity={darkMode ? 0.18 : 0.24} color={darkMode ? '#9cb4ff' : '#ffeedd'} />
+      <ambientLight intensity={darkMode ? 0.04 : 0.24} color={darkMode ? '#1a2238' : '#ffeedd'} />
 
       {/* Ánh sáng mặt trời chính: khung shadow camera ôm khít ngôi nhà, mapSize 2048x2048 cực nét, bias chuẩn */}
       <directionalLight
         position={[-10, 24, 17]}
-        intensity={darkMode ? 0.45 : 1.75}
-        color={darkMode ? '#8da8ff' : '#fff2df'}
+        intensity={darkMode ? 0.12 : 1.75}
+        color={darkMode ? '#5872a8' : '#fff2df'}
         castShadow
         shadow-mapSize={[shadowResolution, shadowResolution]}
         shadow-camera-left={-16.5}
@@ -339,15 +337,15 @@ export function Lights() {
       {/* Ánh sáng phụ phía sau-trái giúp mặt ngoài tường sau & tường trái sáng rõ đều màu */}
       <directionalLight
         position={[-16, 14, -20]}
-        intensity={darkMode ? 0.18 : 0.55}
-        color={darkMode ? '#8da8ff' : '#fff6eb'}
+        intensity={darkMode ? 0.04 : 0.55}
+        color={darkMode ? '#5872a8' : '#fff6eb'}
       />
 
       {/* 3 PointLight bao quát 3 vùng kiến trúc chính không đổ bóng (castShadow = false) để tối ưu GPU */}
       {/* 1. Vùng Tầng 1: phòng ngủ & phòng khách ấm áp */}
       <pointLight
         position={[-1.2, 3.3, -0.5]}
-        intensity={darkMode ? 2.8 : 1.15}
+        intensity={darkMode ? 0.45 : 1.15}
         distance={14}
         decay={2}
         color={darkMode ? '#8da8ff' : '#ffeed4'}
@@ -357,7 +355,7 @@ export function Lights() {
       {/* 2. Vùng Tầng 2: phòng ngủ & góc làm việc trên gác */}
       <pointLight
         position={[0.2, 7.6, -1.0]}
-        intensity={darkMode ? 2.6 : 1.05}
+        intensity={darkMode ? 0.40 : 1.05}
         distance={13}
         decay={2}
         color={darkMode ? '#8da8ff' : '#fff1db'}
@@ -367,7 +365,7 @@ export function Lights() {
       {/* 3. Vùng Phòng tắm Master: đá cẩm thạch trắng sáng trong trẻo */}
       <pointLight
         position={[-12.8, 3.3, -0.5]}
-        intensity={darkMode ? 2.4 : 1.1}
+        intensity={darkMode ? 0.35 : 1.1}
         distance={9}
         decay={2}
         color={darkMode ? '#a5b4fc' : '#fff5eb'}

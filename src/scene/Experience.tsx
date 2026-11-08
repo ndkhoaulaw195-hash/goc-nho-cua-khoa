@@ -33,8 +33,9 @@ function SetupEnvironment() {
   }, [gl, scene])
 
   useEffect(() => {
-    scene.environmentIntensity = darkMode ? 0.18 : 0.28
-  }, [scene, darkMode])
+    scene.environmentIntensity = darkMode ? 0.04 : 0.28
+    gl.toneMappingExposure = darkMode ? 0.92 : 1.08
+  }, [gl, scene, darkMode])
 
   return null
 }

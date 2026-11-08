@@ -200,6 +200,18 @@ function FloorAndBeams() {
           <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
         ))}
       </G>
+
+      {/* 4. Lan can bảo vệ mép trước Tầng 2 ngăn rơi xuống Tầng 1 (x: -7.72 -> -1.2, tại z = 4.8) */}
+      <G p={[-4.46, Y, 4.8]}>
+        <RBB p={[0, 0.86, 0]} s={[6.52, 0.045, 0.065]} c="#c89d6c" rough={0.4} radius={0.015} />
+        <BB p={[0, 0.0, 0]} s={[6.52, 0.035, 0.05]} c="#b88c5a" rough={0.5} />
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
+          <boxGeometry args={[6.38, 0.82, 0.016]} />
+        </mesh>
+        {[-2.6, -1.3, 0, 1.3, 2.6].map((px, i) => (
+          <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
+        ))}
+      </G>
     </group>
   )
 }
