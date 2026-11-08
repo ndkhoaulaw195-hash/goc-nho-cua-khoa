@@ -1753,7 +1753,6 @@ function GirlfriendAvatar() {
 
     // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1)
     if (st.girlActivity === 'idle') {
-      if (typeof window !== 'undefined') (window as any).__traceGirl.step = 'D_idle_branch'
       let moving = false
       if (isControllingGirl && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
         moving = stepCharacterWalk(
