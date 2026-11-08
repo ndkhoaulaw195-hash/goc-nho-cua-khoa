@@ -8,10 +8,41 @@ import { useStore } from '../store'
 
 export const ROOM = { w: 20, d: 12, h: 4.35 }
 
+function Interact({
+  hint,
+  onClick,
+  children,
+}: {
+  hint: string
+  onClick: (e: ThreeEvent<MouseEvent>) => void
+  children: React.ReactNode
+}) {
+  return (
+    <group
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick(e)
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+        useStore.setState({ hoverHint: hint })
+      }}
+      onPointerOut={() => {
+        document.body.style.cursor = 'default'
+        useStore.setState({ hoverHint: null })
+      }}
+    >
+      {children}
+    </group>
+  )
+}
+
 export function Room() {
   const darkMode = useStore((s) => s.darkMode)
   const avatarTarget = useStore((s) => s.avatarTarget)
   const cutWalls = useStore((s) => s.cutWalls)
+  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
   const extWallColor = darkMode ? '#3a342e' : '#dfd5c7'
 
   const floorMap = useMemo(() => {
@@ -178,6 +209,9 @@ export function Room() {
       <B p={[-10.0, h / 2, 1.65]} s={[0.22, h, 8.7]} c={darkMode ? '#a59382' : '#e4d4c2'} rough={0.92} shadow={false} />
       <B p={[-9.87, 0.07, 1.65]} s={[0.03, 0.14, 8.7]} c="#3d271a" shadow={false} polyOffset />
 
+      {/* 3b. Vách kính mặt trước phòng tắm: Che chắn mặt cắt phía trước phòng tắm kín đáo, thẩm mỹ, kính mờ nhìn thấu bên trong */}
+      <GlassCurtainWall pos={[-12.8, h / 2, 6.0]} size={[5.6, h]} orientation="z" />
+
       {/* Ốp gỗ lam dọc đầu giường (Walnut Wainscot) + Đèn LED hắt ngang đầu giường */}
       {!cutWalls.back && (
         <>
@@ -192,14 +226,20 @@ export function Room() {
             />
           </mesh>
           <B p={[-3.25, 1.45, -d / 2 + 0.07]} s={[4.92, 0.04, 0.08]} c="#4a301e" shadow={false} polyOffset />
-          <B
-            p={[-3.25, 1.48, -d / 2 + 0.06]}
-            s={[4.88, 0.035, 0.04]}
-            c="#ffdfa0"
-            emissive="#ffae42"
-            ei={darkMode ? 2.8 : 1.9}
-            shadow={false}
-          />
+          {/* Dải đèn LED hắt ngang đầu giường: Click trực tiếp để bật/tắt */}
+          <Interact
+            hint={floor1HeadboardLedOn ? '✨ Tắt đèn LED đầu giường' : '✨ Bật đèn LED đầu giường'}
+            onClick={() => useStore.getState().toggleFloor1HeadboardLed()}
+          >
+            <B
+              p={[-3.25, 1.48, -d / 2 + 0.06]}
+              s={[4.88, 0.035, 0.04]}
+              c={floor1HeadboardLedOn ? '#ffdfa0' : '#4a301e'}
+              emissive={floor1HeadboardLedOn ? '#ffae42' : '#000000'}
+              ei={floor1HeadboardLedOn ? (darkMode ? 2.8 : 1.9) : 0}
+              shadow={false}
+            />
+          </Interact>
           <B p={[-5.4, h - 0.08, -d / 2 + 0.08]} s={[9.2, 0.16, 0.12]} c={darkMode ? '#b09e8c' : '#ebdccc'} shadow={false} polyOffset />
           <B
             p={[-5.4, h - 0.17, -d / 2 + 0.07]}
@@ -277,6 +317,9 @@ function Rug({
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
   const lampOn = useStore((s) => s.lampOn)
+  const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
+  const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
+  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
   const curtainsOpen = useStore((s) => s.curtainsOpen)
   const pcState = useStore((s) => s.pcState)
   const tvOn = useStore((s) => s.tvOn)
@@ -322,33 +365,41 @@ export function Lights() {
         color={darkMode ? '#8ab4ff' : '#fff5e4'}
       />
 
-      {/* Đèn LED hắt trần & đầu giường ấm áp (luôn toả ánh vàng ấm như ảnh mẫu) */}
+      {/* Đèn LED hắt trần & đầu giường ấm áp */}
       <pointLight
         position={[-5.2, 3.85, -4.8]}
         intensity={darkMode ? 5.5 : 3.6}
         distance={8}
         color="#ffbe66"
       />
-      <pointLight
-        position={[-2.6, 1.65, -4.9]}
-        intensity={darkMode ? 4.8 : 3.2}
-        distance={6}
-        color="#ffb85c"
-      />
+      {floor1HeadboardLedOn && (
+        <pointLight
+          position={[-2.6, 1.65, -4.9]}
+          intensity={darkMode ? 4.8 : 3.2}
+          distance={6}
+          color="#ffb85c"
+        />
+      )}
 
-      {/* Đèn ngủ trên tab đầu giường & đèn bàn góc phải */}
-      <pointLight
-        position={[-0.65, 1.15, -5.35]}
-        intensity={darkMode ? 5.2 : 3.4}
-        distance={5.5}
-        color="#ffbe64"
-      />
-      <pointLight
-        position={[7.55, 1.25, -5.35]}
-        intensity={darkMode ? 5.0 : 3.4}
-        distance={6}
-        color="#ffbe64"
-      />
+      {/* Đèn ngủ trên tab đầu giường (bật/tắt riêng) */}
+      {floor1BedLampOn && (
+        <pointLight
+          position={[-0.65, 1.15, -5.35]}
+          intensity={darkMode ? 5.2 : 3.4}
+          distance={5.5}
+          color="#ffbe64"
+        />
+      )}
+
+      {/* Đèn bàn góc phải bàn máy tính (bật/tắt riêng) */}
+      {floor1DeskLampOn && (
+        <pointLight
+          position={[7.55, 1.25, -5.35]}
+          intensity={darkMode ? 5.0 : 3.4}
+          distance={6}
+          color="#ffbe64"
+        />
+      )}
 
       {/* Đèn rọi tranh hướng dương & 3 khung ảnh kỷ niệm */}
       <pointLight
@@ -358,7 +409,7 @@ export function Lights() {
         color="#ffd285"
       />
 
-      {/* Đèn cây đứng góc phải trước (bật/tắt được) */}
+      {/* Đèn cây đứng góc phải trước (bật/tắt riêng) */}
       {lampOn && (
         <pointLight
           position={[8.75, 1.95, 3.45]}

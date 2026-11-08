@@ -17,8 +17,13 @@ export function Experience() {
   return (
     <Canvas
       shadows
-      gl={{ antialias: true, powerPreference: 'high-performance' }}
-      dpr={[1, 1.25]}
+      gl={{
+        antialias: true,
+        powerPreference: 'high-performance',
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 1.02,
+      }}
+      dpr={[1, 2]}
       camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
     >
       <color attach="background" args={[darkMode ? '#111520' : '#ece6dd']} />

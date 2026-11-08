@@ -302,25 +302,35 @@ function Bed() {
 
 /* ---------- Tủ đầu giường bên phải + Đèn ngủ ánh vàng ấm ---------- */
 function RightNightstand() {
-  const lampOn = useStore((s) => s.lampOn)
+  const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
   return (
     <G p={[-0.65, 0, -5.5]}>
       <BB p={[0, 0, 0]} s={[0.68, 0.56, 0.52]} c={WALNUT} rough={0.6} />
       <BB p={[0, 0.3, 0.265]} s={[0.6, 0.2, 0.02]} c="#362419" />
       <BB p={[0, 0.08, 0.265]} s={[0.6, 0.18, 0.02]} c="#362419" />
-      {/* Đèn ngủ đầu giường */}
-      <Cyl p={[-0.08, 0.62, 0]} rt={0.07} rb={0.09} h={0.12} c="#d6cfc4" />
-      <Cyl p={[-0.08, 0.75, 0]} rt={0.015} h={0.16} c="#b89d7a" metal={0.7} />
-      <Cyl
-        p={[-0.08, 0.88, 0]}
-        rt={0.14}
-        rb={0.16}
-        h={0.24}
-        c={lampOn ? '#fff3d6' : '#dfd8cc'}
-        emissive={lampOn ? '#ffbe55' : '#000000'}
-        ei={lampOn ? 1.5 : 0}
-        seg={24}
-      />
+      {/* Đèn ngủ đầu giường: Click trực tiếp để bật/tắt riêng biệt */}
+      <Interact
+        hint={floor1BedLampOn ? '💡 Tắt đèn ngủ Tầng 1' : '💡 Bật đèn ngủ Tầng 1'}
+        onClick={() => useStore.getState().toggleFloor1BedLamp()}
+      >
+        <G p={[-0.08, 0, 0]}>
+          <Cyl p={[0, 0.62, 0]} rt={0.07} rb={0.09} h={0.12} c="#d6cfc4" />
+          <Cyl p={[0, 0.75, 0]} rt={0.015} h={0.16} c="#b89d7a" metal={0.7} />
+          <Cyl
+            p={[0, 0.88, 0]}
+            rt={0.14}
+            rb={0.16}
+            h={0.24}
+            c={floor1BedLampOn ? '#fff3d6' : '#dfd8cc'}
+            emissive={floor1BedLampOn ? '#ffbe55' : '#000000'}
+            ei={floor1BedLampOn ? 1.8 : 0}
+            seg={24}
+          />
+          {floor1BedLampOn && (
+            <pointLight position={[0, 0.95, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} />
+          )}
+        </G>
+      </Interact>
       {/* Chậu cây nhỏ cạnh đèn ngủ */}
       <Cyl p={[0.18, 0.61, 0.06]} rt={0.045} rb={0.038} h={0.09} c="#f3efe8" />
       <Sph p={[0.18, 0.69, 0.06]} s={[0.065, 0.055, 0.065]} c="#4d7c3f" />
@@ -724,7 +734,7 @@ function WaterDispenser() {
 
 /* ---------- Tủ thấp bên phải bàn PC + Chậu cây + Đèn bàn ánh vàng ---------- */
 function LowCabinet() {
-  const lampOn = useStore((s) => s.lampOn)
+  const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
   return (
     <G p={[6.95, 0, -5.5]}>
       <BB s={[2.05, 0.58, 0.54]} c={DARK} />
@@ -736,21 +746,29 @@ function LowCabinet() {
         <Sph p={[0.12, 0.36, 0.05]} s={[0.16, 0.14, 0.16]} c="#4d8f44" />
         <Sph p={[-0.12, 0.38, -0.04]} s={[0.16, 0.14, 0.16]} c="#35692f" />
       </G>
-      {/* Đèn bàn ấm áp bên phải tủ thấp */}
-      <G p={[0.55, 0.63, 0]}>
-        <Cyl p={[0, 0.02, 0]} rt={0.1} h={0.03} c="#27272a" />
-        <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#3f3f46" metal={0.6} />
-        <Cyl
-          p={[0, 0.48, 0]}
-          rt={0.18}
-          rb={0.22}
-          h={0.28}
-          c={lampOn ? '#fff3d6' : '#dfd8cc'}
-          emissive={lampOn ? '#ffbe55' : '#000000'}
-          ei={lampOn ? 1.5 : 0}
-          seg={24}
-        />
-      </G>
+      {/* Đèn bàn ấm áp bên phải tủ thấp: Click trực tiếp để bật/tắt riêng biệt */}
+      <Interact
+        hint={floor1DeskLampOn ? '💡 Tắt đèn bàn PC' : '💡 Bật đèn bàn PC'}
+        onClick={() => useStore.getState().toggleFloor1DeskLamp()}
+      >
+        <G p={[0.55, 0.63, 0]}>
+          <Cyl p={[0, 0.02, 0]} rt={0.1} h={0.03} c="#27272a" />
+          <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#3f3f46" metal={0.6} />
+          <Cyl
+            p={[0, 0.48, 0]}
+            rt={0.18}
+            rb={0.22}
+            h={0.28}
+            c={floor1DeskLampOn ? '#fff3d6' : '#dfd8cc'}
+            emissive={floor1DeskLampOn ? '#ffbe55' : '#000000'}
+            ei={floor1DeskLampOn ? 1.8 : 0}
+            seg={24}
+          />
+          {floor1DeskLampOn && (
+            <pointLight position={[0, 0.55, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} />
+          )}
+        </G>
+      </Interact>
     </G>
   )
 }

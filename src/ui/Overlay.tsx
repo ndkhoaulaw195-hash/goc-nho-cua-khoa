@@ -100,9 +100,14 @@ function ContextualDock() {
   const tvOn = useStore((s) => s.tvOn)
   const pcState = useStore((s) => s.pcState)
   const darkMode = useStore((s) => s.darkMode)
-  const lampOn = useStore((s) => s.lampOn)
+  const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
+  const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
+  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
+  const bathMirrorLightOn = useStore((s) => s.bathMirrorLightOn)
   const girlPcState = useStore((s) => s.girlPcState)
   const girlLampOn = useStore((s) => s.girlLampOn)
+  const floor2ArchLightOn = useStore((s) => s.floor2ArchLightOn)
+  const floor2ReadingLampOn = useStore((s) => s.floor2ReadingLampOn)
   const girlVanityLightOn = useStore((s) => s.girlVanityLightOn)
   const girlShelfLedOn = useStore((s) => s.girlShelfLedOn)
   const girlBookPage = useStore((s) => s.girlBookPage)
@@ -135,6 +140,9 @@ function ContextualDock() {
           <button className="dock-btn" onClick={() => useStore.getState().spinChair()}>
             🔄 Xoay ghế
           </button>
+          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1DeskLamp()}>
+            {floor1DeskLampOn ? '💡 Tắt đèn bàn' : '💡 Bật đèn bàn'}
+          </button>
         </>
       )}
 
@@ -143,8 +151,11 @@ function ContextualDock() {
           <button className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
             {darkMode ? '☀️ Ban ngày' : '🌙 Ban đêm'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleLamp()}>
-            {lampOn ? '💡 Tắt đèn cây' : '💡 Bật đèn cây'}
+          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1BedLamp()}>
+            {floor1BedLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1HeadboardLed()}>
+            {floor1HeadboardLedOn ? '✨ Tắt LED đầu giường' : '✨ Bật LED đầu giường'}
           </button>
         </>
       )}
@@ -180,9 +191,14 @@ function ContextualDock() {
       )}
 
       {activity === 'wash' && (
-        <button className="dock-btn" onClick={() => useStore.getState().triggerSinkWater()}>
-          💧 Xả nước bồn rửa
-        </button>
+        <>
+          <button className="dock-btn" onClick={() => useStore.getState().triggerSinkWater()}>
+            💧 Xả nước bồn rửa
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().toggleBathMirrorLight()}>
+            {bathMirrorLightOn ? '✨ Tắt đèn gương' : '✨ Bật đèn gương'}
+          </button>
+        </>
       )}
 
       {activity === 'laundry' && (
@@ -199,6 +215,9 @@ function ContextualDock() {
           </button>
           <button className="dock-btn" onClick={() => useStore.getState().toggleGirlLamp()}>
             {girlLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor2ArchLight()}>
+            {floor2ArchLightOn ? '✨ Tắt đèn vòm' : '✨ Bật đèn vòm'}
           </button>
         </>
       )}
@@ -224,9 +243,14 @@ function ContextualDock() {
       )}
 
       {(activity === 'girl_lounge' || activity === 'girl_nook') && (
-        <button className="dock-btn" onClick={() => useStore.getState().nextGirlBookPage()}>
-          📖 Trang {girlBookPage} · Lật trang
-        </button>
+        <>
+          <button className="dock-btn" onClick={() => useStore.getState().nextGirlBookPage()}>
+            📖 Trang {girlBookPage} · Lật trang
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor2ReadingLamp()}>
+            {floor2ReadingLampOn ? '💡 Tắt đèn đọc sách' : '💡 Bật đèn đọc sách'}
+          </button>
+        </>
       )}
 
       <button className="dock-btn primary" onClick={() => useStore.getState().returnOverview()}>

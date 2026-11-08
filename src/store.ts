@@ -119,6 +119,25 @@ interface State {
   // Thiết bị trong phòng Tầng 1
   lampOn: boolean
   toggleLamp: () => void
+  floor1BedLampOn: boolean
+  toggleFloor1BedLamp: () => void
+  floor1DeskLampOn: boolean
+  toggleFloor1DeskLamp: () => void
+  floor1HeadboardLedOn: boolean
+  toggleFloor1HeadboardLed: () => void
+
+  // Thiết bị phòng tắm
+  bathMirrorLightOn: boolean
+  toggleBathMirrorLight: () => void
+  bathFullMirrorLightOn: boolean
+  toggleBathFullMirrorLight: () => void
+
+  // Đèn riêng Tầng 2
+  floor2ReadingLampOn: boolean
+  toggleFloor2ReadingLamp: () => void
+  floor2ArchLightOn: boolean
+  toggleFloor2ArchLight: () => void
+
   acOn: boolean
   toggleAc: () => void
   curtainsOpen: boolean
@@ -510,7 +529,53 @@ export const useStore = create<State>()(
       toggleLamp: () =>
         set((s) => ({
           lampOn: !s.lampOn,
-          toastMessage: !s.lampOn ? '💡 Bật đèn cây' : '💡 Tắt đèn cây',
+          toastMessage: !s.lampOn ? '💡 Bật đèn cây phòng khách' : '💡 Tắt đèn cây phòng khách',
+        })),
+      floor1BedLampOn: true,
+      toggleFloor1BedLamp: () =>
+        set((s) => ({
+          floor1BedLampOn: !s.floor1BedLampOn,
+          toastMessage: !s.floor1BedLampOn ? '💡 Bật đèn ngủ Tầng 1' : '💡 Tắt đèn ngủ Tầng 1',
+        })),
+      floor1DeskLampOn: true,
+      toggleFloor1DeskLamp: () =>
+        set((s) => ({
+          floor1DeskLampOn: !s.floor1DeskLampOn,
+          toastMessage: !s.floor1DeskLampOn ? '💡 Bật đèn bàn máy tính' : '💡 Tắt đèn bàn máy tính',
+        })),
+      floor1HeadboardLedOn: true,
+      toggleFloor1HeadboardLed: () =>
+        set((s) => ({
+          floor1HeadboardLedOn: !s.floor1HeadboardLedOn,
+          toastMessage: !s.floor1HeadboardLedOn ? '✨ Bật đèn hắt đầu giường' : '✨ Tắt đèn hắt đầu giường',
+        })),
+
+      // Đèn phòng tắm
+      bathMirrorLightOn: true,
+      toggleBathMirrorLight: () =>
+        set((s) => ({
+          bathMirrorLightOn: !s.bathMirrorLightOn,
+          toastMessage: !s.bathMirrorLightOn ? '✨ Bật đèn gương Halo phòng tắm' : '✨ Tắt đèn gương Halo phòng tắm',
+        })),
+      bathFullMirrorLightOn: true,
+      toggleBathFullMirrorLight: () =>
+        set((s) => ({
+          bathFullMirrorLightOn: !s.bathFullMirrorLightOn,
+          toastMessage: !s.bathFullMirrorLightOn ? '✨ Bật đèn gương toàn thân' : '✨ Tắt đèn gương toàn thân',
+        })),
+
+      // Đèn Tầng 2
+      floor2ReadingLampOn: true,
+      toggleFloor2ReadingLamp: () =>
+        set((s) => ({
+          floor2ReadingLampOn: !s.floor2ReadingLampOn,
+          toastMessage: !s.floor2ReadingLampOn ? '💡 Bật đèn cây đọc sách Tầng 2' : '💡 Tắt đèn cây đọc sách Tầng 2',
+        })),
+      floor2ArchLightOn: true,
+      toggleFloor2ArchLight: () =>
+        set((s) => ({
+          floor2ArchLightOn: !s.floor2ArchLightOn,
+          toastMessage: !s.floor2ArchLightOn ? '✨ Bật đèn vòm nghệ thuật Tầng 2' : '✨ Tắt đèn vòm nghệ thuật Tầng 2',
         })),
       acOn: true,
       toggleAc: () =>

@@ -558,6 +558,8 @@ function GirlRoomFurniture() {
   const girlLampOn = useStore((s) => s.girlLampOn)
   const girlVanityLightOn = useStore((s) => s.girlVanityLightOn)
   const girlShelfLedOn = useStore((s) => s.girlShelfLedOn)
+  const floor2ArchLightOn = useStore((s) => s.floor2ArchLightOn)
+  const floor2ReadingLampOn = useStore((s) => s.floor2ReadingLampOn)
   const girlPcState = useStore((s) => s.girlPcState)
   const girlChairSpinTick = useStore((s) => s.girlChairSpinTick)
   const girlBookPage = useStore((s) => s.girlBookPage)
@@ -649,40 +651,44 @@ function GirlRoomFurniture() {
         </G>
       </Interact>
 
-      {/* 4. DẢI ĐÈN LED HÌNH VÒM CUNG (ARCH LED) & TRANH ĐA SẮC CHÍNH GIỮA ĐẦU GIƯỜNG */}
-      <G p={[-5.0, Y, -5.96]}>
-        {/* Dải đèn LED vòm cung phát sáng vàng ấm bao quanh đầu giường */}
-        <mesh position={[0, 2.25, 0]}>
-          <torusGeometry args={[1.62, 0.036, 16, 64, Math.PI]} />
-          <meshStandardMaterial
-            color="#fff8dc"
+      {/* 4. DẢI ĐÈN LED HÌNH VÒM CUNG (ARCH LED) & TRANH ĐA SẮC: Click để bật/tắt riêng */}
+      <Interact
+        hint={floor2ArchLightOn ? '✨ Tắt đèn vòm nghệ thuật' : '✨ Bật đèn vòm nghệ thuật'}
+        onClick={() => useStore.getState().toggleFloor2ArchLight()}
+      >
+        <G p={[-5.0, Y, -5.96]}>
+          {/* Dải đèn LED vòm cung phát sáng vàng ấm bao quanh đầu giường */}
+          <mesh position={[0, 2.25, 0]}>
+            <torusGeometry args={[1.62, 0.036, 16, 64, Math.PI]} />
+            <meshStandardMaterial
+              color="#fff8dc"
+              emissive="#ffaa28"
+              emissiveIntensity={floor2ArchLightOn ? 3.8 : 0.2}
+            />
+          </mesh>
+          {/* 2 chân dải đèn vòm kéo thẳng xuống tới 2 tủ đầu giường */}
+          <B
+            p={[-1.62, 1.42, 0]}
+            s={[0.07, 1.68, 0.05]}
+            c="#fff8dc"
             emissive="#ffaa28"
-            emissiveIntensity={girlLampOn ? 3.8 : 0.4}
+            ei={floor2ArchLightOn ? 3.8 : 0.2}
+            shadow={false}
           />
-        </mesh>
-        {/* 2 chân dải đèn vòm kéo thẳng xuống tới 2 tủ đầu giường */}
-        <B
-          p={[-1.62, 1.42, 0]}
-          s={[0.07, 1.68, 0.05]}
-          c="#fff8dc"
-          emissive="#ffaa28"
-          ei={girlLampOn ? 3.8 : 0.4}
-          shadow={false}
-        />
-        <B
-          p={[1.62, 1.42, 0]}
-          s={[0.07, 1.68, 0.05]}
-          c="#fff8dc"
-          emissive="#ffaa28"
-          ei={girlLampOn ? 3.8 : 0.4}
-          shadow={false}
-        />
-        {girlLampOn && (
-          <pointLight position={[0, 2.4, 0.45]} color="#ffaa33" intensity={1.45} distance={5.5} />
-        )}
+          <B
+            p={[1.62, 1.42, 0]}
+            s={[0.07, 1.68, 0.05]}
+            c="#fff8dc"
+            emissive="#ffaa28"
+            ei={floor2ArchLightOn ? 3.8 : 0.2}
+            shadow={false}
+          />
+          {floor2ArchLightOn && (
+            <pointLight position={[0, 2.4, 0.45]} color="#ffaa33" intensity={1.45} distance={5.5} />
+          )}
 
-        {/* Bức tranh khung gỗ nhiều màu sắc treo chính giữa trong lòng vòm đèn */}
-        <G p={[0, 2.38, 0.025]}>
+          {/* Bức tranh khung gỗ nhiều màu sắc treo chính giữa trong lòng vòm đèn */}
+          <G p={[0, 2.38, 0.025]}>
           {/* Khung gỗ nâu ấm */}
           <B p={[0, 0, 0]} s={[1.82, 1.16, 0.045]} c="#6e472b" rough={0.55} polyOffset />
           {/* Mặt tranh đa sắc */}
@@ -710,7 +716,8 @@ function GirlRoomFurniture() {
             <Cyl p={[-0.14, 2.85, 0.1]} rt={0.05} rb={0.05} h={0.12} c="#d97706" />
           </group>
         ))}
-      </G>
+        </G>
+      </Interact>
 
       {/* 5. Hai tủ đầu giường chạm sàn + 2 đèn ngủ chụp tròn phát sáng vàng ấm */}
       {[-6.78, -3.22].map((nx, idx) => (
@@ -1131,14 +1138,20 @@ function GirlRoomFurniture() {
 
           {/* Kệ trên & thanh LED vàng ấm */}
           <BB p={[0, 2.88, 0]} s={[5.2, 0.055, 0.28]} c="#c89b6e" rough={0.5} />
-          <B
-            p={[0, 2.84, 0.05]}
-            s={[5.05, 0.028, 0.05]}
-            c="#fffbeb"
-            emissive="#ffaa22"
-            ei={girlShelfLedOn ? 3.6 : 0.15}
-            shadow={false}
-          />
+          {/* Dải LED hắt sáng: Click trực tiếp để bật/tắt */}
+          <Interact
+            hint={girlShelfLedOn ? '✨ Tắt LED kệ sách' : '✨ Bật LED kệ sách'}
+            onClick={() => useStore.getState().toggleGirlShelfLed()}
+          >
+            <B
+              p={[0, 2.84, 0.05]}
+              s={[5.05, 0.028, 0.05]}
+              c="#fffbeb"
+              emissive="#ffaa22"
+              ei={girlShelfLedOn ? 3.6 : 0.15}
+              shadow={false}
+            />
+          </Interact>
 
           {/* PointLights tạo hiệu ứng hắt sáng vàng ấm rực rỡ xuống mảng tường xanh Sage */}
           {girlShelfLedOn && (
@@ -1319,28 +1332,38 @@ function GirlRoomFurniture() {
             )),
           )}
 
-          {/* GƯƠNG TRÒN VIỀN LED TRẮNG ẤM LỚN HƠN 25% (rt = 0.52) */}
-          <G p={[0, 1.32, -0.24]}>
-            <Cyl r={[Math.PI / 2, 0, 0]} rt={0.52} h={0.038} c="#c89b6e" />
-            <Cyl
-              p={[0, 0, 0.016]}
-              r={[Math.PI / 2, 0, 0]}
-              rt={0.45}
-              h={0.02}
-              c="#d6cdc2"
-              metal={0.22}
-              rough={0.18}
-            />
-            {/* Viền Halo LED trắng ấm phát sáng rõ nét */}
-            <mesh position={[0, 0, 0.028]}>
-              <torusGeometry args={[0.48, 0.032, 20, 64]} />
-              <meshStandardMaterial
-                color="#fffdf7"
-                emissive="#ffdfa0"
-                emissiveIntensity={girlVanityLightOn ? 4.2 : 0.25}
+          {/* GƯƠNG TRÒN VIỀN LED TRẮNG ẤM (Click trực tiếp để bật/tắt riêng) */}
+          <Interact
+            hint={girlVanityLightOn ? '✨ Tắt đèn gương Halo' : '✨ Bật đèn gương Halo'}
+            onClick={() => {
+              useStore.getState().toggleGirlVanityLight()
+            }}
+          >
+            <G p={[0, 1.32, -0.24]}>
+              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.52} h={0.038} c="#c89b6e" />
+              <Cyl
+                p={[0, 0, 0.016]}
+                r={[Math.PI / 2, 0, 0]}
+                rt={0.45}
+                h={0.02}
+                c="#d6cdc2"
+                metal={0.22}
+                rough={0.18}
               />
-            </mesh>
-          </G>
+              {/* Viền Halo LED trắng ấm phát sáng rõ nét */}
+              <mesh position={[0, 0, 0.028]}>
+                <torusGeometry args={[0.48, 0.032, 20, 64]} />
+                <meshStandardMaterial
+                  color="#fffdf7"
+                  emissive="#ffdfa0"
+                  emissiveIntensity={girlVanityLightOn ? 4.2 : 0.25}
+                />
+              </mesh>
+              {girlVanityLightOn && (
+                <pointLight position={[0, 0, 0.35]} color="#ffe0a0" intensity={1.65} distance={3.8} />
+              )}
+            </G>
+          </Interact>
 
           {/* 1. KHAY NƯỚC HOA VIỀN ĐỒNG (PERFUME TRAY) BÊN TRÁI MẶT BÀN */}
           <G p={[-0.48, 0.75, 0.06]}>
@@ -1597,10 +1620,10 @@ function GirlRoomFurniture() {
         {/* 6. CHÚ MÈO NHỎ NẰM NGỦ TRÊN THẢM (SLEEPING KITTEN) */}
         <SleepingCat p={[-0.34, 0.034, -0.36]} />
 
-        {/* 7. Cây đèn sàn (Floor Lamp) chụp trụ màu kem phát sáng vàng ấm ở góc phải */}
+        {/* 7. Cây đèn sàn (Floor Lamp) chụp trụ màu kem phát sáng vàng ấm ở góc phải: Click bật/tắt riêng */}
         <Interact
-          hint="💡 Đèn sàn"
-          onClick={() => useStore.getState().toggleGirlLamp()}
+          hint={floor2ReadingLampOn ? '💡 Tắt đèn cây đọc sách' : '💡 Bật đèn cây đọc sách'}
+          onClick={() => useStore.getState().toggleFloor2ReadingLamp()}
         >
           <G p={[2.18, 0, 0.42]}>
             <Cyl p={[0, 0.025, 0]} rt={0.22} rb={0.24} h={0.05} c="#1e2024" metal={0.5} />
@@ -1612,9 +1635,9 @@ function GirlRoomFurniture() {
               h={0.42}
               c="#fff7e2"
               emissive="#ffaa2b"
-              ei={girlLampOn ? 2.8 : 0.15}
+              ei={floor2ReadingLampOn ? 2.8 : 0.15}
             />
-            {girlLampOn && (
+            {floor2ReadingLampOn && (
               <pointLight position={[0, 1.45, 0]} color="#ffaa33" intensity={1.15} distance={4.2} />
             )}
           </G>

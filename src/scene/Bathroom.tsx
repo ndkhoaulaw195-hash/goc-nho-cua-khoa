@@ -194,6 +194,7 @@ function ShowerBooth() {
 function VanityAndWasher() {
   const sinkWaterUntil = useStore((s) => s.sinkWaterUntil)
   const laundryRunning = useStore((s) => s.laundryRunning)
+  const bathMirrorLightOn = useStore((s) => s.bathMirrorLightOn)
   const streamRef = useRef<THREE.Group>(null)
   const drumRef = useRef<THREE.Group>(null)
 
@@ -241,20 +242,34 @@ function VanityAndWasher() {
           {/* Khăn mặt gấp gọn bên cạnh */}
           <BB p={[0.52, 0.88, -0.12]} s={[0.18, 0.06, 0.16]} c="#f8fafc" />
 
-          {/* Gương tròn đèn LED Halo cảm ứng gắn trên tường */}
-          <G p={[0, 2.3, -0.44]}>
-            {/* Vòng hào quang đèn LED sau gương */}
-            <mesh position={[0, 0, -0.01]}>
-              <ringGeometry args={[0.55, 0.64, 40]} />
-              <meshStandardMaterial color="#fff4dc" emissive="#ffb854" emissiveIntensity={2.4} />
-            </mesh>
-            {/* Viền kim loại & Mặt gương tròn */}
-            <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#1e1e24" metal={0.8} />
-            <mesh position={[0, 0, 0.015]}>
-              <circleGeometry args={[0.55, 40]} />
-              <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.05} />
-            </mesh>
-          </G>
+          {/* Gương tròn đèn LED Halo cảm ứng: Click trực tiếp để bật/tắt riêng biệt */}
+          <Interact
+            hint={bathMirrorLightOn ? '✨ Tắt đèn gương Halo' : '✨ Bật đèn gương Halo'}
+            onClick={() => {
+              useStore.getState().toggleBathMirrorLight()
+            }}
+          >
+            <G p={[0, 2.3, -0.44]}>
+              {/* Vòng hào quang đèn LED sau gương */}
+              <mesh position={[0, 0, -0.01]}>
+                <ringGeometry args={[0.55, 0.64, 40]} />
+                <meshStandardMaterial
+                  color="#fff4dc"
+                  emissive="#ffb854"
+                  emissiveIntensity={bathMirrorLightOn ? 3.2 : 0.05}
+                />
+              </mesh>
+              {/* Viền kim loại & Mặt gương tròn */}
+              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#1e1e24" metal={0.8} />
+              <mesh position={[0, 0, 0.015]}>
+                <circleGeometry args={[0.55, 40]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.05} />
+              </mesh>
+              {bathMirrorLightOn && (
+                <pointLight position={[0, 0, 0.25]} intensity={1.8} distance={3.8} color="#ffe8c2" />
+              )}
+            </G>
+          </Interact>
         </G>
       </Interact>
 
@@ -376,6 +391,7 @@ function TowelWarmer() {
 
 /* ---------- Không gian Master Spa & Kệ tủ đồ cao cấp nửa trước Phòng tắm (Full 12m) ---------- */
 function MasterBathLounge() {
+  const bathFullMirrorLightOn = useStore((s) => s.bathFullMirrorLightOn)
   return (
     <group>
       {/* 1. Tủ kệ đồ Master Spa 4 tầng áp sát vào bức tường bên trái để lộ rõ hoàn toàn bồn tắm phía sau */}
@@ -397,23 +413,39 @@ function MasterBathLounge() {
         <Cyl p={[0.35, 2.24, 0]} rt={0.04} h={0.14} c="#1e293b" />
       </G>
 
-      {/* 2. Gương soi toàn thân viền đèn LED âm tường sang trọng */}
-      <G p={[-15.54, 1.6, 1.4]}>
-        {/* Viền đèn LED ấm phía sau gương */}
-        <B p={[0.01, 0, 0]} s={[0.02, 2.24, 0.94]} c="#fff4dc" emissive="#ffb854" ei={2.0} shadow={false} polyOffset />
-        <B p={[0.02, 0, 0]} s={[0.02, 2.18, 0.88]} c="#18181b" polyOffset />
-        <mesh position={[0.035, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-          <planeGeometry args={[0.82, 2.12]} />
-          <meshStandardMaterial
-            color="#cbd5e1"
-            metalness={0.95}
-            roughness={0.05}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
+      {/* 2. Gương soi toàn thân viền đèn LED âm tường sang trọng: Click trực tiếp để bật/tắt */}
+      <Interact
+        hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
+        onClick={() => useStore.getState().toggleBathFullMirrorLight()}
+      >
+        <G p={[-15.54, 1.6, 1.4]}>
+          {/* Viền đèn LED ấm phía sau gương */}
+          <B
+            p={[0.01, 0, 0]}
+            s={[0.02, 2.24, 0.94]}
+            c="#fff4dc"
+            emissive="#ffb854"
+            ei={bathFullMirrorLightOn ? 2.5 : 0.05}
+            shadow={false}
+            polyOffset
           />
-        </mesh>
-      </G>
+          <B p={[0.02, 0, 0]} s={[0.02, 2.18, 0.88]} c="#18181b" polyOffset />
+          <mesh position={[0.035, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+            <planeGeometry args={[0.82, 2.12]} />
+            <meshStandardMaterial
+              color="#cbd5e1"
+              metalness={0.95}
+              roughness={0.05}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
+          </mesh>
+          {bathFullMirrorLightOn && (
+            <pointLight position={[0.25, 0, 0]} intensity={1.6} distance={3.5} color="#ffe8c2" />
+          )}
+        </G>
+      </Interact>
 
       {/* 3. Thảm đá thấm nước siêu nhanh Diatomite trước gương và kệ (y >= 0.022 + polyOffset) */}
       <BB p={[-13.8, 0.016, 2.4]} s={[1.4, 0.02, 0.95]} c="#e2ddd5" rough={0.95} polyOffset />
