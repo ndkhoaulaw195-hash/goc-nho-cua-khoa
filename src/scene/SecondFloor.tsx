@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph, RBB } from './prims'
-import { GlassCurtainWall } from './GlassCurtainWall'
+import { B, BB, Cyl, G, Sph, RB, RBB } from './prims'
+import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
   AUTO_SEQUENCE_GIRL,
@@ -86,6 +86,7 @@ export function SecondFloor() {
 function FloorAndBeams() {
   const darkMode = useStore((s) => s.darkMode)
   const Y = FLOOR2_Y
+  const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
 
   const oakMap1 = useMemo(() => {
     const t = lightOakFloor().clone()
@@ -163,23 +164,13 @@ function FloorAndBeams() {
         />
       </mesh>
 
-      {/* --- LAN CAN KÍNH TRONG SUỐT TAY VỊN GỖ SỒI (MeshPhysicalMaterial chuẩn PBR) --- */}
+      {/* --- LAN CAN KÍNH TRONG SUỐT TAY VỊN GỖ SỒI (MeshPhysicalMaterial clearcoat sắc nét không gây mờ vật thể phía sau) --- */}
       {/* 1. Lan can ngang mép hành lang thông tầng (x từ -1.2 đến +9.9, tại z = 0.18) */}
       <G p={[4.35, Y, 0.18]}>
-        <BB p={[0, 0.86, 0]} s={[11.1, 0.045, 0.065]} c="#c89d6c" rough={0.4} />
+        <RBB p={[0, 0.86, 0]} s={[11.1, 0.045, 0.065]} c="#c89d6c" rough={0.4} radius={0.015} />
         <BB p={[0, 0.0, 0]} s={[11.1, 0.035, 0.05]} c="#b88c5a" rough={0.5} />
-        <mesh position={[0, 0.44, 0]}>
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
           <boxGeometry args={[10.95, 0.82, 0.016]} />
-          <meshPhysicalMaterial
-            color="#f0f8ff"
-            roughness={0.08}
-            metalness={0.1}
-            transmission={0.82}
-            transparent
-            ior={1.5}
-            thickness={0.12}
-            depthWrite={false}
-          />
         </mesh>
         {[-5.4, -3.2, -1.0, 1.2, 3.4, 5.4].map((px, i) => (
           <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
@@ -188,20 +179,10 @@ function FloorAndBeams() {
 
       {/* 2. Lan can dọc mép thông tầng bên trái (x = -1.2, z từ 0.18 đến 4.8) */}
       <G p={[-1.2, Y, 2.5]}>
-        <BB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.6]} c="#c89d6c" rough={0.4} />
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.6]} c="#c89d6c" rough={0.4} radius={0.015} />
         <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.6]} c="#b88c5a" rough={0.5} />
-        <mesh position={[0, 0.44, 0]}>
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
           <boxGeometry args={[0.016, 0.82, 4.5]} />
-          <meshPhysicalMaterial
-            color="#f0f8ff"
-            roughness={0.08}
-            metalness={0.1}
-            transmission={0.82}
-            transparent
-            ior={1.5}
-            thickness={0.12}
-            depthWrite={false}
-          />
         </mesh>
         {[-1.8, 0, 1.8].map((pz, i) => (
           <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
@@ -210,23 +191,13 @@ function FloorAndBeams() {
 
       {/* 3. Lan can bảo vệ ô cầu thang (tại x = -7.72, z từ 0.45 đến 4.8) */}
       <G p={[-7.72, Y, 2.62]}>
-        <BB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.35]} c="#c89d6c" rough={0.4} />
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.35]} c="#c89d6c" rough={0.4} radius={0.015} />
         <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.35]} c="#b88c5a" rough={0.5} />
-        <mesh position={[0, 0.44, 0]}>
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
           <boxGeometry args={[0.016, 0.82, 4.25]} />
-          <meshPhysicalMaterial
-            color="#f0f8ff"
-            roughness={0.08}
-            metalness={0.1}
-            transmission={0.82}
-            transparent
-            ior={1.5}
-            thickness={0.12}
-            depthWrite={false}
-          />
         </mesh>
         {[-1.6, 0, 1.6].map((pz, i) => (
-          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.7} />
+          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
         ))}
       </G>
     </group>
@@ -236,7 +207,6 @@ function FloorAndBeams() {
 function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
   const darkMode = useStore((s) => s.darkMode)
   const curtainsFloor2Open = useStore((s) => s.curtainsFloor2Open)
-  const cutWalls = useStore((s) => s.cutWalls)
   const Y = FLOOR2_Y
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
@@ -260,8 +230,6 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
       sheerRightRef.current.scale.x = THREE.MathUtils.lerp(sheerRightRef.current.scale.x, curtainsFloor2Open ? 0.25 : 1.0, k)
     }
   })
-
-  if (cutWalls.right) return null
 
   return (
     <Interact
@@ -351,7 +319,6 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
  * ============================================================================ */
 function WallsAndDoor() {
   const darkMode = useStore((s) => s.darkMode)
-  const cutWalls = useStore((s) => s.cutWalls)
   const Y = FLOOR2_Y
   const H2 = 4.2
   const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
@@ -359,91 +326,79 @@ function WallsAndDoor() {
 
   return (
     <group>
-      {/* 1. Tường sau Tầng 2: Thay thế bằng Vách kính hiện đại khi camera xoay ra phía sau */}
-      {!cutWalls.back ? (
-        <>
-          <B
-            p={[0, Y - 0.12 + (H2 + 0.12) / 2, -6.14]}
-            s={[20.48, H2 + 0.12, 0.2]}
-            c={extWallColor}
-            rough={0.9}
-            shadow={false}
-          />
+      {/* 1. Tường sau Tầng 2: Tấm tường bình thường đồng màu với căn phòng (luôn cố định khi xoay) */}
+      <B
+        p={[0, Y - 0.12 + (H2 + 0.12) / 2, -6.14]}
+        s={[20.48, H2 + 0.12, 0.2]}
+        c={extWallColor}
+        rough={0.9}
+        shadow
+      />
 
-          {/* Lớp sơn mặt trong cánh trái (Khu giường ngủ: x từ -10.0 đến -1.05) */}
-          <B
-            p={[-5.525, Y + H2 / 2, -6.01]}
-            s={[8.95, H2, 0.04]}
-            c={darkMode ? '#4a3b36' : '#e2cfc2'}
-            rough={0.9}
-            shadow={false}
-            polyOffset
-          />
+      {/* Lớp sơn mặt trong cánh trái (Khu giường ngủ: x từ -10.0 đến -1.05) */}
+      <B
+        p={[-5.525, Y + H2 / 2, -6.01]}
+        s={[8.95, H2, 0.04]}
+        c={darkMode ? '#4a3b36' : '#e2cfc2'}
+        rough={0.9}
+        shadow={false}
+        polyOffset
+      />
 
-          {/* 2. Vách lam gỗ sồi thẳng đứng phân khu (ốp nổi mặt trong tại z = -5.96 - dùng chung Geometry/Material) */}
-          <WoodSlatsWall H2={H2} />
+      {/* 2. Vách lam gỗ sồi thẳng đứng phân khu (ốp nổi mặt trong tại z = -5.96 - dùng chung Geometry/Material) */}
+      <WoodSlatsWall H2={H2} />
 
-          {/* 3. Lớp sơn mặt trong cánh phải (Khu bàn học, bàn trang điểm & tủ đồ: x từ -1.05 đến +10.0) */}
-          <B
-            p={[4.475, Y + H2 / 2, -6.01]}
-            s={[11.05, H2, 0.04]}
-            c={darkMode ? '#354337' : '#859683'}
-            rough={0.9}
-            shadow={false}
-            polyOffset
-          />
+      {/* 3. Lớp sơn mặt trong cánh phải (Khu bàn học, bàn trang điểm & tủ đồ: x từ -1.05 đến +10.0) */}
+      <B
+        p={[4.475, Y + H2 / 2, -6.01]}
+        s={[11.05, H2, 0.04]}
+        c={darkMode ? '#354337' : '#859683'}
+        rough={0.9}
+        shadow={false}
+        polyOffset
+      />
 
-          {/* Phào chỉ trần nhà màu trắng kem chạy dọc phía trên tường */}
-          <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c="#f8f5f0" shadow={false} polyOffset />
-        </>
-      ) : (
-        <GlassCurtainWall pos={[0, Y + H2 / 2, -6.04]} size={[20.48, H2]} orientation="z" numPanels={6} />
-      )}
+      {/* Phào chỉ trần nhà màu trắng kem chạy dọc phía trên tường */}
+      <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c="#f8f5f0" shadow={false} polyOffset />
 
-      {/* 4. Tường bên trái Tầng 2: Thay thế bằng Vách kính hiện đại khi camera nhìn sang trái */}
-      {!cutWalls.left ? (
-        <>
-          <B
-            p={[-10.14, Y - 0.12 + (H2 + 0.12) / 2, -0.66]}
-            s={[0.2, H2 + 0.12, 11.16]}
-            c={extWallColor}
-            rough={0.9}
-            shadow={false}
-          />
-          <B
-            p={[-10.01, Y + H2 / 2, -0.6]}
-            s={[0.04, H2, 10.8]}
-            c={darkMode ? '#52443c' : '#e2cfc2'}
-            rough={0.9}
-            shadow={false}
-            polyOffset
-          />
-          {/* Cửa đôi màu trắng ốp mặt trong tường trái chạm sát sàn Y */}
-          <G p={[-9.95, Y, -2.9]}>
-            <BB p={[0, 0, 0]} s={[0.05, 3.45, 3.36]} c="#f8f6f2" rough={0.7} shadow={false} polyOffset />
-            <B p={[0.03, 1.72, 0]} s={[0.02, 3.35, 0.04]} c="#dcd7d0" shadow={false} polyOffset />
-            <B p={[0.04, 1.5, -0.1]} s={[0.025, 0.26, 0.025]} c="#64748b" metal={0.8} shadow={false} />
-            <B p={[0.04, 1.5, 0.1]} s={[0.025, 0.26, 0.025]} c="#64748b" metal={0.8} shadow={false} />
-          </G>
+      {/* 4. Tường bên trái Tầng 2: Tấm tường bình thường đồng màu với căn phòng (luôn cố định khi xoay) */}
+      <B
+        p={[-10.14, Y - 0.12 + (H2 + 0.12) / 2, -0.66]}
+        s={[0.2, H2 + 0.12, 11.16]}
+        c={extWallColor}
+        rough={0.9}
+        shadow
+      />
+      <B
+        p={[-10.01, Y + H2 / 2, -0.6]}
+        s={[0.04, H2, 10.8]}
+        c={darkMode ? '#52443c' : '#e2cfc2'}
+        rough={0.9}
+        shadow={false}
+        polyOffset
+      />
+      {/* Cửa đôi màu trắng ốp mặt trong tường trái chạm sát sàn Y */}
+      <G p={[-9.95, Y, -2.9]}>
+        <BB p={[0, 0, 0]} s={[0.05, 3.45, 3.36]} c="#f8f6f2" rough={0.7} shadow={false} polyOffset />
+        <B p={[0.03, 1.72, 0]} s={[0.02, 3.35, 0.04]} c="#dcd7d0" shadow={false} polyOffset />
+        <B p={[0.04, 1.5, -0.1]} s={[0.025, 0.26, 0.025]} c="#64748b" metal={0.85} rough={0.18} shadow={false} />
+        <B p={[0.04, 1.5, 0.1]} s={[0.025, 0.26, 0.025]} c="#64748b" metal={0.85} rough={0.18} shadow={false} />
+      </G>
 
-          {/* 2 Khung tranh nghệ thuật tối giản bên cạnh cửa trái */}
-          <G p={[-9.96, Y + 2.2, 0.8]} r={[0, Math.PI / 2, 0]}>
-            <B p={[-0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#e2d4c0" shadow={false} polyOffset />
-            <B p={[-0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#ffffff" shadow={false} polyOffset />
-            <Sph p={[-0.45, 0, 0.025]} s={[0.16, 0.24, 0.01]} c="#15803d" />
+      {/* 2 Khung tranh nghệ thuật tối giản bên cạnh cửa trái */}
+      <G p={[-9.96, Y + 2.2, 0.8]} r={[0, Math.PI / 2, 0]}>
+        <B p={[-0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#e2d4c0" shadow={false} polyOffset />
+        <B p={[-0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#ffffff" shadow={false} polyOffset />
+        <Sph p={[-0.45, 0, 0.025]} s={[0.16, 0.24, 0.01]} c="#15803d" />
 
-            <B p={[0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#e2d4c0" shadow={false} polyOffset />
-            <B p={[0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#ffffff" shadow={false} polyOffset />
-            <Sph p={[0.45, 0, 0.025]} s={[0.17, 0.2, 0.01]} c="#ca8a04" />
-          </G>
-        </>
-      ) : (
-        <GlassCurtainWall pos={[-10.04, Y + H2 / 2, -0.66]} size={[11.16, H2]} orientation="x" numPanels={4} />
-      )}
+        <B p={[0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#e2d4c0" shadow={false} polyOffset />
+        <B p={[0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#ffffff" shadow={false} polyOffset />
+        <Sph p={[0.45, 0, 0.025]} s={[0.17, 0.2, 0.01]} c="#ca8a04" />
+      </G>
 
       {/* Cây Bàng Singapore ở góc tường bên trái */}
       <G p={[-9.15, Y, -4.85]}>
-        <Cyl p={[0, 0.32, 0]} rt={0.22} rb={0.17} h={0.64} c="#1e1b18" />
+        <Cyl p={[0, 0.32, 0]} rt={0.22} rb={0.17} h={0.64} c="#1e1b18" shadow />
         <Cyl p={[0, 1.05, 0]} rt={0.032} h={1.35} c="#5c4028" />
         {[0.85, 1.15, 1.42, 1.65, 1.85].map((ly, idx) => (
           <group key={idx} position={[0, ly, 0]} rotation={[0, (idx * Math.PI) / 2.5, 0.2]}>
@@ -452,32 +407,24 @@ function WallsAndDoor() {
         ))}
       </G>
 
-      {/* 5. TƯỜNG BÊN PHẢI TẦNG 2: Thay thế bằng Vách kính hiện đại khi camera nhìn sang phải */}
-      {!cutWalls.right ? (
-        <>
-          <B
-            p={[10.14, Y - 0.12 + (H2 + 0.12) / 2, -2.96]}
-            s={[0.2, H2 + 0.12, 6.56]}
-            c={extWallColor}
-            rough={0.9}
-            shadow={false}
-          />
-          <B
-            p={[10.01, Y + H2 / 2, -2.9]}
-            s={[0.04, H2, 6.2]}
-            c={darkMode ? '#354337' : '#859683'}
-            rough={0.9}
-            shadow={false}
-            polyOffset
-          />
-        </>
-      ) : (
-        <GlassCurtainWall pos={[10.04, Y + H2 / 2, -2.96]} size={[6.56, H2]} orientation="x" numPanels={3} />
-      )}
+      {/* 5. TƯỜNG BÊN PHẢI TẦNG 2: Tấm tường bình thường đồng màu với căn phòng (luôn cố định khi xoay) */}
+      <B
+        p={[10.14, Y - 0.12 + (H2 + 0.12) / 2, -2.96]}
+        s={[0.2, H2 + 0.12, 6.56]}
+        c={extWallColor}
+        rough={0.9}
+        shadow
+      />
+      <B
+        p={[10.01, Y + H2 / 2, -2.9]}
+        s={[0.04, H2, 6.2]}
+        c={darkMode ? '#354337' : '#859683'}
+        rough={0.9}
+        shadow={false}
+        polyOffset
+      />
       {/* Phào chỉ trần tường phải */}
-      {!cutWalls.right && (
-        <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c="#f8f5f0" shadow={false} polyOffset />
-      )}
+      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c="#f8f5f0" shadow={false} polyOffset />
 
       {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm Tầng 2) */}
       <SecondFloorCurtains skyMap={skyMap} />
@@ -593,6 +540,7 @@ function IndoorStaircase() {
  * ============================================================================ */
 function GirlRoomFurniture() {
   const Y = FLOOR2_Y
+  const darkMode = useStore((s) => s.darkMode)
   const girlLampOn = useStore((s) => s.girlLampOn)
   const girlVanityLightOn = useStore((s) => s.girlVanityLightOn)
   const girlShelfLedOn = useStore((s) => s.girlShelfLedOn)
@@ -604,6 +552,7 @@ function GirlRoomFurniture() {
   const userRole = useStore((s) => s.userRole)
   const canUseGirlWardrobe = userRole === 'girl'
 
+  const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const creamRugTex = useMemo(() => fluffyCreamRug(), [])
   const persianRugTex = useMemo(() => persianTerracottaRug(), [])
   const bedPaintingTex = useMemo(() => colorfulBedArt(), [])
@@ -615,6 +564,57 @@ function GirlRoomFurniture() {
 
   return (
     <group>
+      {/* Nguồn sáng phản hồi thực tế khi người dùng bật/tắt từng đèn trên Tầng 2 (castShadow = false để giữ 60fps) */}
+      {floor2ArchLightOn && (
+        <pointLight
+          position={[-5.0, Y + 2.35, -5.2]}
+          intensity={darkMode ? 2.8 : 1.45}
+          distance={5.2}
+          decay={2}
+          color="#ffaa28"
+          castShadow={false}
+        />
+      )}
+      {girlLampOn && (
+        <pointLight
+          position={[-5.0, Y + 1.25, -5.1]}
+          intensity={darkMode ? 3.2 : 1.65}
+          distance={5.5}
+          decay={2}
+          color="#ffb13b"
+          castShadow={false}
+        />
+      )}
+      {girlShelfLedOn && (
+        <pointLight
+          position={[3.55, Y + 2.55, -5.2]}
+          intensity={darkMode ? 2.6 : 1.35}
+          distance={5.0}
+          decay={2}
+          color="#ffaa22"
+          castShadow={false}
+        />
+      )}
+      {girlVanityLightOn && (
+        <pointLight
+          position={[4.95, Y + 1.35, -4.6]}
+          intensity={darkMode ? 2.8 : 1.5}
+          distance={4.2}
+          decay={2}
+          color="#ffe0a0"
+          castShadow={false}
+        />
+      )}
+      {floor2ReadingLampOn && (
+        <pointLight
+          position={[8.4, Y + 1.65, -0.9]}
+          intensity={darkMode ? 3.5 : 1.85}
+          distance={5.5}
+          decay={2}
+          color="#ffaa2b"
+          castShadow={false}
+        />
+      )}
       {/* =====================================================================
        * A. KHU VỰC GIƯỜNG NGỦ ẤM CÚNG (CHĂN & GỐI CAM ĐẤT, ĐÈN VÒM LED, TRANH ĐA SẮC, THẢM CỔ ĐIỂN)
        * ===================================================================== */}
@@ -831,10 +831,10 @@ function GirlRoomFurniture() {
         >
           <G p={[0.45, 0, 0.05]} r={[0, -0.7, 0]}>
             {/* Đế tròn gỗ sồi ấm áp */}
-            <Cyl p={[0, 0.03, 0]} rt={0.46} rb={0.48} h={0.06} c="#b8895a" rough={0.6} />
+            <Cyl p={[0, 0.03, 0]} rt={0.46} rb={0.48} h={0.06} c="#b8895a" rough={0.6} shadow />
 
             {/* Nệm ngồi tròn căng mọng bọc vải Bouclé trắng kem */}
-            <Cyl p={[0, 0.22, 0]} rt={0.48} rb={0.46} h={0.32} c="#fbf9f5" rough={0.92} />
+            <Cyl p={[0, 0.22, 0]} rt={0.48} rb={0.46} h={0.32} c="#fbf9f5" rough={0.92} shadow />
             <mesh position={[0, 0.38, 0]}>
               <cylinderGeometry args={[0.45, 0.47, 0.08, 32]} />
               <meshStandardMaterial color="#f5f0ea" roughness={0.95} />
@@ -843,25 +843,25 @@ function GirlRoomFurniture() {
             {/* Lưng tựa uốn cong hình chữ C ôm trọn lưng người ngồi (dày dặn, khép kín, không bị rỗng thủng) */}
             <group position={[0, 0.42, -0.06]}>
               {/* Vòng đệm lưng cong bo tròn */}
-              <mesh position={[0, 0.12, -0.16]} rotation={[Math.PI / 2, 0, 0]}>
+              <mesh position={[0, 0.12, -0.16]} rotation={[Math.PI / 2, 0, 0]} castShadow>
                 <torusGeometry args={[0.34, 0.14, 18, 36, Math.PI * 1.15]} />
                 <meshStandardMaterial color="#f7f3ec" roughness={0.92} />
               </mesh>
-              {/* Lưng tựa đệm sau */}
-              <B p={[0, 0.15, -0.34]} s={[0.62, 0.38, 0.18]} c="#fbf9f5" rough={0.92} />
+              {/* Lưng tựa đệm sau bo tròn */}
+              <RB p={[0, 0.15, -0.34]} s={[0.62, 0.38, 0.18]} c="#fbf9f5" rough={0.92} radius={0.045} shadow />
               {/* Tay vịn 2 bên bo cong êm ái */}
-              <B p={[-0.35, 0.08, -0.12]} r={[0, 0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} />
-              <B p={[0.35, 0.08, -0.12]} r={[0, -0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} />
+              <RB p={[-0.35, 0.08, -0.12]} r={[0, 0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} radius={0.04} />
+              <RB p={[0.35, 0.08, -0.12]} r={[0, -0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} radius={0.04} />
             </group>
 
             {/* Gối tựa lưng êm ái tông màu cam đất Terracotta / Nâu ấm tạo điểm nhấn */}
-            <B p={[0, 0.45, -0.22]} r={[-0.22, 0, 0]} s={[0.36, 0.26, 0.12]} c="#d97706" rough={0.88} />
+            <RB p={[0, 0.45, -0.22]} r={[-0.22, 0, 0]} s={[0.36, 0.26, 0.12]} c="#d97706" rough={0.88} radius={0.035} />
           </G>
         </Interact>
         {/* Đôn gác chân tròn bọc vải Bouclé đồng bộ */}
         <G p={[0.68, 0, -0.72]}>
           <Cyl p={[0, 0.025, 0]} rt={0.27} rb={0.28} h={0.05} c="#b8895a" rough={0.6} />
-          <Cyl p={[0, 0.2, 0]} rt={0.28} rb={0.27} h={0.32} c="#fbf9f5" rough={0.92} />
+          <Cyl p={[0, 0.2, 0]} rt={0.28} rb={0.27} h={0.32} c="#fbf9f5" rough={0.92} shadow />
           <mesh position={[0, 0.36, 0]}>
             <cylinderGeometry args={[0.26, 0.28, 0.04, 28]} />
             <meshStandardMaterial color="#f5f0ea" roughness={0.95} />
@@ -954,7 +954,7 @@ function GirlRoomFurniture() {
       {/* 3. CHẬU CÂY CẢNH LỚN TÁN LÁ XÒE RỘNG XANH MƯỚT (CHẬU GỐM NÂU XÁM) NGĂN CÁCH KHÔNG GIAN */}
       <G p={[0.12, Y, -5.05]}>
         {/* Chậu gốm hình trụ bo tròn màu nâu xám */}
-        <Cyl p={[0, 0.31, 0]} rt={0.33} rb={0.26} h={0.62} c="#7a6a5e" rough={0.78} />
+        <Cyl p={[0, 0.31, 0]} rt={0.33} rb={0.26} h={0.62} c="#7a6a5e" rough={0.78} shadow />
         <Cyl p={[0, 0.58, 0]} rt={0.29} h={0.03} c="#3e2c20" />
         {/* Thân chính & các nhánh cây gỗ */}
         <Cyl p={[0, 1.25, 0]} rt={0.036} rb={0.055} h={1.35} c="#5c4028" />
@@ -1287,19 +1287,19 @@ function GirlRoomFurniture() {
         onClick={() => useStore.getState().startActivity('girl_pc', true)}
       >
         <G p={[2.25, Y, -5.2]}>
-          {/* Mặt bàn gỗ sồi & 2 chân chữ U màu trắng */}
-          <BB p={[0, 0.72, 0]} s={[1.62, 0.055, 0.78]} c="#d4a373" rough={0.55} />
-          <BB p={[-0.74, 0, 0]} s={[0.06, 0.72, 0.74]} c="#f8fafc" />
-          <BB p={[0.74, 0, 0]} s={[0.06, 0.72, 0.74]} c="#f8fafc" />
+          {/* Mặt bàn gỗ sồi bo góc & 2 chân chữ U màu trắng */}
+          <RBB p={[0, 0.72, 0]} s={[1.62, 0.055, 0.78]} c="#d4a373" rough={0.55} radius={0.025} shadow />
+          <BB p={[-0.74, 0, 0]} s={[0.06, 0.72, 0.74]} c="#f8fafc" shadow />
+          <BB p={[0.74, 0, 0]} s={[0.06, 0.72, 0.74]} c="#f8fafc" shadow />
           {/* Vách chắn lửng 2 bên mặt bàn */}
-          <BB p={[-0.76, 0.75, 0]} s={[0.04, 0.24, 0.72]} c="#f8fafc" />
-          <BB p={[0.76, 0.75, 0]} s={[0.04, 0.24, 0.72]} c="#f8fafc" />
+          <RBB p={[-0.76, 0.75, 0]} s={[0.04, 0.24, 0.72]} c="#f8fafc" radius={0.015} />
+          <RBB p={[0.76, 0.75, 0]} s={[0.04, 0.24, 0.72]} c="#f8fafc" radius={0.015} />
 
           {/* Màn hình rộng */}
           <G p={[0, 0.775, -0.18]}>
-            <B p={[0, 0.01, 0]} s={[0.26, 0.02, 0.18]} c="#cbd5e1" metal={0.6} />
-            <B p={[0, 0.14, -0.04]} s={[0.05, 0.26, 0.03]} c="#94a3b8" metal={0.6} />
-            <B p={[0, 0.42, 0]} s={[1.18, 0.66, 0.035]} c="#1e293b" />
+            <B p={[0, 0.01, 0]} s={[0.26, 0.02, 0.18]} c="#cbd5e1" metal={0.85} rough={0.18} />
+            <B p={[0, 0.14, -0.04]} s={[0.05, 0.26, 0.03]} c="#94a3b8" metal={0.85} rough={0.18} />
+            <RB p={[0, 0.42, 0]} s={[1.18, 0.66, 0.035]} c="#1e293b" radius={0.015} shadow />
             <mesh position={[0, 0.42, 0.022]}>
               <planeGeometry args={[1.12, 0.6]} />
               {girlPcState === 'off' ? (
@@ -1325,14 +1325,14 @@ function GirlRoomFurniture() {
           </G>
 
           {/* 2 Loa & bàn phím */}
-          <BB p={[-0.56, 0.775, -0.14]} s={[0.12, 0.2, 0.12]} c="#1e2024" />
-          <BB p={[0.56, 0.775, -0.14]} s={[0.12, 0.2, 0.12]} c="#1e2024" />
-          <BB p={[0, 0.775, 0.12]} s={[0.38, 0.015, 0.13]} c="#f1f5f9" />
+          <RBB p={[-0.56, 0.775, -0.14]} s={[0.12, 0.2, 0.12]} c="#1e2024" radius={0.02} />
+          <RBB p={[0.56, 0.775, -0.14]} s={[0.12, 0.2, 0.12]} c="#1e2024" radius={0.02} />
+          <RBB p={[0, 0.775, 0.12]} s={[0.38, 0.015, 0.13]} c="#f1f5f9" radius={0.006} />
 
           {/* GHẾ XOAY CÔNG THÁI HỌC MÀU ĐEN TẠO ĐỘ TƯƠNG PHẢN SẮC NÉT */}
           <G p={[0, 0, 0.56]} r={[0, Math.PI + girlChairSpinTick * 0.4, 0]}>
             {/* Chân sao 5 cánh & bánh xe màu đen */}
-            <Cyl p={[0, 0.22, 0]} rt={0.032} h={0.38} c="#18191c" metal={0.5} />
+            <Cyl p={[0, 0.22, 0]} rt={0.032} h={0.38} c="#18191c" metal={0.85} rough={0.18} />
             {[0, 1, 2, 3, 4].map((ci) => {
               const ang = (ci * Math.PI * 2) / 5
               return (
@@ -1345,11 +1345,11 @@ function GirlRoomFurniture() {
                 />
               )
             })}
-            {/* Đệm ngồi, tay vịn & tựa lưng màu đen chạm đúng trục ghế */}
-            <BB p={[0, 0.4, 0]} s={[0.52, 0.075, 0.5]} c="#1f2126" rough={0.7} />
-            <BB p={[0, 0.47, -0.22]} s={[0.48, 0.58, 0.065]} c="#1f2126" rough={0.7} />
-            <BB p={[-0.27, 0.47, -0.02]} s={[0.04, 0.18, 0.28]} c="#18191c" />
-            <BB p={[0.27, 0.47, -0.02]} s={[0.04, 0.18, 0.28]} c="#18191c" />
+            {/* Đệm ngồi, tay vịn & tựa lưng màu đen bo góc chạm đúng trục ghế */}
+            <RBB p={[0, 0.4, 0]} s={[0.52, 0.075, 0.5]} c="#1f2126" rough={0.7} radius={0.03} shadow />
+            <RBB p={[0, 0.47, -0.22]} s={[0.48, 0.58, 0.065]} c="#1f2126" rough={0.7} radius={0.03} shadow />
+            <RBB p={[-0.27, 0.47, -0.02]} s={[0.04, 0.18, 0.28]} c="#18191c" radius={0.015} />
+            <RBB p={[0.27, 0.47, -0.02]} s={[0.04, 0.18, 0.28]} c="#18191c" radius={0.015} />
           </G>
         </G>
       </Interact>
@@ -1362,16 +1362,16 @@ function GirlRoomFurniture() {
         onClick={() => useStore.getState().startActivity('girl_vanity', true)}
       >
         <G p={[4.95, Y, -5.16]}>
-          {/* Bàn gỗ sồi lớn hơn 25% (1.60m x 0.86m) & 2 ngăn kéo tay nắm đồng */}
-          <BB p={[0, 0.62, 0]} s={[1.6, 0.13, 0.86]} c="#d4a373" rough={0.55} />
+          {/* Bàn gỗ sồi lớn hơn 25% (1.60m x 0.86m) bo góc & 2 ngăn kéo tay nắm đồng */}
+          <RBB p={[0, 0.62, 0]} s={[1.6, 0.13, 0.86]} c="#d4a373" rough={0.55} radius={0.03} shadow />
           <B p={[-0.36, 0.685, 0.435]} s={[0.68, 0.085, 0.015]} c="#c89b6e" />
           <B p={[0.36, 0.685, 0.435]} s={[0.68, 0.085, 0.015]} c="#c89b6e" />
-          <Sph p={[-0.36, 0.685, 0.45]} s={[0.022, 0.022, 0.022]} c="#d4af37" rough={0.3} />
-          <Sph p={[0.36, 0.685, 0.45]} s={[0.022, 0.022, 0.022]} c="#d4af37" rough={0.3} />
+          <Sph p={[-0.36, 0.685, 0.45]} s={[0.022, 0.022, 0.022]} c="#d4af37" metal={0.85} rough={0.18} />
+          <Sph p={[0.36, 0.685, 0.45]} s={[0.022, 0.022, 0.022]} c="#d4af37" metal={0.85} rough={0.18} />
 
           {[-0.68, 0.68].map((lx, i) =>
             [-0.32, 0.32].map((lz, j) => (
-              <Cyl key={`${i}-${j}`} p={[lx, 0.31, lz]} rt={0.028} rb={0.018} h={0.62} c="#b08254" />
+              <Cyl key={`${i}-${j}`} p={[lx, 0.31, lz]} rt={0.028} rb={0.018} h={0.62} c="#b08254" shadow />
             )),
           )}
 
@@ -1413,13 +1413,13 @@ function GirlRoomFurniture() {
 
           {/* 1. KHAY NƯỚC HOA VIỀN ĐỒNG (PERFUME TRAY) BÊN TRÁI MẶT BÀN */}
           <G p={[-0.48, 0.75, 0.06]}>
-            <Cyl p={[0, 0.01, 0]} rt={0.19} rb={0.19} h={0.016} c="#d4af37" metal={0.85} rough={0.2} />
+            <Cyl p={[0, 0.01, 0]} rt={0.19} rb={0.19} h={0.016} c="#d4af37" metal={0.85} rough={0.18} />
             <Cyl p={[0, 0.019, 0]} rt={0.175} rb={0.175} h={0.008} c="#f8fafc" metal={0.5} rough={0.1} />
             {/* 4 Chai nước hoa cao cấp nhiều kiểu dáng */}
             <BB p={[-0.06, 0.022, -0.04]} s={[0.055, 0.11, 0.035]} c="#fbcfe8" rough={0.2} />
-            <Sph p={[-0.06, 0.145, -0.04]} s={[0.02, 0.02, 0.02]} c="#d4af37" metal={0.9} />
+            <Sph p={[-0.06, 0.145, -0.04]} s={[0.02, 0.02, 0.02]} c="#d4af37" metal={0.85} rough={0.18} />
             <Cyl p={[0.05, 0.07, -0.03]} rt={0.032} h={0.095} c="#fde68a" rough={0.2} />
-            <Cyl p={[0.05, 0.125, -0.03]} rt={0.014} h={0.025} c="#d4af37" metal={0.9} />
+            <Cyl p={[0.05, 0.125, -0.03]} rt={0.014} h={0.025} c="#d4af37" metal={0.85} rough={0.18} />
             <Cyl p={[-0.02, 0.065, 0.06]} rt={0.028} h={0.08} c="#ddd6fe" rough={0.2} />
             <BB p={[0.06, 0.022, 0.05]} s={[0.042, 0.085, 0.042]} c="#fed7aa" rough={0.2} />
           </G>
@@ -1433,7 +1433,7 @@ function GirlRoomFurniture() {
               <Cyl key={li} p={[lx, 0.09, 0.04]} rt={0.012} h={0.065} c={li === 0 ? '#e11d48' : li === 1 ? '#f43f5e' : '#ec4899'} />
             ))}
             {/* Ống cắm cọ trang điểm */}
-            <Cyl p={[0.08, 0.08, -0.03]} rt={0.032} h={0.11} c="#d4af37" metal={0.75} />
+            <Cyl p={[0.08, 0.08, -0.03]} rt={0.032} h={0.11} c="#d4af37" metal={0.85} rough={0.18} />
             <Cyl p={[0.07, 0.15, -0.03]} r={[0, 0, 0.18]} rt={0.006} h={0.08} c="#fbcfe8" />
             <Cyl p={[0.09, 0.15, -0.02]} r={[0, 0, -0.15]} rt={0.006} h={0.08} c="#fde047" />
           </G>
@@ -1456,7 +1456,7 @@ function GirlRoomFurniture() {
           </G>
 
           {/* Ghế đôn tròn màu trắng kem */}
-          <Cyl p={[0, 0.22, 0.56]} rt={0.25} rb={0.25} h={0.44} c="#f5f0ea" rough={0.9} />
+          <Cyl p={[0, 0.22, 0.56]} rt={0.25} rb={0.25} h={0.44} c="#f5f0ea" rough={0.9} shadow />
         </G>
       </Interact>
 
@@ -1469,12 +1469,12 @@ function GirlRoomFurniture() {
       >
         <G p={[7.65, Y, -5.25]}>
           {/* Khung vỏ tủ gỗ nâu trầm (Dark Walnut) chạm đúng mặt sàn tầng 2 (BB p[1] = 0) */}
-          <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#3b2314" rough={0.62} />
-          <BB p={[-0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} />
-          <BB p={[0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} />
+          <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#3b2314" rough={0.62} shadow />
+          <RBB p={[-0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} radius={0.02} shadow />
+          <RBB p={[0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} radius={0.02} shadow />
           <BB p={[0, 0, 0]} s={[2.05, 0.12, 1.08]} c="#2e1a0e" rough={0.6} />
-          <BB p={[0, 3.32, 0]} s={[2.06, 0.1, 1.1]} c="#3b2314" rough={0.6} />
-          <BB p={[0, 3.42, 0.02]} s={[2.16, 0.1, 1.16]} c="#2a170c" rough={0.55} />
+          <BB p={[0, 3.32, 0]} s={[2.06, 0.1, 1.1]} c="#3b2314" rough={0.6} shadow />
+          <RBB p={[0, 3.42, 0.02]} s={[2.16, 0.1, 1.16]} c="#2a170c" rough={0.55} radius={0.025} shadow />
           <BB p={[0, 0.12, -0.04]} s={[0.045, 3.2, 0.96]} c="#4a2c1a" rough={0.65} />
           <BB p={[0, 0.12, -0.48]} s={[1.9, 3.2, 0.02]} c="#7c4f30" rough={0.75} />
 
@@ -1485,8 +1485,8 @@ function GirlRoomFurniture() {
           <BB p={[-0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#e8dfd3" rough={0.85} />
           <BB p={[0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#d9cfc3" rough={0.85} />
 
-          <Cyl p={[-0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.8} />
-          <Cyl p={[0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.8} />
+          <Cyl p={[-0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.85} rough={0.18} />
+          <Cyl p={[0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.85} rough={0.18} />
           {[
             { x: -0.72, h: 1.15, c: '#b84d27' },
             { x: -0.5, h: 1.25, c: '#eae4da' },
@@ -1544,25 +1544,15 @@ function GirlRoomFurniture() {
               <BB p={[0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#3b2314" />
               <BB p={[0, 0, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
               <BB p={[0, 3.12, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
-              <mesh position={[0, 1.6, 0]}>
+              <mesh position={[0, 1.6, 0]} material={glassMat}>
                 <boxGeometry args={[0.82, 3.04, 0.018]} />
-                <meshPhysicalMaterial
-                  color="#fff8eb"
-                  roughness={0.08}
-                  metalness={0.1}
-                  transmission={0.82}
-                  transparent
-                  ior={1.5}
-                  thickness={0.12}
-                  depthWrite={false}
-                />
               </mesh>
               <BB
                 p={[side === 0 ? 0.38 : -0.38, 1.35, 0.03]}
                 s={[0.022, 0.48, 0.025]}
                 c="#d4af37"
                 metal={0.85}
-                rough={0.2}
+                rough={0.18}
               />
             </group>
           ))}
@@ -1700,7 +1690,7 @@ function GirlRoomFurniture() {
        * H. TỦ GỖ NHỎ ĐẦU CẦU THANG & GHẾ BĂNG DÀI BỌC NỆM KEM (STORAGE BENCH) ÁP SÁT TƯỜNG TRÁI
        * ===================================================================== */}
       <G p={[-7.32, Y, 1.55]}>
-        <BB p={[0, 0, 0]} s={[0.62, 0.84, 1.12]} c="#c89b6e" rough={0.58} />
+        <RBB p={[0, 0, 0]} s={[0.62, 0.84, 1.12]} c="#c89b6e" rough={0.58} radius={0.03} shadow />
         <B p={[0, 0.42, 0]} s={[0.64, 0.025, 1.08]} c="#b08254" />
         <Cyl p={[0, 0.91, 0]} rt={0.11} rb={0.085} h={0.14} c="#f8fafc" />
         <Sph p={[0, 1.04, 0]} s={[0.15, 0.12, 0.15]} c="#15803d" />
@@ -1708,17 +1698,17 @@ function GirlRoomFurniture() {
 
       {/* Ghế băng dài bọc nệm kem (Storage Bench) kèm gối tựa hồng đất áp sát tường bên trái (gần cửa trắng & đầu cầu thang) */}
       <G p={[-9.52, Y, -2.7]} r={[0, Math.PI / 2, 0]}>
-        {/* Đế gỗ sồi ấm áp & thân ghế băng bọc nệm kem Bouclé */}
-        <BB p={[0, 0, 0]} s={[1.86, 0.08, 0.54]} c="#b8895a" rough={0.55} />
-        <BB p={[0, 0.08, 0]} s={[1.82, 0.3, 0.52]} c="#f5efe6" rough={0.92} />
-        <BB p={[0, 0.38, 0]} s={[1.86, 0.09, 0.55]} c="#fbf9f5" rough={0.9} />
+        {/* Đế gỗ sồi ấm áp & thân ghế băng bọc nệm kem Bouclé bo góc */}
+        <RBB p={[0, 0, 0]} s={[1.86, 0.08, 0.54]} c="#b8895a" rough={0.55} radius={0.02} shadow />
+        <RBB p={[0, 0.08, 0]} s={[1.82, 0.3, 0.52]} c="#f5efe6" rough={0.92} radius={0.035} shadow />
+        <RBB p={[0, 0.38, 0]} s={[1.86, 0.09, 0.55]} c="#fbf9f5" rough={0.9} radius={0.03} />
         {/* 2 Tay vịn cuộn tròn hai đầu ghế băng */}
         <Cyl p={[-0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
         <Cyl p={[0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
-        {/* 3 Gối tựa màu hồng đất (Dusty Rose / Terracotta) dựa vào tường trái */}
-        <BB p={[-0.48, 0.47, -0.14]} r={[0.22, 0.08, 0]} s={[0.42, 0.28, 0.14]} c="#d9777f" rough={0.85} />
-        <BB p={[0, 0.47, -0.15]} r={[0.2, 0, 0]} s={[0.4, 0.26, 0.14]} c="#e29587" rough={0.85} />
-        <BB p={[0.48, 0.47, -0.14]} r={[0.22, -0.08, 0]} s={[0.42, 0.28, 0.14]} c="#c86454" rough={0.85} />
+        {/* 3 Gối tựa màu hồng đất (Dusty Rose / Terracotta) dựa vào tường trái bo góc mềm */}
+        <RBB p={[-0.48, 0.47, -0.14]} r={[0.22, 0.08, 0]} s={[0.42, 0.28, 0.14]} c="#d9777f" rough={0.9} radius={0.035} />
+        <RBB p={[0, 0.47, -0.15]} r={[0.2, 0, 0]} s={[0.4, 0.26, 0.14]} c="#e29587" rough={0.9} radius={0.035} />
+        <RBB p={[0.48, 0.47, -0.14]} r={[0.22, -0.08, 0]} s={[0.42, 0.28, 0.14]} c="#c86454" rough={0.9} radius={0.035} />
       </G>
     </group>
   )

@@ -964,3 +964,19 @@ export function colorfulBedArt() {
     g.strokeRect(pad, pad, iw, ih)
   })
 }
+
+/** Bóng đổ mềm (Ambient Contact Shadow) dưới đế mô hình ngôi nhà tạo chiều sâu Studio 3D */
+export function houseDropShadow() {
+  return canvasTex('house-drop-shadow-v1', 512, 512, (g, w, h) => {
+    g.clearRect(0, 0, w, h)
+    g.save()
+    g.filter = 'blur(28px)'
+    g.fillStyle = 'rgba(18, 12, 8, 0.85)'
+    const mx = 68
+    const my = 68
+    g.beginPath()
+    g.roundRect(mx, my, w - mx * 2, h - my * 2, 36)
+    g.fill()
+    g.restore()
+  })
+}

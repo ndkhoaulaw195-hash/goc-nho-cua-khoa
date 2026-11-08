@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph } from './prims'
+import { B, BB, Cyl, G, RBB, Sph } from './prims'
+import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { useStore } from '../store'
 
 function Interact({
@@ -33,15 +34,42 @@ function Interact({
 
 /** Khu vực Phòng tắm cao cấp & Khu giặt sấy thông minh */
 export function Bathroom() {
+  const darkMode = useStore((s) => s.darkMode)
+  const bathMirrorLightOn = useStore((s) => s.bathMirrorLightOn)
+  const bathFullMirrorLightOn = useStore((s) => s.bathFullMirrorLightOn)
+  const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
+
   return (
     <group>
       <BathroomDoorway />
       <Bathtub />
-      <ShowerBooth />
+      <ShowerBooth glassMat={glassMat} />
       <VanityAndWasher />
       <SmartToilet />
       <TowelWarmer />
       <MasterBathLounge />
+
+      {/* Ánh sáng phản hồi tương tác khi bật đèn gương trong phòng tắm (castShadow = false để giữ 60fps) */}
+      {bathMirrorLightOn && (
+        <pointLight
+          position={[-12.4, 2.3, -5.0]}
+          intensity={darkMode ? 2.8 : 1.4}
+          distance={4.5}
+          decay={2}
+          color="#ffbe54"
+          castShadow={false}
+        />
+      )}
+      {bathFullMirrorLightOn && (
+        <pointLight
+          position={[-15.0, 1.8, 1.4]}
+          intensity={darkMode ? 2.8 : 1.4}
+          distance={4.5}
+          decay={2}
+          color="#ffbe54"
+          castShadow={false}
+        />
+      )}
     </group>
   )
 }
@@ -153,21 +181,12 @@ function Bathtub() {
 }
 
 /* ---------- Vách tắm đứng kính cường lực & Sen tắm mưa trần ---------- */
-function ShowerBooth() {
+function ShowerBooth({ glassMat }: { glassMat: THREE.Material }) {
   return (
     <G p={[-14.1, 0, -4.8]}>
-      {/* Vách kính cường lực trong suốt phân chia khu vực tắm (MeshPhysicalMaterial chuẩn PBR) */}
-      <mesh position={[1.25, 1.3, 0]}>
+      {/* Vách kính cường lực trong suốt phân chia khu vực tắm (không làm mờ đồ vật phía sau) */}
+      <mesh position={[1.25, 1.3, 0]} material={glassMat}>
         <boxGeometry args={[0.03, 2.5, 2.1]} />
-        <meshPhysicalMaterial
-          color="#e0f2fe"
-          roughness={0.08}
-          metalness={0.1}
-          transmission={0.82}
-          transparent
-          ior={1.5}
-          thickness={0.12}
-        />
       </mesh>
       {/* Nẹp kính & Tay nắm mạ vàng */}
       <BB p={[1.25, 0.02, 0]} s={[0.05, 0.04, 2.1]} c="#d4af37" metal={0.85} rough={0.18} />
@@ -232,9 +251,9 @@ function VanityAndWasher() {
       >
         <G p={[-12.4, 0, -5.5]}>
           {/* Tủ Lavabo treo tường ốp nan gỗ sẫm */}
-          <BB p={[0, 0.28, 0]} s={[1.4, 0.54, 0.62]} c="#36251b" rough={0.6} />
+          <RBB p={[0, 0.28, 0]} s={[1.4, 0.54, 0.62]} c="#36251b" rough={0.6} radius={0.03} shadow />
           {/* Mặt bàn đá cẩm thạch trắng Carrara */}
-          <BB p={[0, 0.82, 0]} s={[1.44, 0.06, 0.66]} c="#f5f2ec" rough={0.35} />
+          <RBB p={[0, 0.82, 0]} s={[1.44, 0.06, 0.66]} c="#f5f2ec" rough={0.35} radius={0.02} shadow />
 
           {/* Chậu rửa mặt Lavabo sứ tròn nổi */}
           <Cyl p={[0, 0.94, 0.02]} rt={0.25} rb={0.22} h={0.14} c="#ffffff" rough={0.2} />
@@ -303,9 +322,9 @@ function VanityAndWasher() {
       >
         <G p={[-10.8, 0, -5.45]}>
           {/* Thân máy giặt kim loại màu than chì cao cấp */}
-          <BB p={[0, 0, 0]} s={[0.72, 0.88, 0.64]} c="#24262b" metal={0.65} rough={0.35} />
+          <RBB p={[0, 0, 0]} s={[0.72, 0.88, 0.64]} c="#24262b" metal={0.65} rough={0.35} radius={0.03} shadow />
           {/* Mặt trên bàn đá nối tiếp lavabo */}
-          <BB p={[0, 0.88, 0]} s={[0.74, 0.06, 0.66]} c="#f5f2ec" rough={0.35} />
+          <RBB p={[0, 0.88, 0]} s={[0.74, 0.06, 0.66]} c="#f5f2ec" rough={0.35} radius={0.02} />
 
           {/* Bảng điều khiển cảm ứng LED hiển thị thời gian & chế độ giặt */}
           <B p={[0, 0.78, 0.325]} s={[0.62, 0.12, 0.02]} c="#181a1f" />
@@ -368,9 +387,9 @@ function SmartToilet() {
   return (
     <G p={[-11.2, 0, -0.6]} r={[0, -Math.PI / 2, 0]}>
       {/* Thân bồn cầu sứ trắng treo tường */}
-      <BB p={[0, 0.18, 0.24]} s={[0.42, 0.36, 0.58]} c="#ffffff" rough={0.2} />
+      <RBB p={[0, 0.18, 0.24]} s={[0.42, 0.36, 0.58]} c="#ffffff" rough={0.2} radius={0.04} shadow />
       {/* Nắp đóng êm cong nhẹ */}
-      <BB p={[0, 0.54, 0.26]} s={[0.4, 0.04, 0.54]} c="#f8fafc" rough={0.2} />
+      <RBB p={[0, 0.54, 0.26]} s={[0.4, 0.04, 0.54]} c="#f8fafc" rough={0.2} radius={0.02} />
 
       {/* Tường giấu két nước & Nút xả kép mạ vàng */}
       <B p={[0, 0.92, -0.04]} s={[0.18, 0.12, 0.015]} c="#d4af37" metal={0.85} rough={0.2} />
@@ -410,7 +429,7 @@ function MasterBathLounge() {
     <group>
       {/* 1. Tủ kệ đồ Master Spa 4 tầng áp sát vào bức tường bên trái để lộ rõ hoàn toàn bồn tắm phía sau */}
       <G p={[-15.26, 0, 3.65]} r={[0, Math.PI / 2, 0]}>
-        <BB p={[0, 0, 0]} s={[1.6, 2.15, 0.52]} c="#2e1f14" rough={0.65} />
+        <RBB p={[0, 0, 0]} s={[1.6, 2.15, 0.52]} c="#2e1f14" rough={0.65} radius={0.03} shadow />
         {/* Các tầng kệ để khăn cuộn tròn & đồ skincare */}
         {[-0.45, 0.45].map((kx, i) => (
           <group key={i}>

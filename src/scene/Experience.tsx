@@ -10,7 +10,7 @@ import { Avatar, CORGI, Dog, PUG } from './Characters'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
 
-/** Thiết lập RoomEnvironment & PMREMGenerator tạo phản chiếu chân thực cho PBR Materials */
+/** Thiết lập RoomEnvironment & PMREMGenerator tạo phản chiếu chân thực cho PBR Materials (chỉ khởi tạo 1 lần) */
 function SetupEnvironment() {
   const { gl, scene } = useThree()
   const darkMode = useStore((s) => s.darkMode)
@@ -21,15 +21,18 @@ function SetupEnvironment() {
     const roomEnv = new RoomEnvironment()
     const envTexture = pmremGenerator.fromScene(roomEnv, 0.04).texture
     scene.environment = envTexture
-    scene.environmentIntensity = darkMode ? 0.22 : 0.35
+    roomEnv.dispose()
+    pmremGenerator.dispose()
 
     return () => {
       scene.environment = null
       envTexture.dispose()
-      roomEnv.dispose()
-      pmremGenerator.dispose()
     }
-  }, [gl, scene, darkMode])
+  }, [gl, scene])
+
+  useEffect(() => {
+    scene.environmentIntensity = darkMode ? 0.18 : 0.28
+  }, [scene, darkMode])
 
   return null
 }
@@ -173,17 +176,8 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const controls = controlsRef.current
     const st = useStore.getState()
     const f = st.focus
-    const targetZ = controls ? controls.target.z : 0
-    const targetX = controls ? controls.target.x : 0
-    const cutBack = camera.position.z < targetZ + 4.5
-    const cutLeft = camera.position.x < targetX - 5.5
-    const cutRight = camera.position.x > targetX + 5.5
-    if (
-      st.cutWalls.back !== cutBack ||
-      st.cutWalls.left !== cutLeft ||
-      st.cutWalls.right !== cutRight
-    ) {
-      st.setCutWalls({ back: cutBack, left: cutLeft, right: cutRight })
+    if (st.cutWalls.back || st.cutWalls.left || st.cutWalls.right) {
+      st.setCutWalls({ back: false, left: false, right: false })
     }
     ;(window as unknown as Record<string, unknown>).__store = useStore
     ;(window as unknown as Record<string, unknown>).__camDbg = {

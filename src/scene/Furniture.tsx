@@ -99,14 +99,14 @@ function Wardrobe() {
 
   const wardrobeBody = (
     <G p={[-7.3, 0, -5.45]}>
-      {/* Khung tủ gỗ óc chó sẫm */}
-      <BB p={[0, 0, -0.42]} s={[2.32, 2.78, 0.06]} c={DARK} rough={0.5} />
-      <BB p={[-1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
-      <BB p={[1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
+      {/* Khung tủ gỗ óc chó sẫm bo góc mềm mại */}
+      <RBB p={[0, 0, -0.42]} s={[2.32, 2.78, 0.06]} c={DARK} rough={0.5} radius={0.03} shadow />
+      <RBB p={[-1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} radius={0.02} shadow />
+      <RBB p={[1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} radius={0.02} shadow />
       <BB p={[-0.36, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
       <BB p={[0.38, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
       <BB p={[0, 0, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
-      <BB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
+      <RBB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={DARK} radius={0.02} shadow />
       <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#352923" />
 
       {/* Đèn LED ấm áp bên trong tủ quần áo */}
@@ -492,10 +492,10 @@ function Desk() {
 
   return (
     <G p={[2.85, 0, -5.2]}>
-      {/* Mặt bàn gỗ óc chó dày ấm áp */}
-      <BB p={[0, 0.74, 0]} s={[2.75, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.45} />
+      {/* Mặt bàn gỗ óc chó dày ấm áp bo góc */}
+      <RBB p={[0, 0.74, 0]} s={[2.75, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.45} radius={0.025} shadow />
       {[-1.3, 1.3].map((x) => (
-        <BB key={x} p={[x, 0, 0]} s={[0.06, 0.74, 0.84]} c="#18181b" metal={0.5} />
+        <BB key={x} p={[x, 0, 0]} s={[0.06, 0.74, 0.84]} c="#18181b" metal={0.85} rough={0.18} shadow />
       ))}
 
       {/* Đèn LED Ambilight ấm áp sau bàn máy tính */}
@@ -791,7 +791,6 @@ function LowCabinet() {
 function PanoramicWindow() {
   const darkMode = useStore((s) => s.darkMode)
   const curtainsFloor1Open = useStore((s) => s.curtainsFloor1Open)
-  const cutRight = useStore((s) => s.cutWalls.right)
   const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
@@ -807,8 +806,6 @@ function PanoramicWindow() {
       rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsFloor1Open ? 1 : 2.1, k)
     }
   })
-
-  if (cutRight) return null
 
   return (
     <Interact
