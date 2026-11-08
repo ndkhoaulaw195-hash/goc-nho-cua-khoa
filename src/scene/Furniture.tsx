@@ -716,6 +716,7 @@ function FloatingWallShelves() {
 /* ---------- Cây nước nóng lạnh (Đi tới rót nước & Uống nước) ---------- */
 function WaterDispenser() {
   const streamRef = useRef<THREE.Group>(null)
+  const drinkType = useStore((s) => s.drinkType)
 
   useFrame(({ clock }) => {
     if (!streamRef.current) return
@@ -726,17 +727,21 @@ function WaterDispenser() {
     }
   })
 
+  const streamColor = drinkType === 'tea' ? '#f59e0b' : drinkType === 'coffee' ? '#78350f' : '#38bdf8'
+  const drinkLabel = drinkType === 'tea' ? '🌼 Trà hoa cúc' : drinkType === 'coffee' ? '☕ Cà phê nóng' : '💧 Nước tinh khiết'
+
   return (
     <Interact
-      hint="💧 Cây nước nóng lạnh"
+      hint={`💧 Cây nước nóng lạnh (${drinkLabel})`}
       onClick={() => useStore.getState().startActivity('drink', true)}
     >
       <G p={[5.35, 0, -5.45]}>
         <BB s={[0.44, 1.06, 0.42]} c="#f4f2ed" rough={0.35} />
         <B p={[0, 0.76, 0.215]} s={[0.26, 0.2, 0.02]} c="#27272a" />
         <group ref={streamRef} position={[0, 0.72, 0.21]} visible={false}>
-          <Cyl p={[0, 0, 0]} rt={0.012} h={0.14} c="#38bdf8" emissive="#38bdf8" ei={1.8} />
+          <Cyl p={[0, 0, 0]} rt={0.012} h={0.14} c={streamColor} emissive={streamColor} ei={1.8} />
           <Cyl p={[0, -0.05, 0]} rt={0.036} h={0.075} c="#ffffff" />
+          <Cyl p={[0, -0.03, 0]} rt={0.032} h={0.03} c={streamColor} emissive={streamColor} ei={0.5} />
         </group>
         <Cyl p={[0, 1.28, 0]} rt={0.16} h={0.42} c="#60a5fa" rough={0.12} opacity={0.72} />
       </G>

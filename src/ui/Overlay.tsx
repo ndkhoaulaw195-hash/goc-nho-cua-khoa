@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
+import { PianoModal } from './PianoModal'
 import {
   StickyNotesModal,
   QuestsModal,
@@ -95,6 +96,7 @@ export function Overlay() {
       <DartsGameModal />
       <PcArcadeModal />
       <MemoryModal />
+      <PianoModal />
       <LoginLobby />
 
       {mode === 'fp' && <div className="fp-crosshair" />}
@@ -184,6 +186,23 @@ function ContextualDock() {
             🏆 Bảng đấu Phi Tiêu
           </button>
         </>
+      )}
+
+      {activity === 'drink' && (
+        <>
+          <button className="dock-btn" onClick={() => useStore.getState().setDrinkType('tea')}>
+            🌼 Pha trà hoa cúc mật ong
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().setDrinkType('coffee')}>
+            ☕ Pha cà phê sữa nóng
+          </button>
+        </>
+      )}
+
+      {activity === 'piano' && (
+        <button className="dock-btn primary" onClick={() => useStore.getState().setPianoModalOpen(true)}>
+          🎹 Mở bàn phím Piano
+        </button>
       )}
 
       {activity === 'pet' && (
@@ -308,6 +327,8 @@ function TopRight({
   const setMode = useStore((s) => s.setMode)
   const weather = useStore((s) => s.weather)
   const cycleWeather = useStore((s) => s.cycleWeather)
+  const candlesLit = useStore((s) => s.candlesLit)
+  const toggleCandles = useStore((s) => s.toggleCandles)
   const quests = useStore((s) => s.quests)
   const lovePoints = useStore((s) => s.lovePoints)
   const pendingQuests = quests.filter((q) => !q.completed).length
@@ -439,6 +460,16 @@ function TopRight({
           style={{ fontSize: 12, fontWeight: 600 }}
         >
           🧊 Tủ lạnh
+        </button>
+
+        {/* Nút Thắp Nến Thơm Tinh Dầu Lãng Mạn */}
+        <button
+          className={`dock-icon-btn ${candlesLit ? 'active' : ''}`}
+          onClick={toggleCandles}
+          title={candlesLit ? 'Nến thơm tinh dầu: Đang thắp lung linh (Bấm để thổi tắt)' : 'Nến thơm tinh dầu: Đang tắt (Bấm để thắp nến)'}
+          style={{ fontSize: 16 }}
+        >
+          🕯️
         </button>
 
         <button

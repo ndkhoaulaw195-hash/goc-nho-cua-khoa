@@ -292,6 +292,14 @@ interface State {
   robotVacuumOn: boolean
   toggleRobotVacuum: () => void
 
+  // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
+  candlesLit: boolean
+  toggleCandles: () => void
+  pianoModalOpen: boolean
+  setPianoModalOpen: (v: boolean) => void
+  drinkType: 'water' | 'tea' | 'coffee'
+  setDrinkType: (type: 'water' | 'tea' | 'coffee') => void
+
   // 1. Hệ thống Thời tiết & Ánh sáng đa dạng
   weather: WeatherMode
   setWeather: (w: WeatherMode) => void
@@ -657,7 +665,10 @@ export const useStore = create<State>()(
           if (fromUser) {
             if (act === 'drink') setTimeout(() => useStore.getState().completeQuest('quest_drink'), 1200)
             if (act === 'read' || act === 'girl_lounge' || act === 'girl_nook') setTimeout(() => useStore.getState().completeQuest('quest_read'), 1200)
-            if (act === 'piano') setTimeout(() => useStore.getState().completeQuest('quest_piano'), 1200)
+            if (act === 'piano') setTimeout(() => {
+              useStore.getState().completeQuest('quest_piano')
+              useStore.setState({ pianoModalOpen: true })
+            }, 1200)
             if (act === 'laundry') setTimeout(() => useStore.getState().completeQuest('quest_laundry'), 1200)
             if (act === 'darts') setTimeout(() => useStore.setState({ dartsModalOpen: true }), 400)
           }
@@ -1347,6 +1358,28 @@ export const useStore = create<State>()(
           broadcastWorldChange('tennisBall', next)
           return { tennisBall: next, toastMessage: '🐶 Bé cún đã ngoạm bóng mang về!' }
         }),
+
+      // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
+      candlesLit: true,
+      toggleCandles: () =>
+        set((s) => {
+          const next = !s.candlesLit
+          broadcastWorldChange('candlesLit', next)
+          return {
+            candlesLit: next,
+            toastMessage: next ? '🕯️ Đã thắp nến thơm tinh dầu lãng mạn' : '💨 Đã thổi tắt nến',
+          }
+        }),
+
+      pianoModalOpen: false,
+      setPianoModalOpen: (pianoModalOpen) => set({ pianoModalOpen }),
+
+      drinkType: 'tea',
+      setDrinkType: (drinkType) => {
+        broadcastWorldChange('drinkType', drinkType)
+        const names = { water: 'Ly nước tinh khiết', tea: 'Trà hoa cúc mật ong ấm', coffee: 'Cà phê sữa thơm nồng' }
+        set({ drinkType, toastMessage: `☕ Đã chọn: ${names[drinkType]}` })
+      },
 
       toastMessage: null,
       notify: (toastMessage: string) => set({ toastMessage }),

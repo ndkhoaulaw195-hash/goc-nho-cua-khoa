@@ -683,4 +683,75 @@ html.dark .dock-btn.primary { color: #111520; }
 }
 .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
+/* =========================================================================
+   STYLE CHO THANH BÀN PHÍM ĐÀN PIANO TẦNG 2 (COZY PIANO DOCK)
+   ========================================================================= */
+.piano-dock-overlay {
+  position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%);
+  z-index: 110; pointer-events: none;
+}
+.piano-dock-card {
+  pointer-events: auto;
+  background: var(--card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+  padding: 14px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+  min-width: 440px;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.piano-dock-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.piano-title { display: flex; align-items: center; gap: 10px; }
+.piano-icon { font-size: 24px; }
+.piano-title h4 { font-size: 14px; font-weight: 700; margin: 0; color: var(--ink); }
+.piano-title p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.piano-actions { display: flex; align-items: center; gap: 8px; }
+.auto-melody-btn {
+  font-size: 11.5px; font-weight: 700; color: #ea580c;
+  background: rgba(234, 88, 12, 0.12); border: 1px solid rgba(234, 88, 12, 0.25);
+  padding: 5px 12px; border-radius: 999px; cursor: pointer; transition: all 0.2s;
+}
+.auto-melody-btn:hover { background: #ea580c; color: #ffffff; }
+.auto-melody-btn.playing { background: #ea580c; color: #ffffff; animation: pulse 1s infinite alternate; }
+.piano-close-btn {
+  width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--chip-bg); color: var(--muted); font-size: 13px; cursor: pointer;
+}
+.piano-close-btn:hover { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.piano-keys-container {
+  display: flex; justify-content: center; gap: 6px;
+  background: #1e1b18; padding: 10px 14px 14px; border-radius: 14px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.piano-white-key {
+  position: relative; width: 44px; height: 115px; border-radius: 4px 4px 8px 8px;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 90%, #cbd5e1 100%);
+  border: 1px solid #94a3b8; border-bottom: 5px solid #64748b;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  padding-bottom: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.18);
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+.piano-white-key:hover {
+  background: #f1f5f9;
+}
+.piano-white-key.pressed {
+  transform: translateY(4px);
+  border-bottom-width: 1px;
+  background: #fef08a !important;
+  box-shadow: 0 0 14px #fef08a;
+}
+.key-shortcut {
+  font-size: 11px; font-weight: 800; color: #64748b; opacity: 0.8;
+}
+.key-solfege {
+  font-size: 13px; font-weight: 700; color: #1e293b;
+}
+
+
 

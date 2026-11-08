@@ -8,6 +8,7 @@ import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
 import { Avatar, CORGI, Dog, PUG } from './Characters'
 import { MemoryCollectibles, TennisBall } from './MemoryCollectibles'
+import { ScentedCandles } from './ScentedCandles'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
 
@@ -197,6 +198,7 @@ export function Experience() {
       <RainEffect />
       <MemoryCollectibles />
       <TennisBall />
+      <ScentedCandles />
       <Avatar p={[-1.1, 0, -1.2]} ry={0.15} />
       <Dog
         id="mochi"
