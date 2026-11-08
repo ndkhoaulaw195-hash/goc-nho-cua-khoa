@@ -1,0 +1,431 @@
+:root {
+  --bg: #ece6dc;
+  --card: rgba(250, 247, 242, 0.9);
+  --card-border: rgba(255, 255, 255, 0.75);
+  --ink: #1f1b18;
+  --muted: #6f665f;
+  --line: rgba(31, 27, 24, 0.08);
+  --dark: #1f2329;
+  --accent: #d9822b;
+  --chip-bg: rgba(255, 255, 255, 0.72);
+  font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dark {
+  --bg: #111520;
+  --card: rgba(22, 26, 38, 0.88);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --ink: #f3efe9;
+  --muted: #9ca3b5;
+  --line: rgba(255, 255, 255, 0.1);
+  --dark: #3b82f6;
+  --accent: #f59e0b;
+  --chip-bg: rgba(255, 255, 255, 0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root, .app { width: 100%; height: 100%; overflow: hidden; background: var(--bg); transition: background 0.35s ease; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+canvas { display: block; }
+
+.overlay { position: fixed; inset: 0; pointer-events: none; z-index: 100; color: var(--ink); }
+.overlay > *, .overlay .card, .overlay button, .overlay a, .overlay input { pointer-events: auto; }
+
+.card {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: 0 10px 32px rgba(15, 18, 28, 0.15), 0 1px 2px rgba(15, 18, 28, 0.08);
+}
+.eyebrow { font-size: 9.5px; letter-spacing: 0.16em; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+
+/* ---- Góc trái trên ---- */
+.top-left {
+  position: absolute; top: 14px; left: 16px; z-index: 100; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 8px; pointer-events: none;
+}
+.title-card { padding: 10px 16px; min-width: 210px; border-radius: 16px; }
+.title-card h1 { font-size: 18px; font-weight: 700; margin-top: 2px; letter-spacing: -0.01em; }
+
+.pulse-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; flex: none; transition: all 0.2s;
+}
+.pulse-dot.on {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.26);
+}
+
+/* ---- Góc phải trên: Thanh Glassmorphism Dock đồng nhất ---- */
+.top-right {
+  position: absolute; top: 14px; right: 16px; z-index: 100;
+  display: flex; flex-direction: column; align-items: flex-end;
+}
+.glass-dock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 10px 30px rgba(15, 18, 28, 0.16), 0 1px 3px rgba(15, 18, 28, 0.08);
+}
+.dock-sep {
+  width: 1px; height: 22px; background: var(--line); margin: 0 2px; flex: none;
+}
+.dock-divider {
+  width: 1px; height: 18px; background: var(--line); margin: 0 1px; flex: none;
+}
+
+/* ---- Cụm chọn nhân vật Khoa | Bạn Gái kèm nút Auto ---- */
+.char-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+}
+.char-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  transition: all 0.2s;
+}
+.char-btn {
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  opacity: 0.78;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.char-btn:hover { opacity: 1; }
+.char-btn.active {
+  opacity: 1;
+  background: var(--accent);
+  color: #1e1b18;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.35);
+}
+.auto-toggle-chip {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--muted);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.auto-toggle-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.auto-toggle-chip.on {
+  background: rgba(16, 185, 129, 0.16);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.42);
+  font-weight: 700;
+}
+html.dark .auto-toggle-chip.on {
+  color: #34d399;
+}
+
+/* ---- Nút Icon & Nút chuyển góc nhìn đồng bộ trạng thái Active ---- */
+.dock-icon-btn, .icon-btn {
+  position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--chip-bg); border: 1px solid var(--line); transition: all 0.2s;
+}
+.dock-icon-btn:hover:not(:disabled), .icon-btn:hover:not(:disabled) {
+  transform: translateY(-1px); border-color: var(--accent);
+}
+.dock-icon-btn.active, .icon-btn.active {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.eq { position: absolute; bottom: 4px; display: flex; gap: 1.5px; align-items: flex-end; height: 5px; }
+.eq i { width: 2px; background: var(--accent); animation: eq 0.9s infinite ease-in-out; }
+.eq i:nth-child(2) { animation-delay: 0.2s; } .eq i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes eq { 0%, 100% { height: 2px; } 50% { height: 5px; } }
+
+.view-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.dock-pill-btn, .pill-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px;
+  border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--chip-bg); border: 1px solid var(--line); transition: all 0.2s;
+}
+.dock-pill-btn:hover, .pill-btn:hover {
+  transform: translateY(-1px); border-color: var(--accent);
+}
+.dock-pill-btn.active, .pill-btn.active {
+  background: var(--accent);
+  color: #1e1b18;
+  border-color: var(--accent);
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
+}
+
+/* ---- Thanh hành động ngữ cảnh dưới đáy màn hình ---- */
+.context-dock {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  border-radius: 999px; white-space: nowrap;
+}
+.dock-status {
+  font-size: 12.5px; font-weight: 600; padding: 0 8px; color: var(--ink);
+}
+.dock-btn {
+  height: 32px; padding: 0 13px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  background: var(--chip-bg); border: 1px solid var(--line); transition: all 0.18s;
+}
+.dock-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+.dock-btn.primary {
+  background: var(--accent); color: #fff; border-color: transparent;
+}
+html.dark .dock-btn.primary { color: #111520; }
+
+/* ---- Modal gọn bên phải (Thay đồ, Xem ảnh) ---- */
+.side-modal {
+  position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+  width: 320px; max-width: calc(100vw - 32px); padding: 18px;
+  animation: slidein 0.25s ease;
+}
+@keyframes slidein { from { opacity: 0; transform: translate(16px, -50%); } }
+.side-modal .close { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; box-shadow: none; }
+.side-modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 12px; padding-right: 28px; }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+
+.photo-preview {
+  width: 100%; max-height: 280px; object-fit: cover; border-radius: 10px;
+  margin-bottom: 10px; border: 1px solid var(--line);
+}
+
+/* ---- Danh sách chọn trang phục ---- */
+.outfit-list { display: flex; flex-direction: column; gap: 6px; }
+.outfit-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 11px;
+  border-radius: 10px; background: var(--chip-bg); border: 1px solid var(--line);
+  font-size: 12.5px; font-weight: 500; text-align: left; transition: all 0.18s;
+}
+.outfit-item:hover { border-color: var(--accent); transform: translateX(2px); }
+.outfit-item.active { border-color: var(--accent); background: rgba(245, 158, 11, 0.18); font-weight: 600; }
+.swatch { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; overflow: hidden; border: 1px solid rgba(0,0,0,0.2); flex: none; }
+.swatch i { flex: 1; height: 100%; }
+
+/* ---- Tâm ngắm & HUD Góc nhìn thứ nhất ---- */
+.fp-crosshair {
+  position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+  pointer-events: none; transition: all 0.18s ease;
+}
+.fp-crosshair.active {
+  width: 18px; height: 18px; border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.28);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+}
+
+.fp-hud {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  background: rgba(15, 18, 28, 0.76); color: #fff; padding: 8px 16px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; backdrop-filter: blur(8px); pointer-events: none;
+  white-space: nowrap;
+}
+
+.hover-hint {
+  position: absolute; bottom: 72px; left: 50%; transform: translateX(-50%);
+  background: rgba(20, 23, 31, 0.86); color: #fff; padding: 7px 15px; border-radius: 999px;
+  font-size: 12px; font-weight: 500; pointer-events: none; backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22); white-space: nowrap;
+}
+
+.toast {
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  background: rgba(20, 23, 31, 0.9); color: #fff; padding: 8px 16px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 600; pointer-events: none; backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25); animation: toastIn 0.22s ease; white-space: nowrap;
+}
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* ==========================================================================
+   SẢNH CHỜ ĐĂNG NHẬP (LOGIN LOBBY) THEO PHONG CÁCH GLASSMORPHISM HIỆN ĐẠI
+   ========================================================================== */
+.login-lobby-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at center, rgba(17, 21, 32, 0.72) 0%, rgba(9, 12, 18, 0.92) 100%);
+  backdrop-filter: blur(20px);
+  animation: fadeIn 0.35s ease;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.login-lobby-card {
+  width: 100%; max-width: 680px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  text-align: center;
+  color: #1e293b;
+}
+
+.is-dark .login-lobby-card {
+  background: rgba(24, 28, 40, 0.9);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+}
+
+.login-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+  color: #d97706; background: rgba(245, 158, 11, 0.14);
+  padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+}
+
+.login-title {
+  font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px; color: #64748b; margin-bottom: 24px; line-height: 1.5;
+}
+.is-dark .login-subtitle { color: #94a3b8; }
+
+.login-form {
+  display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;
+}
+
+.account-select-tabs {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+
+.acc-tab {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 16px;
+  background: #f1f5f9; border: 2px solid transparent;
+  cursor: pointer; transition: all 0.2s; text-align: left;
+}
+.is-dark .acc-tab { background: rgba(255, 255, 255, 0.06); }
+
+.acc-avatar {
+  font-size: 28px; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+}
+.is-dark .acc-avatar { background: rgba(255, 255, 255, 0.1); }
+
+.acc-meta { display: flex; flex-direction: column; }
+.acc-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+.is-dark .acc-name { color: #f8fafc; }
+.acc-role { font-size: 11.5px; color: #64748b; font-weight: 500; }
+.is-dark .acc-role { color: #94a3b8; }
+
+.boy-tab.active {
+  border-color: #22c55e; background: #f0fdf4;
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.15);
+}
+.is-dark .boy-tab.active { background: rgba(34, 197, 94, 0.15); }
+
+.girl-tab.active {
+  border-color: #f43f5e; background: #fff1f2;
+  box-shadow: 0 8px 20px rgba(244, 63, 94, 0.15);
+}
+.is-dark .girl-tab.active { background: rgba(244, 63, 94, 0.15); }
+
+.input-field-group {
+  display: flex; flex-direction: column; text-align: left; gap: 6px;
+}
+.input-label {
+  font-size: 12.5px; font-weight: 600; color: #475569;
+}
+.is-dark .input-label { color: #cbd5e1; }
+
+.login-input {
+  width: 100%; padding: 12px 16px; border-radius: 12px;
+  border: 1.5px solid #cbd5e1; background: #ffffff;
+  font-size: 14px; outline: none; transition: border-color 0.2s;
+  color: #1e293b;
+}
+.is-dark .login-input {
+  background: rgba(15, 23, 42, 0.6); border-color: rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+}
+.login-input:focus { border-color: #f59e0b; }
+
+.login-error-msg {
+  font-size: 12px; color: #e11d48; background: #ffe4e6;
+  padding: 8px 12px; border-radius: 8px; text-align: left;
+}
+.is-dark .login-error-msg { background: rgba(225, 29, 72, 0.2); }
+
+.login-submit-btn {
+  width: 100%; padding: 13px 20px; border-radius: 14px;
+  font-size: 14.5px; font-weight: 700; color: #ffffff;
+  border: none; cursor: pointer; transition: all 0.22s;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+.boy-submit { background: #16a34a; }
+.boy-submit:hover { background: #15803d; transform: translateY(-1px); }
+
+.girl-submit { background: #e11d48; }
+.girl-submit:hover { background: #be123c; transform: translateY(-1px); }
+
+.login-footer-note {
+  font-size: 12px; color: #64748b; line-height: 1.5;
+}
+
+/* Badge hiển thị vai nhân vật trong dock */
+.user-role-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 6px 4px 10px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--line);
+}
+.role-current-tag {
+  font-size: 12.5px; font-weight: 700; color: #1e293b;
+}
+.is-dark .role-current-tag { color: #f8fafc; }
+
+.role-logout-btn {
+  font-size: 11.5px; font-weight: 600;
+  padding: 4px 9px; border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12); color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  cursor: pointer; transition: all 0.18s;
+}
+.role-logout-btn:hover {
+  background: #dc2626; color: #ffffff;
+}
+

@@ -1,0 +1,685 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import {
+  GIRL_OUTFITS,
+  HOME_VIEW,
+  LIVE_ACTORS,
+  OUTFITS,
+  STATIONS,
+  TV_CHANNELS,
+  type V3,
+} from './data/config'
+
+export type Mode = 'orbit' | 'fp'
+export type ActiveChar = 'boy' | 'girl'
+export type Activity =
+  | 'idle'
+  | 'tv'
+  | 'pc'
+  | 'sleep'
+  | 'wardrobe'
+  | 'feed'
+  | 'drink'
+  | 'darts'
+  | 'pet'
+  | 'bath'
+  | 'wash'
+  | 'laundry'
+  | 'read'
+  | 'girl_sleep'
+  | 'girl_pc'
+  | 'girl_vanity'
+  | 'girl_lounge'
+  | 'girl_nook'
+  | 'girl_wardrobe'
+
+export type ActivityPhase = 'walking' | 'entering' | 'active'
+export type PcState = 'on' | 'rgb' | 'off'
+
+export interface CamFocus {
+  pos: V3
+  target: V3
+}
+
+interface State {
+  // Sảnh chờ & Tài khoản nhân vật ('boy' = Khoa, 'girl' = Bạn Gái)
+  userRole: ActiveChar | null
+  setUserRole: (role: ActiveChar) => void
+  logout: () => void
+
+  mode: Mode
+  setMode: (m: Mode) => void
+  darkMode: boolean
+  toggleDarkMode: () => void
+
+  // Chọn nhân vật người chơi đang điều khiển: 'boy' (Khoa) hoặc 'girl' (Bạn Gái)
+  activeChar: ActiveChar
+  setActiveChar: (char: ActiveChar) => void
+
+  // Trạng thái hoạt động độc lập của từng nhân vật (Cả 2 đều dùng chung mọi đồ đạc trong nhà, trừ tủ quần áo)
+  boyActivity: Activity
+  boyPhase: ActivityPhase
+  girlActivity: Activity
+  girlPhase: ActivityPhase
+
+  // Hoạt động của nhân vật đang được chọn điều khiển (đồng bộ với UI & Camera)
+  activity: Activity
+  activityPhase: ActivityPhase
+  isUserInitiated: boolean
+  boyAutoLife: boolean
+  girlAutoLife: boolean
+  toggleBoyAutoLife: () => void
+  toggleGirlAutoLife: () => void
+  startActivity: (act: Activity, fromUser?: boolean, forChar?: ActiveChar) => void
+  setActivityPhase: (phase: ActivityPhase, forChar?: ActiveChar) => void
+
+  avatarTarget: V3 | null
+  setAvatarTarget: (p: V3 | null) => void
+  outfitId: string
+  outfitSpinTick: number
+  setOutfitId: (id: string) => void
+
+  // Tiện ích & Thiết bị Tầng 2
+  girlOutfitId: string
+  girlOutfitSpinTick: number
+  setGirlOutfitId: (id: string) => void
+  girlPcState: PcState
+  cycleGirlPcState: () => void
+  girlChairSpinTick: number
+  spinGirlChair: () => void
+  girlLampOn: boolean
+  toggleGirlLamp: () => void
+  girlVanityLightOn: boolean
+  toggleGirlVanityLight: () => void
+  girlShelfLedOn: boolean
+  toggleGirlShelfLed: () => void
+  girlWardrobeOpen: boolean
+  setGirlWardrobeOpen: (v: boolean) => void
+  girlBookPage: number
+  nextGirlBookPage: () => void
+
+  // Khung ảnh treo tường
+  activePhoto: number | null
+  setActivePhoto: (id: number | null) => void
+
+  // Camera & Góc nhìn
+  focus: CamFocus | null
+  viewPreset: 'overview' | 'floor1' | 'floor2'
+  setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
+  returnOverview: () => void
+  cutWalls: { back: boolean; left: boolean; right: boolean }
+  setCutWalls: (cw: { back: boolean; left: boolean; right: boolean }) => void
+
+  // Thiết bị trong phòng Tầng 1
+  lampOn: boolean
+  toggleLamp: () => void
+  acOn: boolean
+  toggleAc: () => void
+  curtainsOpen: boolean
+  toggleCurtains: () => void
+  wardrobeOpen: boolean
+  setWardrobeOpen: (v: boolean) => void
+  pcState: PcState
+  cyclePcState: () => void
+  chairSpinTick: number
+  spinChair: () => void
+  dartCount: number
+  dartFlightStart: number
+  triggerDartFlight: () => void
+  waterPourUntil: number
+  tvOn: boolean
+  toggleTv: () => void
+  tvChannel: number
+  cycleTvChannel: () => void
+
+  // Cho chó ăn & đi tới vuốt ve thật
+  feedingUntil: number
+  petTargetId: 'mochi' | 'bo'
+  petDog: (id: 'mochi' | 'bo', fromUser?: boolean, forChar?: ActiveChar) => void
+
+  // Tiện ích phòng tắm & giặt ủi
+  bathBubbles: boolean
+  toggleBathBubbles: () => void
+  sinkWaterUntil: number
+  triggerSinkWater: () => void
+  laundryRunning: boolean
+  toggleLaundry: () => void
+
+  // Đọc sách Tầng 1
+  readBookPage: number
+  nextBookPage: () => void
+
+  // Nhà thông minh
+  robotVacuumOn: boolean
+  toggleRobotVacuum: () => void
+
+  // Gợi ý & thông báo ngắn
+  hoverHint: string | null
+  setHoverHint: (h: string | null) => void
+  toastMessage: string | null
+  notify: (msg: string) => void
+}
+
+const getInitialRole = (): ActiveChar | null => {
+  if (typeof window === 'undefined') return null
+  const r = localStorage.getItem('user_role')
+  return r === 'boy' || r === 'girl' ? r : null
+}
+const initRole = getInitialRole()
+
+export const useStore = create<State>()(
+  persist(
+    (set) => ({
+      userRole: initRole,
+      activeChar: initRole || 'boy',
+      boyAutoLife: initRole === 'girl',
+      girlAutoLife: initRole === 'boy',
+      setUserRole: (role: ActiveChar) => {
+        if (typeof window !== 'undefined') localStorage.setItem('user_role', role)
+        set(() => ({
+          userRole: role,
+          activeChar: role,
+          boyAutoLife: role === 'girl',
+          girlAutoLife: role === 'boy',
+          toastMessage: role === 'boy' ? '👦 Chào mừng Khoa về nhà!' : '👧 Chào mừng Bạn Gái về nhà!',
+        }))
+      },
+      logout: () => {
+        if (typeof window !== 'undefined') localStorage.removeItem('user_role')
+        set(() => ({
+          userRole: null,
+          activeChar: 'boy',
+          boyAutoLife: false,
+          girlAutoLife: false,
+        }))
+      },
+
+      mode: 'orbit',
+      setMode: (mode) =>
+        set((s) => ({
+          mode,
+          focus:
+            mode === 'orbit'
+              ? s.isUserInitiated && s.activity !== 'idle'
+                ? STATIONS[s.activity].camera
+                : HOME_VIEW
+              : null,
+          activePhoto: null,
+          toastMessage: mode === 'fp' ? '👁️ Góc nhìn thứ nhất' : '🏠 Góc nhìn toàn cảnh',
+        })),
+      darkMode: false,
+      toggleDarkMode: () =>
+        set((s) => ({
+          darkMode: !s.darkMode,
+          toastMessage: !s.darkMode ? '🌙 Ban đêm' : '☀️ Ban ngày',
+        })),
+
+      setActiveChar: (activeChar) =>
+        set((s) => {
+          const curAct = activeChar === 'boy' ? s.boyActivity : s.girlActivity
+          const curPhase = activeChar === 'boy' ? s.boyPhase : s.girlPhase
+          return {
+            activeChar,
+            activity: curAct,
+            activityPhase: curPhase,
+            isUserInitiated: curAct !== 'idle',
+            avatarTarget: null,
+            toastMessage: activeChar === 'boy' ? '👦 Đang điều khiển: Khoa' : '👧 Đang điều khiển: Bạn Gái',
+          }
+        }),
+
+      boyActivity: 'idle',
+      boyPhase: 'active',
+      girlActivity: 'idle',
+      girlPhase: 'active',
+
+      activity: 'idle',
+      activityPhase: 'active',
+      isUserInitiated: false,
+      toggleBoyAutoLife: () =>
+        set((s) => {
+          const next = !s.boyAutoLife
+          return {
+            boyAutoLife: next,
+            boyActivity: next ? s.boyActivity : 'idle',
+            boyPhase: 'active',
+            ...(s.activeChar === 'boy'
+              ? {
+                  activity: next ? s.boyActivity : 'idle',
+                  activityPhase: 'active',
+                  isUserInitiated: false,
+                }
+              : {}),
+            wardrobeOpen: false,
+            toastMessage: next ? '👦 Tự hoạt động Khoa: Bật' : '👦 Tự hoạt động Khoa: Tắt',
+          }
+        }),
+      toggleGirlAutoLife: () =>
+        set((s) => {
+          const next = !s.girlAutoLife
+          return {
+            girlAutoLife: next,
+            girlActivity: next ? s.girlActivity : 'idle',
+            girlPhase: 'active',
+            ...(s.activeChar === 'girl'
+              ? {
+                  activity: next ? s.girlActivity : 'idle',
+                  activityPhase: 'active',
+                  isUserInitiated: false,
+                }
+              : {}),
+            girlWardrobeOpen: false,
+            toastMessage: next ? '👧 Tự hoạt động Bạn Gái: Bật' : '👧 Tự hoạt động Bạn Gái: Tắt',
+          }
+        }),
+
+      startActivity: (act, fromUser = true, forChar) =>
+        set((s) => {
+          const char = forChar ?? (s.userRole || s.activeChar)
+          const curCharAct = char === 'boy' ? s.boyActivity : s.girlActivity
+
+          // Chức năng thay quần áo chỉ dành riêng cho từng nhân vật
+          if (fromUser && act === 'wardrobe' && char === 'girl') {
+            return { toastMessage: '👕 Tủ đồ riêng của Khoa' }
+          }
+          if (fromUser && act === 'girl_wardrobe' && char === 'boy') {
+            return { toastMessage: '👗 Tủ đồ riêng của Bạn Gái' }
+          }
+
+          if (act === 'idle') {
+            return {
+              boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
+              boyPhase: char === 'boy' ? 'active' : s.boyPhase,
+              girlActivity: char === 'girl' ? 'idle' : s.girlActivity,
+              girlPhase: char === 'girl' ? 'active' : s.girlPhase,
+              ...(s.activeChar === char
+                ? { activity: 'idle', activityPhase: 'active', isUserInitiated: false }
+                : {}),
+              wardrobeOpen: char === 'boy' ? false : s.wardrobeOpen,
+              girlWardrobeOpen: char === 'girl' ? false : s.girlWardrobeOpen,
+              activePhoto: null,
+              focus: null,
+            }
+          }
+
+          // Nếu bấm lại vào đúng đồ vật mà nhân vật đang dùng -> đứng dậy
+          if (
+            fromUser &&
+            curCharAct === act &&
+            s.isUserInitiated &&
+            act !== 'darts' &&
+            act !== 'drink' &&
+            act !== 'feed' &&
+            act !== 'pet'
+          ) {
+            return {
+              boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
+              boyPhase: char === 'boy' ? 'active' : s.boyPhase,
+              girlActivity: char === 'girl' ? 'idle' : s.girlActivity,
+              girlPhase: char === 'girl' ? 'active' : s.girlPhase,
+              activity: 'idle',
+              activityPhase: 'active',
+              isUserInitiated: false,
+              wardrobeOpen: char === 'boy' ? false : s.wardrobeOpen,
+              girlWardrobeOpen: char === 'girl' ? false : s.girlWardrobeOpen,
+              activePhoto: null,
+              focus: s.mode === 'orbit' ? HOME_VIEW : null,
+              toastMessage: '🚶 Đã đứng dậy',
+            }
+          }
+
+          const station = STATIONS[act]
+          // Cả 2 nhân vật có thể sử dụng chung tất cả các tiện ích cùng một thời điểm một cách thoải mái
+          const nextBoyAct = char === 'boy' ? act : s.boyActivity
+          const nextGirlAct = char === 'girl' ? act : s.girlActivity
+
+          return {
+            boyActivity: nextBoyAct,
+            boyPhase: char === 'boy' ? 'walking' : s.boyPhase,
+            girlActivity: nextGirlAct,
+            girlPhase: char === 'girl' ? 'walking' : s.girlPhase,
+            ...(s.activeChar === char
+              ? { activity: act, activityPhase: 'walking' }
+              : {}),
+            isUserInitiated: fromUser ? true : s.isUserInitiated,
+            boyAutoLife: fromUser && char === 'boy' ? false : s.boyAutoLife,
+            girlAutoLife: fromUser && char === 'girl' ? false : s.girlAutoLife,
+            avatarTarget: fromUser ? null : s.avatarTarget,
+            activePhoto: fromUser ? null : s.activePhoto,
+            wardrobeOpen: act === 'wardrobe' ? s.wardrobeOpen : char === 'boy' ? false : s.wardrobeOpen,
+            girlWardrobeOpen:
+              act === 'girl_wardrobe' ? s.girlWardrobeOpen : char === 'girl' ? false : s.girlWardrobeOpen,
+            focus: fromUser && s.mode === 'orbit' ? station.camera : s.focus,
+            toastMessage: fromUser ? station.label : s.toastMessage,
+          }
+        }),
+
+      setActivityPhase: (phase, forChar) =>
+        set((s) => {
+          const targetChar = forChar ?? (s.userRole || s.activeChar)
+          const act = targetChar === 'boy' ? s.boyActivity : s.girlActivity
+          const updates: Partial<State> =
+            targetChar === 'boy'
+              ? {
+                  boyPhase: phase,
+                  ...(s.activeChar === 'boy' ? { activityPhase: phase } : {}),
+                }
+              : {
+                  girlPhase: phase,
+                  ...(s.activeChar === 'girl' ? { activityPhase: phase } : {}),
+                }
+
+          if (phase === 'entering') {
+            if (act === 'tv') {
+              updates.tvOn = true
+            } else if (act === 'pc') {
+              updates.pcState = s.pcState === 'off' ? 'on' : s.pcState
+            } else if (act === 'wardrobe') {
+              updates.wardrobeOpen = true
+            } else if (act === 'drink') {
+              updates.waterPourUntil = Date.now() + 2600
+            } else if (act === 'feed') {
+              updates.feedingUntil = Date.now() + 7000
+            } else if (act === 'bath') {
+              updates.bathBubbles = true
+            } else if (act === 'wash') {
+              updates.sinkWaterUntil = Date.now() + 5000
+            } else if (act === 'laundry') {
+              updates.laundryRunning = true
+            } else if (act === 'girl_pc') {
+              updates.girlPcState = s.girlPcState === 'off' ? 'on' : s.girlPcState
+            } else if (act === 'girl_wardrobe') {
+              updates.girlWardrobeOpen = true
+            }
+          }
+          if (phase === 'active') {
+            if (act === 'darts') {
+              updates.dartFlightStart = performance.now()
+              updates.dartCount = (s.dartCount % 5) + 1
+              if (s.isUserInitiated) updates.toastMessage = '🎯 Hồng tâm!'
+            } else if (act === 'wardrobe' && !s.isUserInitiated) {
+              const others = OUTFITS.filter((o) => o.id !== s.outfitId)
+              const pick = others[Math.floor(Math.random() * others.length)] || OUTFITS[0]
+              updates.outfitId = pick.id
+              updates.outfitSpinTick = s.outfitSpinTick + 1
+            } else if (act === 'girl_wardrobe' && !s.isUserInitiated) {
+              const others = GIRL_OUTFITS.filter((o) => o.id !== s.girlOutfitId)
+              const pick = others[Math.floor(Math.random() * others.length)] || GIRL_OUTFITS[0]
+              updates.girlOutfitId = pick.id
+              updates.girlOutfitSpinTick = s.girlOutfitSpinTick + 1
+            } else if (act === 'pet' && s.isUserInitiated) {
+              updates.toastMessage =
+                s.petTargetId === 'mochi' ? '❤️ Vuốt ve Mochi' : '❤️ Vuốt ve Bơ'
+            }
+          }
+          return updates
+        }),
+
+      avatarTarget: null,
+      setAvatarTarget: (avatarTarget) =>
+        set((s) => ({
+          boyActivity: s.activeChar === 'boy' ? 'idle' : s.boyActivity,
+          boyPhase: s.activeChar === 'boy' ? 'active' : s.boyPhase,
+          girlActivity: s.activeChar === 'girl' ? 'idle' : s.girlActivity,
+          girlPhase: s.activeChar === 'girl' ? 'active' : s.girlPhase,
+          activity: 'idle',
+          activityPhase: 'active',
+          isUserInitiated: false,
+          wardrobeOpen: s.activeChar === 'boy' ? false : s.wardrobeOpen,
+          girlWardrobeOpen: s.activeChar === 'girl' ? false : s.girlWardrobeOpen,
+          avatarTarget,
+        })),
+
+      outfitId: OUTFITS[0].id,
+      outfitSpinTick: 0,
+      setOutfitId: (outfitId) => {
+        const found = OUTFITS.find((o) => o.id === outfitId)
+        set((s) => ({
+          outfitId,
+          outfitSpinTick: s.outfitSpinTick + 1,
+          toastMessage: found ? `✨ ${found.name}` : '✨ Đã thay đồ',
+        }))
+      },
+
+      activePhoto: null,
+      setActivePhoto: (activePhoto) => set({ activePhoto }),
+
+      focus: null,
+      viewPreset: 'overview',
+      setFocus: (focus, preset) =>
+        set(() => ({
+          focus,
+          ...(preset ? { viewPreset: preset } : {}),
+        })),
+      returnOverview: () =>
+        set((s) => ({
+          boyActivity: s.activeChar === 'boy' ? 'idle' : s.boyActivity,
+          boyPhase: s.activeChar === 'boy' ? 'active' : s.boyPhase,
+          girlActivity: s.activeChar === 'girl' ? 'idle' : s.girlActivity,
+          girlPhase: s.activeChar === 'girl' ? 'active' : s.girlPhase,
+          activity: 'idle',
+          activityPhase: 'active',
+          isUserInitiated: false,
+          wardrobeOpen: false,
+          girlWardrobeOpen: false,
+          activePhoto: null,
+          viewPreset: 'overview',
+          focus: s.mode === 'orbit' ? HOME_VIEW : null,
+        })),
+      cutWalls: { back: false, left: false, right: false },
+      setCutWalls: (cutWalls) => set({ cutWalls }),
+
+      lampOn: true,
+      toggleLamp: () =>
+        set((s) => ({
+          lampOn: !s.lampOn,
+          toastMessage: !s.lampOn ? '💡 Bật đèn cây' : '💡 Tắt đèn cây',
+        })),
+      acOn: true,
+      toggleAc: () =>
+        set((s) => ({
+          acOn: !s.acOn,
+          toastMessage: !s.acOn ? '❄️ Bật điều hòa' : '❄️ Tắt điều hòa',
+        })),
+      curtainsOpen: true,
+      toggleCurtains: () =>
+        set((s) => ({
+          curtainsOpen: !s.curtainsOpen,
+          toastMessage: !s.curtainsOpen ? '🪟 Mở rèm cửa' : '🪟 Đóng rèm cửa',
+        })),
+      wardrobeOpen: false,
+      setWardrobeOpen: (wardrobeOpen) => set({ wardrobeOpen }),
+      pcState: 'on',
+      cyclePcState: () =>
+        set((s) => {
+          const next: PcState = s.pcState === 'on' ? 'rgb' : s.pcState === 'rgb' ? 'off' : 'on'
+          return {
+            pcState: next,
+            toastMessage:
+              next === 'on' ? '💻 Chế độ Code' : next === 'rgb' ? '🌈 Gaming RGB' : '🖥️ Tắt màn hình',
+          }
+        }),
+      chairSpinTick: 0,
+      spinChair: () =>
+        set((s) => ({
+          chairSpinTick: s.chairSpinTick + 1,
+          toastMessage: '🔄 Xoay ghế',
+        })),
+      dartCount: 1,
+      dartFlightStart: 0,
+      triggerDartFlight: () =>
+        set((s) => ({
+          dartFlightStart: performance.now(),
+          dartCount: (s.dartCount % 5) + 1,
+        })),
+      waterPourUntil: 0,
+      tvOn: true,
+      toggleTv: () =>
+        set((s) => ({
+          tvOn: !s.tvOn,
+          toastMessage: !s.tvOn ? '📺 Bật TV' : '🔴 Tắt TV',
+        })),
+      tvChannel: 0,
+      cycleTvChannel: () =>
+        set((s) => {
+          const next = (s.tvChannel + 1) % TV_CHANNELS.length
+          return {
+            tvOn: true,
+            tvChannel: next,
+            toastMessage: `📺 ${TV_CHANNELS[next].name}`,
+          }
+        }),
+
+      feedingUntil: 0,
+      petTargetId: 'mochi',
+      petDog: (id, fromUser = true, forChar) =>
+        set((s) => {
+          const char = forChar ?? s.activeChar
+          const dogName = id === 'mochi' ? 'Mochi' : 'Bơ'
+          const [mx, mz] = LIVE_ACTORS.dogs[id].floorMeetPos
+          const side = mx > 4.5 ? -1 : 1
+          const entryX = mx + side * 0.82
+          const entryZ = mz
+          const midX = mx + side * 0.41
+          const cam: CamFocus = {
+            pos: [midX, 1.78, mz + 2.45],
+            target: [midX, 0.52, mz],
+          }
+          STATIONS.pet = {
+            entryPos: [entryX, entryZ],
+            entryYaw: Math.atan2(mx - entryX, mz - entryZ),
+            floorY: 0,
+            camera: cam,
+            fpPos: [mx + side * 0.68, 0.82, mz + 0.12],
+            fpTarget: [mx, 0.34, mz],
+            label: `🐶 Vuốt ve ${dogName}`,
+          }
+          return {
+            petTargetId: id,
+            boyActivity: char === 'boy' ? 'pet' : s.boyActivity,
+            boyPhase: char === 'boy' ? 'walking' : s.boyPhase,
+            girlActivity: char === 'girl' ? 'pet' : s.girlActivity,
+            girlPhase: char === 'girl' ? 'walking' : s.girlPhase,
+            ...(s.activeChar === char ? { activity: 'pet', activityPhase: 'walking' } : {}),
+            isUserInitiated: fromUser ? true : s.isUserInitiated,
+            boyAutoLife: fromUser && char === 'boy' ? false : s.boyAutoLife,
+            girlAutoLife: fromUser && char === 'girl' ? false : s.girlAutoLife,
+            avatarTarget: fromUser ? null : s.avatarTarget,
+            activePhoto: fromUser ? null : s.activePhoto,
+            wardrobeOpen: false,
+            girlWardrobeOpen: false,
+            focus: fromUser && s.mode === 'orbit' ? cam : s.focus,
+            toastMessage: fromUser ? `🐶 Vuốt ve ${dogName}` : s.toastMessage,
+          }
+        }),
+
+      hoverHint: null,
+      setHoverHint: (hoverHint) => set({ hoverHint }),
+      bathBubbles: true,
+      toggleBathBubbles: () =>
+        set((s) => ({
+          bathBubbles: !s.bathBubbles,
+          toastMessage: !s.bathBubbles ? '🛁 Bật bọt xà phòng' : '🛁 Tắt bọt xà phòng',
+        })),
+      sinkWaterUntil: 0,
+      triggerSinkWater: () =>
+        set({
+          sinkWaterUntil: Date.now() + 4500,
+          toastMessage: '💧 Xả nước bồn rửa',
+        }),
+      laundryRunning: false,
+      toggleLaundry: () =>
+        set((s) => ({
+          laundryRunning: !s.laundryRunning,
+          toastMessage: !s.laundryRunning ? '🧺 Bật máy giặt' : '⏹️ Tắt máy giặt',
+        })),
+      readBookPage: 1,
+      nextBookPage: () =>
+        set((s) => ({
+          readBookPage: (s.readBookPage % 5) + 1,
+          toastMessage: `📖 Trang ${(s.readBookPage % 5) + 1}`,
+        })),
+
+      girlOutfitId: GIRL_OUTFITS[0].id,
+      girlOutfitSpinTick: 0,
+      setGirlOutfitId: (girlOutfitId) => {
+        const found = GIRL_OUTFITS.find((o) => o.id === girlOutfitId)
+        set((s) => ({
+          girlOutfitId,
+          girlOutfitSpinTick: s.girlOutfitSpinTick + 1,
+          toastMessage: found ? `👗 ${found.name}` : '👗 Đã thay đồ',
+        }))
+      },
+
+      girlPcState: 'on',
+      cycleGirlPcState: () =>
+        set((s) => {
+          const next = s.girlPcState === 'on' ? 'rgb' : s.girlPcState === 'rgb' ? 'off' : 'on'
+          return {
+            girlPcState: next,
+            toastMessage:
+              next === 'on' ? '💻 UI Design' : next === 'rgb' ? '🎨 Vẽ 3D' : '🔌 Tắt màn hình',
+          }
+        }),
+      girlChairSpinTick: 0,
+      spinGirlChair: () =>
+        set((s) => ({
+          girlChairSpinTick: s.girlChairSpinTick + 1,
+          toastMessage: '🔄 Xoay ghế',
+        })),
+
+      girlLampOn: true,
+      toggleGirlLamp: () =>
+        set((s) => ({
+          girlLampOn: !s.girlLampOn,
+          toastMessage: !s.girlLampOn ? '💡 Bật đèn ngủ Tầng 2' : '💡 Tắt đèn ngủ Tầng 2',
+        })),
+
+      girlVanityLightOn: true,
+      toggleGirlVanityLight: () =>
+        set((s) => ({
+          girlVanityLightOn: !s.girlVanityLightOn,
+          toastMessage: !s.girlVanityLightOn ? '✨ Bật đèn gương Halo' : '✨ Tắt đèn gương Halo',
+        })),
+
+      girlShelfLedOn: true,
+      toggleGirlShelfLed: () =>
+        set((s) => ({
+          girlShelfLedOn: !s.girlShelfLedOn,
+          toastMessage: !s.girlShelfLedOn ? '✨ Bật LED kệ sách' : '✨ Tắt LED kệ sách',
+        })),
+
+      girlWardrobeOpen: false,
+      setGirlWardrobeOpen: (girlWardrobeOpen) => set({ girlWardrobeOpen }),
+
+      girlBookPage: 1,
+      nextGirlBookPage: () =>
+        set((s) => ({
+          girlBookPage: (s.girlBookPage % 4) + 1,
+          toastMessage: `📖 Trang ${(s.girlBookPage % 4) + 1}`,
+        })),
+
+      robotVacuumOn: true,
+      toggleRobotVacuum: () =>
+        set((s) => ({
+          robotVacuumOn: !s.robotVacuumOn,
+          toastMessage: !s.robotVacuumOn ? '🤖 Bật Robot hút bụi' : '🔌 Tắt Robot hút bụi',
+        })),
+
+      toastMessage: null,
+      notify: (toastMessage) => set({ toastMessage }),
+    }),
+    {
+      name: 'goc-nho-cua-khoa-v9',
+      partialize: (s) => ({
+        darkMode: s.darkMode,
+        outfitId: s.outfitId,
+        girlOutfitId: s.girlOutfitId,
+      }),
+    },
+  ),
+)
+
+if (typeof window !== 'undefined') {
+  ;(window as unknown as Record<string, unknown>).__store = useStore
+}

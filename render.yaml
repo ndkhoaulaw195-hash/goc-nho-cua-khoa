@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: goc-nho-cua-khoa
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
