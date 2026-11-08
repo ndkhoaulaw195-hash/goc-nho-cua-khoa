@@ -20,22 +20,21 @@ export function GlassCurtainWall({
   pos,
   size,
   orientation = 'z',
-  numPanels = 4,
 }: GlassCurtainWallProps) {
   const darkMode = useStore((s) => s.darkMode)
   const [L, H] = size
   const frameColor = darkMode ? '#181b20' : '#232830'
-  const transomY = pos[1] - H / 2 + H * 0.42
 
-  // Kính kiến trúc phản quang cao cấp, có màu xanh ngọc nhẹ và ánh bóng sang trọng
+  // Kính kiến trúc trong suốt mờ mờ nguyên khối không chia ô, nhìn thấu rõ ràng toàn bộ bên trong
   const glassMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: darkMode ? '#1e334a' : '#a8d5f2',
+        color: darkMode ? '#5a82a6' : '#d4ebf9',
         transparent: true,
-        opacity: darkMode ? 0.52 : 0.44,
-        roughness: 0.06,
-        metalness: 0.6,
+        opacity: darkMode ? 0.22 : 0.18,
+        roughness: 0.08,
+        metalness: 0.12,
+        side: THREE.DoubleSide,
         depthWrite: false,
       }),
     [darkMode],
@@ -45,92 +44,67 @@ export function GlassCurtainWall({
 
   return (
     <group>
-      {/* 1. Tấm kính phản chiếu trong suốt phủ toàn bộ diện tích vách */}
+      {/* 1. Tấm kính nguyên khối phẳng mịn liền mạch, không chia ô, nhìn thấu rõ nội thất bên trong */}
       <mesh position={[pos[0], pos[1], pos[2]]} material={glassMat}>
-        <boxGeometry args={isZ ? [L, H, 0.03] : [0.03, H, L]} />
+        <boxGeometry args={isZ ? [L, H, 0.025] : [0.025, H, L]} />
       </mesh>
 
-      {/* Vệt phản quang ánh sáng chạy dọc trên mặt kính tạo cảm giác kính thật */}
+      {/* Vệt phản quang ánh sáng mờ nhẹ chạy chéo trên mặt kính tạo cảm giác mặt kính thật */}
       <mesh
         position={[
-          pos[0] + (isZ ? 0.2 : 0),
-          pos[1],
-          pos[2] + (isZ ? 0.016 : 0.2),
+          pos[0] + (isZ ? 0 : 0.018),
+          pos[1] + H * 0.12,
+          pos[2] + (isZ ? 0.018 : 0),
         ]}
-        rotation={[0, 0, isZ ? 0.2 : 0]}
+        rotation={isZ ? [0, 0, -0.45] : [-0.45, Math.PI / 2, 0]}
       >
-        <planeGeometry args={isZ ? [L * 0.85, H * 0.04] : [H * 0.04, L * 0.85]} />
+        <planeGeometry args={[Math.min(L, H) * 0.95, H * 0.07]} />
         <meshBasicMaterial
           color="#ffffff"
           transparent
-          opacity={darkMode ? 0.12 : 0.22}
+          opacity={darkMode ? 0.08 : 0.12}
+          side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
 
-      {/* 2. Khung nhôm định hình viền trên và dưới */}
+      {/* 2. Khung nhôm nẹp viền mỏng bao quanh 4 mép sàn/trần/tường (không chia ô bên trong) */}
+      {/* Nẹp trên */}
       <B
-        p={[pos[0], pos[1] + H / 2 - 0.025, pos[2]]}
-        s={isZ ? [L, 0.05, 0.06] : [0.06, 0.05, L]}
+        p={[pos[0], pos[1] + H / 2 - 0.018, pos[2]]}
+        s={isZ ? [L, 0.036, 0.045] : [0.045, 0.036, L]}
         c={frameColor}
         rough={0.35}
         metal={0.8}
         shadow={false}
       />
+      {/* Nẹp dưới */}
       <B
-        p={[pos[0], pos[1] - H / 2 + 0.025, pos[2]]}
-        s={isZ ? [L, 0.05, 0.06] : [0.06, 0.05, L]}
+        p={[pos[0], pos[1] - H / 2 + 0.018, pos[2]]}
+        s={isZ ? [L, 0.036, 0.045] : [0.045, 0.036, L]}
         c={frameColor}
         rough={0.35}
         metal={0.8}
         shadow={false}
       />
-
-      {/* 3. Khung viền 2 bên sườn */}
+      {/* Nẹp cạnh trái */}
       <B
-        p={isZ ? [pos[0] - L / 2 + 0.025, pos[1], pos[2]] : [pos[0], pos[1], pos[2] - L / 2 + 0.025]}
-        s={isZ ? [0.05, H, 0.06] : [0.06, H, 0.05]}
+        p={isZ ? [pos[0] - L / 2 + 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] - L / 2 + 0.018]}
+        s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
         c={frameColor}
         rough={0.35}
         metal={0.8}
         shadow={false}
       />
+      {/* Nẹp cạnh phải */}
       <B
-        p={isZ ? [pos[0] + L / 2 - 0.025, pos[1], pos[2]] : [pos[0], pos[1], pos[2] + L / 2 - 0.025]}
-        s={isZ ? [0.05, H, 0.06] : [0.06, H, 0.05]}
+        p={isZ ? [pos[0] + L / 2 - 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] + L / 2 - 0.018]}
+        s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
         c={frameColor}
         rough={0.35}
         metal={0.8}
         shadow={false}
       />
-
-      {/* 4. Thanh giằng ngang phân vị (Transom rail) ngang tầm ngực / ban công */}
-      <B
-        p={[pos[0], transomY, pos[2]]}
-        s={isZ ? [L, 0.04, 0.055] : [0.055, 0.04, L]}
-        c={frameColor}
-        rough={0.35}
-        metal={0.8}
-        shadow={false}
-      />
-
-      {/* 5. Hệ đố nhôm đứng (Vertical Mullions) chia đều các khoang vách kính */}
-      {Array.from({ length: numPanels - 1 }, (_, i) => {
-        const offset = -L / 2 + ((i + 1) / numPanels) * L
-        const px = isZ ? pos[0] + offset : pos[0]
-        const pz = isZ ? pos[2] : pos[2] + offset
-        return (
-          <B
-            key={i}
-            p={[px, pos[1], pz]}
-            s={isZ ? [0.035, H, 0.05] : [0.05, H, 0.035]}
-            c={frameColor}
-            rough={0.35}
-            metal={0.8}
-            shadow={false}
-          />
-        )
-      })}
     </group>
   )
 }

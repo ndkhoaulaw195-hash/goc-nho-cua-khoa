@@ -212,8 +212,8 @@ export function Room() {
         </>
       )}
 
-      {/* 4. Tường bên phải: Tự động ẩn khi camera xoay sang bên phải */}
-      {!cutWalls.right && (
+      {/* 4. Tường bên phải: Thay thế bằng Vách kính hiện đại khi camera xoay sang bên phải */}
+      {!cutWalls.right ? (
         <>
           <B
             p={[10.14, h / 2, -0.12]}
@@ -231,6 +231,8 @@ export function Room() {
             polyOffset
           />
         </>
+      ) : (
+        <GlassCurtainWall pos={[10.04, h / 2, -0.12]} size={[12.24, h]} orientation="x" numPanels={6} />
       )}
 
       {/* Thảm dệt theo đúng bố cục (nâng lên y = 0.024 và bật polygonOffset chống Z-fighting tuyệt đối) */}

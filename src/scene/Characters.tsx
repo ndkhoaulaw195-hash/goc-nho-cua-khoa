@@ -267,8 +267,8 @@ export function stepCharacterWalk(
   const cy = floorYRef.current
   const midStair = cy >= 0.08 && cy <= 4.27
 
-  // Tốc độ đi bộ nhanh nhẹn vừa vặn (khoảng 1.68 m/s, chạy 2.45 m/s, leo cầu thang 1.25 m/s)
-  const walkSpeed = midStair ? 1.25 : shiftDown ? 2.45 : 1.68
+  // Tốc độ đi bộ nhanh nhẹn theo yêu cầu: bình thường 2.45 m/s, chạy Shift 3.4 m/s, leo cầu thang 1.55 m/s
+  const walkSpeed = midStair ? 1.55 : shiftDown ? 3.4 : 2.45
 
   if (moveX !== 0 || moveZ !== 0) {
     const len = Math.hypot(moveX, moveZ)
@@ -442,8 +442,8 @@ export function stepCharacterWalk(
 
     const tYaw = Math.atan2(vx, vz)
     const diff = Math.atan2(Math.sin(tYaw - yawRef.current), Math.cos(tYaw - yawRef.current))
-    yawRef.current += diff * Math.min(1, delta * 11)
-    phaseRef.current += delta * 11.0
+    yawRef.current += diff * Math.min(1, delta * 12)
+    phaseRef.current += delta * (shiftDown ? 16.5 : 13.8)
   } else {
     phaseRef.current = THREE.MathUtils.lerp(phaseRef.current, 0, delta * 8)
   }
