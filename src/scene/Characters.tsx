@@ -255,6 +255,8 @@ export function stepCharacterWalk(
   avatarTarget: V3 | null,
   clearTarget: () => void,
   delta: number,
+  otherPos?: [number, number],
+  otherFloorY?: number,
 ): boolean {
   let vx = 0
   let vz = 0
@@ -265,11 +267,13 @@ export function stepCharacterWalk(
   const cy = floorYRef.current
   const midStair = cy >= 0.08 && cy <= 4.27
 
+  // Tốc độ đi bộ nhanh nhẹn vừa vặn (khoảng 1.68 m/s, chạy 2.45 m/s, leo cầu thang 1.25 m/s)
+  const walkSpeed = midStair ? 1.25 : shiftDown ? 2.45 : 1.68
+
   if (moveX !== 0 || moveZ !== 0) {
     const len = Math.hypot(moveX, moveZ)
-    const speed = shiftDown ? 3.6 : 2.55
-    vx = (moveX / len) * speed
-    vz = (moveZ / len) * speed
+    vx = (moveX / len) * walkSpeed
+    vz = (moveZ / len) * walkSpeed
     moving = true
     if (avatarTarget) clearTarget()
   } else if (avatarTarget) {
@@ -322,10 +326,9 @@ export function stepCharacterWalk(
     const dz = goalZ - cz
     const dist = Math.hypot(dx, dz)
     const totalDist = Math.hypot(tx - cx, tz - cz) + Math.abs(ty - floorYRef.current)
-    if (totalDist > 0.28 && dist > 0.02) {
-      const speed = 2.45
-      vx = (dx / dist) * speed
-      vz = (dz / dist) * speed
+    if (totalDist > 0.18 && dist > 0.02) {
+      vx = (dx / dist) * walkSpeed
+      vz = (dz / dist) * walkSpeed
       moving = true
     } else {
       clearTarget()
@@ -333,8 +336,20 @@ export function stepCharacterWalk(
   }
 
   if (moving) {
-    const nx = cx + vx * delta
-    const nz = cz + vz * delta
+    let nx = cx + vx * delta
+    let nz = cz + vz * delta
+
+    // Chặn không cho 2 nhân vật đi xuyên qua nhau khi ở cùng 1 tầng
+    if (otherPos && otherFloorY !== undefined && Math.abs(cy - otherFloorY) < 0.65) {
+      const distToOther = Math.hypot(nx - otherPos[0], nz - otherPos[1])
+      if (distToOther < 0.52) {
+        const pushX = nx - otherPos[0]
+        const pushZ = nz - otherPos[1]
+        const pushLen = Math.hypot(pushX, pushZ) || 0.001
+        nx = otherPos[0] + (pushX / pushLen) * 0.54
+        nz = otherPos[1] + (pushZ / pushLen) * 0.54
+      }
+    }
 
     const manualStairEntry =
       (moveX !== 0 || moveZ !== 0) &&
@@ -659,6 +674,24 @@ export function computeCharActivityPose(
       rotX = (-Math.PI / 2) * pNorm
       rotY = 0
       headX = 0.26 * pNorm
+    } else if (act === 'piano') {
+      pos = [
+        0.47,
+        Y2 + THREE.MathUtils.lerp(0, -0.22 + sitOffset, pNorm),
+        THREE.MathUtils.lerp(-0.75, -1.05, pNorm),
+      ]
+      rotY = Math.PI
+      lHipX = -1.35 * pNorm
+      rHipX = -1.35 * pNorm
+      lKneeX = 1.35 * pNorm
+      rKneeX = 1.35 * pNorm
+      lArmX = -0.85 * pNorm
+      rArmX = -0.85 * pNorm
+    } else if (act === 'paint') {
+      pos = [-0.71, Y2, -1.05]
+      rotY = 0.25
+      lArmX = -0.72 * pNorm
+      rArmX = -0.88 * pNorm
     } else if (act === 'girl_pc') {
       pos = [
         2.25 + sideOffset,
@@ -942,6 +975,28 @@ export function computeCharActivityPose(
     lArmX = -0.6
     rArmX = -1.2 + Math.sin(t * 3) * 0.15
     headY = Math.sin(t * 2) * 0.15
+  } else if (act === 'piano') {
+    pos = [0.47, Y2 - 0.22 + sitOffset, -1.15]
+    rotY = Math.PI
+    lHipX = -1.35
+    rHipX = -1.35
+    lKneeX = 1.35
+    rKneeX = 1.35
+    lArmX = -0.92 + Math.sin(t * 8.2) * 0.08
+    rArmX = -0.92 + Math.cos(t * 8.8) * 0.08
+    lArmZ = -0.16 + Math.sin(t * 3.2) * 0.1
+    rArmZ = 0.16 + Math.cos(t * 3.8) * 0.1
+    headX = 0.16 + Math.sin(t * 3.6) * 0.04
+    headY = Math.sin(t * 1.8) * 0.08
+  } else if (act === 'paint') {
+    pos = [-0.71, Y2, -1.05]
+    rotY = 0.25
+    lArmX = -0.78 + Math.sin(t * 1.5) * 0.03
+    lArmZ = 0.22
+    rArmX = -1.32 + Math.sin(t * 5.2) * 0.22
+    rArmZ = -0.1 + Math.cos(t * 4.0) * 0.16
+    headX = 0.12 + Math.sin(t * 2.5) * 0.05
+    headY = 0.06 + Math.sin(t * 1.6) * 0.08
   }
 
   return {
@@ -985,6 +1040,8 @@ export const AUTO_SEQUENCE_BOY: Exclude<Activity, 'idle'>[] = [
 export const AUTO_SEQUENCE_GIRL: Exclude<Activity, 'idle'>[] = [
   'girl_lounge',
   'girl_pc',
+  'piano',
+  'paint',
   'girl_vanity',
   'girl_nook',
   'girl_wardrobe',
@@ -1016,6 +1073,29 @@ export const AUTO_DURATION: Record<Exclude<Activity, 'idle'>, number> = {
   girl_lounge: 9.0,
   girl_nook: 9.0,
   girl_wardrobe: 6.0,
+  piano: 9.5,
+  paint: 9.5,
+}
+
+/** Chấm tròn nhỏ phát sáng trên đầu nhân vật: Xanh lá khi có người vào vai, Đỏ khi trống (Auto-Life) */
+export function CharacterRoleIndicator({
+  isControlled,
+  y = 1.82,
+}: {
+  isControlled: boolean
+  y?: number
+}) {
+  return (
+    <mesh position={[0, y, 0]}>
+      <sphereGeometry args={[0.024, 16, 16]} />
+      <meshStandardMaterial
+        color={isControlled ? '#22c55e' : '#ef4444'}
+        emissive={isControlled ? '#22c55e' : '#ef4444'}
+        emissiveIntensity={2.8}
+        roughness={0.2}
+      />
+    </mesh>
+  )
 }
 
 /** Mô hình nhân vật Khoa – Hỗ trợ đi bộ đa tầng và dùng chung tất cả đồ đạc trong nhà (Tầng 1, Phòng tắm, Tầng 2) */
@@ -1153,6 +1233,8 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           st.avatarTarget,
           () => st.setAvatarTarget(null),
           delta,
+          [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
+          LIVE_ACTORS.girlFloorY,
         )
         if (moving) autoIdleTimer.current = 4.0
       } else if (st.boyAutoLife) {
@@ -1210,10 +1292,20 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
             st.setActivityPhase('entering', 'boy')
           },
           delta,
+          [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
+          LIVE_ACTORS.girlFloorY,
         )
 
-        // CHỐNG KẸT (Anti-stuck watchdog): tới sát 0.45m hoặc quá 4.2s tự động vào phase entering
-        if ((distToEntry < 0.45 && distFloorY < 0.3) || walkWatchdog.current > 4.2) {
+        // Chỉ khi nhân vật đã đi bộ đến thật sát vị trí đích (< 0.22m và cùng tầng) mới chuyển sang phase vào vị trí
+        if (distToEntry < 0.22 && distFloorY < 0.25) {
+          walkPos.current = [entry.entryX, entry.entryZ]
+          walkFloorY.current = entry.floorY
+          walkYaw.current = entry.entryYaw
+          phaseTimer.current = 0
+          walkWatchdog.current = 0
+          st.setActivityPhase('entering', 'boy')
+        } else if (walkWatchdog.current > 25.0) {
+          // Chỉ phòng khi bị kẹt vật lý hơn 25 giây
           walkPos.current = [entry.entryX, entry.entryZ]
           walkFloorY.current = entry.floorY
           walkYaw.current = entry.entryYaw
@@ -1222,20 +1314,21 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           st.setActivityPhase('entering', 'boy')
         }
 
-        const swing = moving ? Math.sin(walkPhase.current) * 0.6 : 0
-        const bob = moving ? Math.abs(Math.sin(walkPhase.current)) * 0.04 : 0
+        const swing = moving ? Math.sin(walkPhase.current) * 0.58 : 0
+        const bob = moving ? Math.abs(Math.sin(walkPhase.current)) * 0.034 : 0
         targetPos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
         targetRotY = walkYaw.current
         lHipX = swing
         rHipX = -swing
-        lKneeX = Math.max(0, -swing * 0.72)
-        rKneeX = Math.max(0, swing * 0.72)
+        lKneeX = Math.max(0, -swing * 0.7)
+        rKneeX = Math.max(0, swing * 0.7)
         lArmX = -swing * 0.65
         rArmX = swing * 0.65
         headY = 0
       } else if (st.boyPhase === 'entering') {
         phaseTimer.current += delta
-        const pNorm = Math.min(1, phaseTimer.current / 0.35)
+        const enterDur = 0.75
+        const pNorm = THREE.MathUtils.smoothstep(phaseTimer.current, 0, enterDur)
         const pose = computeCharActivityPose(
           st.boyActivity,
           'boy',
@@ -1263,7 +1356,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         showRemote = pose.showRemote
         showBook = pose.showBook
 
-        if (phaseTimer.current >= 0.35) {
+        if (phaseTimer.current >= enterDur) {
           phaseTimer.current = 0
           st.setActivityPhase('active', 'boy')
         }
@@ -1385,17 +1478,26 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
 
   const SKIN = '#deb089'
   const sleeping = boyActivity === 'sleep' || boyActivity === 'girl_sleep'
+  const userRole = useStore((s) => s.userRole)
+  const roleOccupancy = useStore((s) => s.roleOccupancy)
+  const isBoyClaimed = userRole === 'boy' || Boolean(roleOccupancy?.boy)
+  const isControllingBoy = (userRole || useStore.getState().activeChar) === 'boy'
+  const hideInFp = useStore((s) => s.mode === 'fp') && isControllingBoy
 
   return (
     <group
       ref={root}
       position={p}
       rotation={[0, ry, 0]}
+      visible={!hideInFp}
       onClick={(e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation()
         useStore.getState().setActiveChar('boy')
       }}
     >
+      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
+      <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} />
+
       <group ref={zzzRef} position={[0, 1.65, 0.2]} visible={false}>
         {[0, 1, 2].map((i) => (
           <mesh key={i}>

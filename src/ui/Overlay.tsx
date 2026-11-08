@@ -58,8 +58,6 @@ export function Overlay() {
   const mode = useStore((s) => s.mode)
   const boyAutoLife = useStore((s) => s.boyAutoLife)
   const girlAutoLife = useStore((s) => s.girlAutoLife)
-  const boyActivity = useStore((s) => s.boyActivity)
-  const girlActivity = useStore((s) => s.girlActivity)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -71,9 +69,6 @@ export function Overlay() {
     return () => clearTimeout(t)
   }, [toastMessage])
 
-  const boyLabel = boyActivity === 'idle' ? 'Thư giãn' : STATIONS[boyActivity].label
-  const girlLabel = girlActivity === 'idle' ? 'Thư giãn' : STATIONS[girlActivity].label
-
   return (
     <div className={`overlay ${darkMode ? 'is-dark' : ''}`}>
       <div className="top-left">
@@ -83,7 +78,7 @@ export function Overlay() {
         </div>
       </div>
 
-      <TopRight boyLabel={boyLabel} girlLabel={girlLabel} boyAutoLife={boyAutoLife} girlAutoLife={girlAutoLife} />
+      <TopRight boyAutoLife={boyAutoLife} girlAutoLife={girlAutoLife} />
       <ContextualDock />
       <WardrobeModal />
       <GirlWardrobeModal />
@@ -247,13 +242,9 @@ function ContextualDock() {
 
 /* ---------- Thanh Glassmorphism Dock hiện đại: Nhân vật + Auto, Nhạc, Dark Mode, Camera, Góc nhìn 1 ---------- */
 function TopRight({
-  boyLabel,
-  girlLabel,
   boyAutoLife,
   girlAutoLife,
 }: {
-  boyLabel: string
-  girlLabel: string
   boyAutoLife: boolean
   girlAutoLife: boolean
 }) {
@@ -313,15 +304,6 @@ function TopRight({
                   ? useStore.getState().toggleBoyAutoLife()
                   : useStore.getState().toggleGirlAutoLife()
               }
-              title={
-                userRole === 'boy'
-                  ? boyAutoLife
-                    ? `Tự động Khoa đang BẬT (${boyLabel})`
-                    : 'Bật tự hoạt động cho Khoa'
-                  : girlAutoLife
-                    ? `Tự động Bạn Gái đang BẬT (${girlLabel})`
-                    : 'Bật tự hoạt động cho Bạn Gái'
-              }
             >
               <span className={`pulse-dot ${(userRole === 'boy' ? boyAutoLife : girlAutoLife) ? 'on' : ''}`} />
               <span>Auto</span>
@@ -329,9 +311,8 @@ function TopRight({
             <button
               className="role-logout-btn"
               onClick={logout}
-              title="Đăng xuất khỏi tài khoản"
             >
-              Đăng xuất
+              Đổi vai
             </button>
           </div>
         ) : null}
@@ -341,7 +322,6 @@ function TopRight({
         <button
           className={`dock-icon-btn ${playing ? 'active' : ''}`}
           onClick={toggleMusic}
-          title={SITE.music.title}
         >
           {playing ? I.music : I.mute}
           {playing && (
@@ -356,7 +336,6 @@ function TopRight({
         <button
           className={`dock-icon-btn ${darkMode ? 'active' : ''}`}
           onClick={toggleDarkMode}
-          title={darkMode ? 'Ban ngày' : 'Ban đêm'}
         >
           {darkMode ? I.sun : I.moon}
         </button>
@@ -368,7 +347,6 @@ function TopRight({
             <button
               className={`dock-pill-btn ${isOverview ? 'active' : ''}`}
               onClick={() => useStore.getState().returnOverview()}
-              title="Quay về góc nhìn toàn cảnh 2 tầng"
             >
               🏠 Toàn cảnh
             </button>
@@ -376,9 +354,8 @@ function TopRight({
               className={`dock-pill-btn ${isFloor1 ? 'active' : ''}`}
               onClick={() => {
                 useStore.getState().setFocus(FLOOR1_VIEW, 'floor1')
-                useStore.getState().notify('👦 Tầng 1 – Phòng của Khoa')
+                useStore.getState().notify('👦 Tầng 1 – Khoa')
               }}
-              title="Xem Tầng 1 – Phòng của Khoa"
             >
               👦 Tầng 1
             </button>
@@ -386,9 +363,8 @@ function TopRight({
               className={`dock-pill-btn ${isFloor2 ? 'active' : ''}`}
               onClick={() => {
                 useStore.getState().setFocus(FLOOR2_VIEW, 'floor2')
-                useStore.getState().notify('👧 Tầng 2 – Phòng Bạn Gái')
+                useStore.getState().notify('👧 Tầng 2 – Bạn Gái')
               }}
-              title="Xem Tầng 2 – Phòng Bạn Gái"
             >
               👧 Tầng 2
             </button>
@@ -408,20 +384,27 @@ function TopRight({
 
 /* ---------- Bảng Chọn đồ cho Khoa (Tầng 1) ---------- */
 function WardrobeModal() {
-  const boyActivity = useStore((s) => s.boyActivity)
-  const activeChar = useStore((s) => s.activeChar)
+  const wardrobeOpen = useStore((s) => s.wardrobeOpen)
   const isUserInitiated = useStore((s) => s.isUserInitiated)
+  const userRole = useStore((s) => s.userRole)
   const outfitId = useStore((s) => s.outfitId)
-  if (boyActivity !== 'wardrobe' || activeChar !== 'boy' || !isUserInitiated) return null
+
+  // Chỉ mở bảng chọn đồ khi người dùng CHỦ ĐỘNG click vào tủ đồ của Khoa (không tự bật khi Auto-Life)
+  if (!wardrobeOpen || !isUserInitiated || (userRole && userRole !== 'boy')) return null
+
+  const handleClose = () => {
+    useStore.setState({
+      wardrobeOpen: false,
+      boyActivity: 'idle',
+      boyPhase: 'active',
+      isUserInitiated: false,
+    })
+  }
 
   return (
     <div className="card side-modal" role="dialog">
-      <button
-        className="icon-btn close"
-        onClick={() => useStore.getState().returnOverview()}
-        aria-label="Đóng"
-      >
-        {I.close}
+      <button className="icon-btn close" onClick={handleClose} aria-label="Đóng">
+        ✕
       </button>
       <h2>👕 Trang phục của Khoa</h2>
       <div className="outfit-list">
@@ -439,26 +422,40 @@ function WardrobeModal() {
           </button>
         ))}
       </div>
+      <button
+        className="dock-btn primary"
+        style={{ marginTop: 12, width: '100%', height: 36 }}
+        onClick={handleClose}
+      >
+        ✓ Hoàn tất thay đồ
+      </button>
     </div>
   )
 }
 
 /* ---------- Bảng Chọn đồ cho Bạn Gái (Tầng 2) ---------- */
 function GirlWardrobeModal() {
-  const girlActivity = useStore((s) => s.girlActivity)
-  const activeChar = useStore((s) => s.activeChar)
+  const girlWardrobeOpen = useStore((s) => s.girlWardrobeOpen)
   const isUserInitiated = useStore((s) => s.isUserInitiated)
+  const userRole = useStore((s) => s.userRole)
   const girlOutfitId = useStore((s) => s.girlOutfitId)
-  if (girlActivity !== 'girl_wardrobe' || activeChar !== 'girl' || !isUserInitiated) return null
+
+  // Chỉ mở bảng chọn đồ khi người dùng CHỦ ĐỘNG click vào tủ đồ của Bạn Gái (không tự bật khi Auto-Life)
+  if (!girlWardrobeOpen || !isUserInitiated || (userRole && userRole !== 'girl')) return null
+
+  const handleClose = () => {
+    useStore.setState({
+      girlWardrobeOpen: false,
+      girlActivity: 'idle',
+      girlPhase: 'active',
+      isUserInitiated: false,
+    })
+  }
 
   return (
     <div className="card side-modal" role="dialog">
-      <button
-        className="icon-btn close"
-        onClick={() => useStore.getState().returnOverview()}
-        aria-label="Đóng"
-      >
-        {I.close}
+      <button className="icon-btn close" onClick={handleClose} aria-label="Đóng">
+        ✕
       </button>
       <h2>👗 Trang phục Bạn Gái</h2>
       <div className="outfit-list">
@@ -476,6 +473,13 @@ function GirlWardrobeModal() {
           </button>
         ))}
       </div>
+      <button
+        className="dock-btn primary"
+        style={{ marginTop: 12, width: '100%', height: 36 }}
+        onClick={handleClose}
+      >
+        ✓ Hoàn tất thay đồ
+      </button>
     </div>
   )
 }

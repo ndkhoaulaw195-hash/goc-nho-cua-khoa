@@ -6,6 +6,7 @@ import { GlassCurtainWall } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
   AUTO_SEQUENCE_GIRL,
+  CharacterRoleIndicator,
   computeCharActivityPose,
   getStationEntryForChar,
   stepCharacterWalk,
@@ -68,20 +69,13 @@ function Interact({
 }
 
 export function SecondFloor() {
-  const viewPreset = useStore((s) => s.viewPreset)
-  const isFloor1 = viewPreset === 'floor1'
-
   return (
     <group>
-      {!isFloor1 && (
-        <>
-          <FloorAndBeams />
-          <WallsAndDoor />
-          <GirlRoomFurniture />
-        </>
-      )}
+      <FloorAndBeams />
+      <WallsAndDoor />
+      <GirlRoomFurniture />
       <IndoorStaircase />
-      <GirlfriendAvatar hideIfUpstairs={isFloor1} />
+      <GirlfriendAvatar />
     </group>
   )
 }
@@ -225,6 +219,119 @@ function FloorAndBeams() {
   )
 }
 
+function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
+  const darkMode = useStore((s) => s.darkMode)
+  const curtainsFloor2Open = useStore((s) => s.curtainsFloor2Open)
+  const cutWalls = useStore((s) => s.cutWalls)
+  const Y = FLOOR2_Y
+  const leftRef = useRef<THREE.Group>(null)
+  const rightRef = useRef<THREE.Group>(null)
+  const sheerLeftRef = useRef<THREE.Mesh>(null)
+  const sheerRightRef = useRef<THREE.Mesh>(null)
+
+  useFrame((_, dt) => {
+    const k = 1 - Math.exp(-dt * 7)
+    if (leftRef.current) {
+      leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor2Open ? -1.45 : -0.75, k)
+      leftRef.current.scale.x = THREE.MathUtils.lerp(leftRef.current.scale.x, curtainsFloor2Open ? 1.0 : 2.0, k)
+    }
+    if (rightRef.current) {
+      rightRef.current.position.x = THREE.MathUtils.lerp(rightRef.current.position.x, curtainsFloor2Open ? 1.45 : 0.75, k)
+      rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsFloor2Open ? 1.0 : 2.0, k)
+    }
+    if (sheerLeftRef.current) {
+      sheerLeftRef.current.scale.x = THREE.MathUtils.lerp(sheerLeftRef.current.scale.x, curtainsFloor2Open ? 0.25 : 1.0, k)
+    }
+    if (sheerRightRef.current) {
+      sheerRightRef.current.scale.x = THREE.MathUtils.lerp(sheerRightRef.current.scale.x, curtainsFloor2Open ? 0.25 : 1.0, k)
+    }
+  })
+
+  if (cutWalls.right) return null
+
+  return (
+    <Interact
+      hint="🪟 Rèm cửa Tầng 2"
+      onClick={() => useStore.getState().toggleCurtainsFloor2()}
+    >
+      <G p={[9.94, Y, -2.3]} r={[0, -Math.PI / 2, 0]}>
+        {/* Tấm bắt click rộng lớn phủ kín cửa sổ */}
+        <mesh position={[0, 2.08, 0.25]}>
+          <planeGeometry args={[4.2, 3.8]} />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+        </mesh>
+
+        {/* Mặt kính bầu trời nắng ấm / đêm sao */}
+        <mesh position={[0, 2.08, 0.012]}>
+          <planeGeometry args={[3.5, 3.35]} />
+          <meshStandardMaterial
+            map={skyMap}
+            emissive="#fff8eb"
+            emissiveMap={skyMap}
+            emissiveIntensity={darkMode ? 0.85 : 1.45}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
+          />
+        </mesh>
+
+        {/* Khung cửa sổ trắng chia ô hiện đại */}
+        <B p={[0, 3.72, 0.03]} s={[3.65, 0.08, 0.06]} c="#f4f1ea" shadow={false} polyOffset />
+        <B p={[0, 0.42, 0.03]} s={[3.65, 0.08, 0.09]} c="#f4f1ea" shadow={false} polyOffset />
+        {[-1.78, -0.58, 0.58, 1.78].map((wx, i) => (
+          <B key={i} p={[wx, 2.08, 0.03]} s={[0.06, 3.35, 0.05]} c="#f4f1ea" shadow={false} polyOffset />
+        ))}
+        <B p={[0, 2.25, 0.03]} s={[3.55, 0.055, 0.05]} c="#f4f1ea" shadow={false} polyOffset />
+
+        {/* Thanh treo rèm chạy suốt chiều dài cửa sổ */}
+        <Cyl p={[0, 3.88, 0.12]} r={[0, 0, Math.PI / 2]} rt={0.022} h={4.1} c="#4a3525" metal={0.4} />
+
+        {/* Lớp rèm voan trắng sheer mỏng xuyên sáng phủ nhẹ toàn khung cửa */}
+        <mesh ref={sheerLeftRef} position={[-0.85, 1.91, 0.06]}>
+          <boxGeometry args={[1.65, 3.82, 0.025]} />
+          <meshStandardMaterial color="#ffffff" transparent opacity={0.52} roughness={0.9} />
+        </mesh>
+        <mesh ref={sheerRightRef} position={[0.85, 1.91, 0.06]}>
+          <boxGeometry args={[1.65, 3.82, 0.025]} />
+          <meshStandardMaterial color="#ffffff" transparent opacity={0.52} roughness={0.9} />
+        </mesh>
+
+        {/* Các nếp rèm voan trắng kem xếp ly rủ mềm chạm sàn ở hai bên */}
+        <group ref={leftRef} position={[-1.45, 0, 0.12]}>
+          {[-0.28, -0.16, -0.04, 0.08, 0.2, 0.32].map((dx, i) => (
+            <Cyl
+              key={i}
+              p={[dx, 1.94, 0]}
+              rt={0.068}
+              rb={0.082}
+              h={3.84}
+              c={i % 2 ? '#f5efe6' : '#ffffff'}
+              seg={12}
+              rough={0.92}
+              opacity={0.88}
+            />
+          ))}
+        </group>
+        <group ref={rightRef} position={[1.45, 0, 0.12]}>
+          {[-0.32, -0.2, -0.08, 0.04, 0.16, 0.28].map((dx, i) => (
+            <Cyl
+              key={i}
+              p={[dx, 1.94, 0]}
+              rt={0.068}
+              rb={0.082}
+              h={3.84}
+              c={i % 2 ? '#f5efe6' : '#ffffff'}
+              seg={12}
+              rough={0.92}
+              opacity={0.88}
+            />
+          ))}
+        </group>
+      </G>
+    </Interact>
+  )
+}
+
 /* ============================================================================
  * 2. VÁCH TƯỜNG, LAM GỖ PHÂN KHU & CỬA SỔ KÍNH RÈM VOAN TRẮNG RỦ MỀM XUỐNG SÀN
  * ============================================================================ */
@@ -364,79 +471,8 @@ function WallsAndDoor() {
         <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c="#f8f5f0" shadow={false} polyOffset />
       )}
 
-      {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm) */}
-      {!cutWalls.right && (
-        <Interact onClick={() => useStore.getState().toggleCurtains()}>
-          <G p={[9.94, Y, -2.3]} r={[0, -Math.PI / 2, 0]}>
-            {/* Tấm bắt click rộng lớn phủ kín cửa sổ */}
-            <mesh position={[0, 2.08, 0.2]}>
-              <planeGeometry args={[4.2, 3.8]} />
-              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-            </mesh>
-
-            {/* Mặt kính bầu trời nắng ấm / đêm sao */}
-            <mesh position={[0, 2.08, 0.012]}>
-              <planeGeometry args={[3.5, 3.35]} />
-              <meshStandardMaterial
-                map={skyMap}
-                emissive="#fff8eb"
-                emissiveMap={skyMap}
-                emissiveIntensity={darkMode ? 0.85 : 1.45}
-                polygonOffset
-                polygonOffsetFactor={-1}
-                polygonOffsetUnits={-1}
-              />
-            </mesh>
-
-            {/* Khung cửa sổ trắng chia ô hiện đại */}
-            <B p={[0, 3.72, 0.03]} s={[3.65, 0.08, 0.06]} c="#f4f1ea" shadow={false} polyOffset />
-            <B p={[0, 0.42, 0.03]} s={[3.65, 0.08, 0.09]} c="#f4f1ea" shadow={false} polyOffset />
-            {[-1.78, -0.58, 0.58, 1.78].map((wx, i) => (
-              <B key={i} p={[wx, 2.08, 0.03]} s={[0.06, 3.35, 0.05]} c="#f4f1ea" shadow={false} polyOffset />
-            ))}
-            <B p={[0, 2.25, 0.03]} s={[3.55, 0.055, 0.05]} c="#f4f1ea" shadow={false} polyOffset />
-
-            {/* Thanh treo rèm chạy suốt chiều dài cửa sổ */}
-            <Cyl p={[0, 3.88, 0.12]} r={[0, 0, Math.PI / 2]} rt={0.022} h={4.1} c="#4a3525" metal={0.4} />
-
-            {/* Lớp rèm voan trắng sheer mỏng xuyên sáng phủ nhẹ toàn khung cửa */}
-            <BB p={[-0.85, 0.02, 0.06]} s={[1.65, 3.82, 0.025]} c="#ffffff" opacity={0.48} rough={0.9} shadow={false} />
-            <BB p={[0.85, 0.02, 0.06]} s={[1.65, 3.82, 0.025]} c="#ffffff" opacity={0.48} rough={0.9} shadow={false} />
-
-            {/* Các nếp rèm voan trắng kem xếp ly rủ mềm chạm sàn ở hai bên */}
-            <group position={[-1.45, 0, 0.12]}>
-              {[-0.28, -0.16, -0.04, 0.08, 0.2, 0.32].map((dx, i) => (
-                <Cyl
-                  key={i}
-                  p={[dx, 1.94, 0]}
-                  rt={0.068}
-                  rb={0.082}
-                  h={3.84}
-                  c={i % 2 ? '#f5efe6' : '#ffffff'}
-                  seg={12}
-                  rough={0.92}
-                  opacity={0.85}
-                />
-              ))}
-            </group>
-            <group position={[1.45, 0, 0.12]}>
-              {[-0.32, -0.2, -0.08, 0.04, 0.16, 0.28].map((dx, i) => (
-                <Cyl
-                  key={i}
-                  p={[dx, 1.94, 0]}
-                  rt={0.068}
-                  rb={0.082}
-                  h={3.84}
-                  c={i % 2 ? '#f5efe6' : '#ffffff'}
-                  seg={12}
-                  rough={0.92}
-                  opacity={0.85}
-                />
-              ))}
-            </group>
-          </G>
-        </Interact>
-      )}
+      {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm Tầng 2) */}
+      <SecondFloorCurtains skyMap={skyMap} />
     </group>
   )
 }
@@ -736,21 +772,49 @@ function GirlRoomFurniture() {
           <Cyl p={[-0.18, 0.37, 0.04]} rt={0.032} rb={0.026} h={0.06} c="#ffffff" />
         </G>
 
-        {/* Ghế lười tròn trắng Bouclé + Đôn tròn */}
+        {/* Ghế lười tròn trắng Bouclé + Đôn tròn (Thiết kế cao cấp, đầy đặn, êm ái) */}
         <Interact
           hint="🛋️ Ghế lười Bouclé"
           onClick={() => useStore.getState().startActivity('girl_lounge', true)}
         >
           <G p={[0.45, 0, 0.05]} r={[0, -0.7, 0]}>
-            <Cyl p={[0, 0.21, 0]} rt={0.52} rb={0.48} h={0.42} c="#f5f0ea" rough={0.95} />
-            <mesh position={[0, 0.48, -0.18]} rotation={[0.1, 0, 0]}>
-              <cylinderGeometry args={[0.52, 0.52, 0.42, 32, 1, false, Math.PI * 0.75, Math.PI * 1.5]} />
-              <meshStandardMaterial color="#f5f0ea" roughness={0.95} side={THREE.DoubleSide} />
+            {/* Đế tròn gỗ sồi ấm áp */}
+            <Cyl p={[0, 0.03, 0]} rt={0.46} rb={0.48} h={0.06} c="#b8895a" rough={0.6} />
+
+            {/* Nệm ngồi tròn căng mọng bọc vải Bouclé trắng kem */}
+            <Cyl p={[0, 0.22, 0]} rt={0.48} rb={0.46} h={0.32} c="#fbf9f5" rough={0.92} />
+            <mesh position={[0, 0.38, 0]}>
+              <cylinderGeometry args={[0.45, 0.47, 0.08, 32]} />
+              <meshStandardMaterial color="#f5f0ea" roughness={0.95} />
             </mesh>
-            <Sph p={[0, 0.45, -0.12]} s={[0.4, 0.24, 0.22]} c="#eae3d8" rough={0.95} />
+
+            {/* Lưng tựa uốn cong hình chữ C ôm trọn lưng người ngồi (dày dặn, khép kín, không bị rỗng thủng) */}
+            <group position={[0, 0.42, -0.06]}>
+              {/* Vòng đệm lưng cong bo tròn */}
+              <mesh position={[0, 0.12, -0.16]} rotation={[Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[0.34, 0.14, 18, 36, Math.PI * 1.15]} />
+                <meshStandardMaterial color="#f7f3ec" roughness={0.92} />
+              </mesh>
+              {/* Lưng tựa đệm sau */}
+              <B p={[0, 0.15, -0.34]} s={[0.62, 0.38, 0.18]} c="#fbf9f5" rough={0.92} />
+              {/* Tay vịn 2 bên bo cong êm ái */}
+              <B p={[-0.35, 0.08, -0.12]} r={[0, 0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} />
+              <B p={[0.35, 0.08, -0.12]} r={[0, -0.35, 0]} s={[0.16, 0.28, 0.42]} c="#fbf9f5" rough={0.92} />
+            </group>
+
+            {/* Gối tựa lưng êm ái tông màu cam đất Terracotta / Nâu ấm tạo điểm nhấn */}
+            <B p={[0, 0.45, -0.22]} r={[-0.22, 0, 0]} s={[0.36, 0.26, 0.12]} c="#d97706" rough={0.88} />
           </G>
         </Interact>
-        <Cyl p={[0.68, 0.2, -0.72]} rt={0.28} rb={0.28} h={0.4} c="#f5f0ea" rough={0.95} />
+        {/* Đôn gác chân tròn bọc vải Bouclé đồng bộ */}
+        <G p={[0.68, 0, -0.72]}>
+          <Cyl p={[0, 0.025, 0]} rt={0.27} rb={0.28} h={0.05} c="#b8895a" rough={0.6} />
+          <Cyl p={[0, 0.2, 0]} rt={0.28} rb={0.27} h={0.32} c="#fbf9f5" rough={0.92} />
+          <mesh position={[0, 0.36, 0]}>
+            <cylinderGeometry args={[0.26, 0.28, 0.04, 28]} />
+            <meshStandardMaterial color="#f5f0ea" roughness={0.95} />
+          </mesh>
+        </G>
       </G>
 
       {/* =====================================================================
@@ -875,11 +939,7 @@ function GirlRoomFurniture() {
       </G>
 
       {/* 4. KỆ GỖ THẤP 2 TẦNG (DISPLAY SHELF) TRƯNG BÀY GẤU BÔNG, HỘP QUÀ, LỌ HOA & MÁY PHÁT ĐĨA THAN */}
-      <Interact
-        hint="🎶 Máy đĩa than & Gấu bông"
-        onClick={() => useStore.getState().notify('🎶 Đĩa than Vinyl đang phát bản nhạc Acoustic êm dịu')}
-      >
-        <G p={[-0.95, Y, -3.55]}>
+      <G p={[-0.95, Y, -3.55]}>
           {/* Khung kệ gỗ sồi thấp 2 tầng chạm sàn */}
           <BB p={[0, 0.04, 0]} s={[1.48, 0.04, 0.42]} c="#c89b6e" rough={0.55} />
           <BB p={[0, 0.36, 0]} s={[1.48, 0.04, 0.42]} c="#c89b6e" rough={0.55} />
@@ -944,7 +1004,6 @@ function GirlRoomFurniture() {
           <BB p={[-0.36, 0.125, 0]} s={[0.28, 0.04, 0.22]} c="#fed7aa" />
           <BB p={[0.34, 0.08, 0]} s={[0.3, 0.16, 0.22]} c="#d8f3dc" />
         </G>
-      </Interact>
 
       {/* 5. ĐÀN PIANO ĐIỆN MÀU TRẮNG / GỖ SÁNG KÈM GHẾ ĐÔN NỆM TRẮNG & GIÁ VẼ TRANH GỖ (WOODEN EASEL) Ở GIỮA PHÒNG */}
       <G p={[0.15, Y, -1.55]}>
@@ -962,12 +1021,8 @@ function GirlRoomFurniture() {
 
         {/* Đàn Piano điện màu trắng kem kết hợp gỗ sồi sáng */}
         <Interact
-          hint="🎹 Đàn Piano"
-          onClick={() => {
-            const st = useStore.getState()
-            st.setAvatarTarget([0.45, Y, -0.95])
-            st.notify('🎹 Tiếng đàn Piano ngân vang dịu dàng khắp căn phòng...')
-          }}
+          hint="🎹 Chơi đàn Piano"
+          onClick={() => useStore.getState().startActivity('piano', true)}
         >
           <G p={[0.32, 0, -0.08]}>
             {/* 2 Chân trụ gỗ sồi sáng & thanh giằng bàn đạp */}
@@ -1019,8 +1074,8 @@ function GirlRoomFurniture() {
 
         {/* Giá vẽ tranh gỗ (Wooden Easel) đặt khung vải Canvas đầy màu sắc bên cạnh Đàn Piano */}
         <Interact
-          hint="🎨 Giá vẽ tranh Canvas"
-          onClick={() => useStore.getState().notify('🎨 Bức tranh sơn dầu đầy sắc màu đang được hoàn thiện')}
+          hint="🎨 Vẽ tranh Canvas"
+          onClick={() => useStore.getState().startActivity('paint', true)}
         >
           <G p={[-0.86, 0, -0.02]} r={[0, 0.38, 0]}>
             {/* 3 Chân giá vẽ chữ A bằng gỗ sồi ấm */}
@@ -1577,28 +1632,19 @@ function GirlRoomFurniture() {
       </G>
 
       {/* Ghế băng dài bọc nệm kem (Storage Bench) kèm gối tựa hồng đất áp sát tường bên trái (gần cửa trắng & đầu cầu thang) */}
-      <Interact
-        hint="🛋️ Ghế băng nệm kem"
-        onClick={() => {
-          const st = useStore.getState()
-          st.setAvatarTarget([-8.65, Y, -2.7])
-          st.notify('🛋️ Ghế băng dài bọc nệm Bouclé kem êm ái')
-        }}
-      >
-        <G p={[-9.52, Y, -2.7]} r={[0, Math.PI / 2, 0]}>
-          {/* Đế gỗ sồi ấm áp & thân ghế băng bọc nệm kem Bouclé */}
-          <BB p={[0, 0, 0]} s={[1.86, 0.08, 0.54]} c="#b8895a" rough={0.55} />
-          <BB p={[0, 0.08, 0]} s={[1.82, 0.3, 0.52]} c="#f5efe6" rough={0.92} />
-          <BB p={[0, 0.38, 0]} s={[1.86, 0.09, 0.55]} c="#fbf9f5" rough={0.9} />
-          {/* 2 Tay vịn cuộn tròn hai đầu ghế băng */}
-          <Cyl p={[-0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
-          <Cyl p={[0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
-          {/* 3 Gối tựa màu hồng đất (Dusty Rose / Terracotta) dựa vào tường trái */}
-          <BB p={[-0.48, 0.47, -0.14]} r={[0.22, 0.08, 0]} s={[0.42, 0.28, 0.14]} c="#d9777f" rough={0.85} />
-          <BB p={[0, 0.47, -0.15]} r={[0.2, 0, 0]} s={[0.4, 0.26, 0.14]} c="#e29587" rough={0.85} />
-          <BB p={[0.48, 0.47, -0.14]} r={[0.22, -0.08, 0]} s={[0.42, 0.28, 0.14]} c="#c86454" rough={0.85} />
-        </G>
-      </Interact>
+      <G p={[-9.52, Y, -2.7]} r={[0, Math.PI / 2, 0]}>
+        {/* Đế gỗ sồi ấm áp & thân ghế băng bọc nệm kem Bouclé */}
+        <BB p={[0, 0, 0]} s={[1.86, 0.08, 0.54]} c="#b8895a" rough={0.55} />
+        <BB p={[0, 0.08, 0]} s={[1.82, 0.3, 0.52]} c="#f5efe6" rough={0.92} />
+        <BB p={[0, 0.38, 0]} s={[1.86, 0.09, 0.55]} c="#fbf9f5" rough={0.9} />
+        {/* 2 Tay vịn cuộn tròn hai đầu ghế băng */}
+        <Cyl p={[-0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
+        <Cyl p={[0.84, 0.5, 0]} r={[Math.PI / 2, 0, 0]} rt={0.085} h={0.52} c="#f3ece2" rough={0.9} />
+        {/* 3 Gối tựa màu hồng đất (Dusty Rose / Terracotta) dựa vào tường trái */}
+        <BB p={[-0.48, 0.47, -0.14]} r={[0.22, 0.08, 0]} s={[0.42, 0.28, 0.14]} c="#d9777f" rough={0.85} />
+        <BB p={[0, 0.47, -0.15]} r={[0.2, 0, 0]} s={[0.4, 0.26, 0.14]} c="#e29587" rough={0.85} />
+        <BB p={[0.48, 0.47, -0.14]} r={[0.22, -0.08, 0]} s={[0.42, 0.28, 0.14]} c="#c86454" rough={0.85} />
+      </G>
     </group>
   )
 }
@@ -1612,35 +1658,30 @@ function SleepingCat({ p }: { p: V3 }) {
     bodyRef.current.scale.set(1, s, 1)
   })
   return (
-    <Interact
-      hint="🐱 Mèo con đang ngủ"
-      onClick={() => useStore.getState().notify('🐱 Meo~ Chú mèo nhỏ khẽ cựa mình ngủ tiếp...')}
-    >
-      <group position={p} rotation={[0, 0.65, 0]}>
-        <group ref={bodyRef}>
-          {/* Thân mèo cam/kem cuộn tròn ấm áp */}
-          <Sph p={[0, 0.075, 0]} s={[0.17, 0.085, 0.14]} c="#f59e0b" rough={0.85} />
-          <Sph p={[0.02, 0.08, 0.02]} s={[0.13, 0.078, 0.11]} c="#fbbf24" rough={0.85} />
-          {/* Đầu mèo gối lên chân trước */}
-          <Sph p={[0.12, 0.095, 0.05]} s={[0.085, 0.075, 0.08]} c="#f59e0b" rough={0.85} />
-          {/* Mõm trắng kem & Mũi hồng */}
-          <Sph p={[0.18, 0.08, 0.07]} s={[0.04, 0.032, 0.04]} c="#fffbeb" />
-          <Sph p={[0.21, 0.088, 0.075]} s={[0.012, 0.01, 0.012]} c="#f472b6" />
-          {/* 2 Tai mèo hình chóp nhọn */}
-          <mesh position={[0.11, 0.165, 0.01]} rotation={[0.15, 0, -0.2]}>
-            <coneGeometry args={[0.028, 0.055, 4]} />
-            <meshStandardMaterial color="#d97706" roughness={0.8} />
-          </mesh>
-          <mesh position={[0.14, 0.165, 0.09]} rotation={[-0.15, 0, -0.2]}>
-            <coneGeometry args={[0.028, 0.055, 4]} />
-            <meshStandardMaterial color="#d97706" roughness={0.8} />
-          </mesh>
-          {/* Đuôi mèo vắt cong quanh mình */}
-          <Cyl p={[-0.14, 0.045, 0.06]} r={[Math.PI / 2, 0, -0.6]} rt={0.022} rb={0.018} h={0.22} c="#d97706" />
-          <Sph p={[-0.06, 0.045, 0.14]} s={[0.024, 0.02, 0.024]} c="#fffbeb" />
-        </group>
+    <group position={p} rotation={[0, 0.65, 0]}>
+      <group ref={bodyRef}>
+        {/* Thân mèo cam/kem cuộn tròn ấm áp */}
+        <Sph p={[0, 0.075, 0]} s={[0.17, 0.085, 0.14]} c="#f59e0b" rough={0.85} />
+        <Sph p={[0.02, 0.08, 0.02]} s={[0.13, 0.078, 0.11]} c="#fbbf24" rough={0.85} />
+        {/* Đầu mèo gối lên chân trước */}
+        <Sph p={[0.12, 0.095, 0.05]} s={[0.085, 0.075, 0.08]} c="#f59e0b" rough={0.85} />
+        {/* Mõm trắng kem & Mũi hồng */}
+        <Sph p={[0.18, 0.08, 0.07]} s={[0.04, 0.032, 0.04]} c="#fffbeb" />
+        <Sph p={[0.21, 0.088, 0.075]} s={[0.012, 0.01, 0.012]} c="#f472b6" />
+        {/* 2 Tai mèo hình chóp nhọn */}
+        <mesh position={[0.11, 0.165, 0.01]} rotation={[0.15, 0, -0.2]}>
+          <coneGeometry args={[0.028, 0.055, 4]} />
+          <meshStandardMaterial color="#d97706" roughness={0.8} />
+        </mesh>
+        <mesh position={[0.14, 0.165, 0.09]} rotation={[-0.15, 0, -0.2]}>
+          <coneGeometry args={[0.028, 0.055, 4]} />
+          <meshStandardMaterial color="#d97706" roughness={0.8} />
+        </mesh>
+        {/* Đuôi mèo vắt cong quanh mình */}
+        <Cyl p={[-0.14, 0.045, 0.06]} r={[Math.PI / 2, 0, -0.6]} rt={0.022} rb={0.018} h={0.22} c="#d97706" />
+        <Sph p={[-0.06, 0.045, 0.14]} s={[0.024, 0.02, 0.024]} c="#fffbeb" />
       </group>
-    </Interact>
+    </group>
   )
 }
 
@@ -1786,6 +1827,8 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
           st.avatarTarget,
           () => st.setAvatarTarget(null),
           delta,
+          [LIVE_ACTORS.khoaPos[0], LIVE_ACTORS.khoaPos[1]],
+          LIVE_ACTORS.khoaFloorY,
         )
         if (moving) autoIdleTimer.current = 4.0
       } else if (st.girlAutoLife) {
@@ -1853,10 +1896,19 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
             st.setActivityPhase('entering', 'girl')
           },
           delta,
+          [LIVE_ACTORS.khoaPos[0], LIVE_ACTORS.khoaPos[1]],
+          LIVE_ACTORS.khoaFloorY,
         )
 
-        // CHỐNG KẸT (Anti-stuck watchdog): tới sát 0.45m hoặc quá 4.2s tự động vào phase entering
-        if ((distToEntry < 0.45 && distFloorY < 0.3) || walkWatchdog.current > 4.2) {
+        // Chỉ khi nhân vật đã đi bộ đến thật sát vị trí đích (< 0.22m và cùng tầng) mới chuyển sang phase vào vị trí
+        if (distToEntry < 0.22 && distFloorY < 0.25) {
+          walkPos.current = [entry.entryX, entry.entryZ]
+          walkFloorY.current = entry.floorY
+          walkYaw.current = entry.entryYaw
+          phaseTimer.current = 0
+          walkWatchdog.current = 0
+          st.setActivityPhase('entering', 'girl')
+        } else if (walkWatchdog.current > 25.0) {
           walkPos.current = [entry.entryX, entry.entryZ]
           walkFloorY.current = entry.floorY
           walkYaw.current = entry.entryYaw
@@ -1877,7 +1929,8 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
         rArmX = -0.22 + swing * 0.65
       } else if (st.girlPhase === 'entering') {
         phaseTimer.current += delta
-        const pNorm = Math.min(1, phaseTimer.current / 0.35)
+        const enterDur = 0.75
+        const pNorm = THREE.MathUtils.smoothstep(phaseTimer.current, 0, enterDur)
         const pose = computeCharActivityPose(
           st.girlActivity,
           'girl',
@@ -1905,7 +1958,7 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
         showRemote = pose.showRemote
         showBook = pose.showBook
 
-        if (phaseTimer.current >= 0.35) {
+        if (phaseTimer.current >= enterDur) {
           phaseTimer.current = 0
           st.setActivityPhase('active', 'girl')
         }
@@ -2029,19 +2082,27 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
     }
   })
 
+  const userRole = useStore((s) => s.userRole)
+  const roleOccupancy = useStore((s) => s.roleOccupancy)
+  const isGirlClaimed = userRole === 'girl' || Boolean(roleOccupancy?.girl)
   const isHiddenByFloor1 = Boolean(hideIfUpstairs && walkFloorY.current > 2.0)
+  const isControllingGirl = (userRole || useStore.getState().activeChar) === 'girl'
+  const hideInFp = useStore((s) => s.mode === 'fp') && isControllingGirl
   const sleeping = girlActivity === 'sleep' || girlActivity === 'girl_sleep'
 
   return (
     <group
       ref={root}
       position={[-3.9, Y, -0.35]}
-      visible={!isHiddenByFloor1}
+      visible={!isHiddenByFloor1 && !hideInFp}
       onClick={(e) => {
         e.stopPropagation()
         useStore.getState().setActiveChar('girl')
       }}
     >
+      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
+      <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} />
+
       {/* Bong bóng ngủ Zzz */}
       <group ref={zzzRef} position={[0, 1.55, 0.2]} visible={false}>
         {[0, 1, 2].map((i) => (

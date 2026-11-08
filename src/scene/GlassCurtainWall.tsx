@@ -27,14 +27,15 @@ export function GlassCurtainWall({
   const frameColor = darkMode ? '#181b20' : '#232830'
   const transomY = pos[1] - H / 2 + H * 0.42
 
+  // Kính kiến trúc phản quang cao cấp, có màu xanh ngọc nhẹ và ánh bóng sang trọng
   const glassMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: darkMode ? '#1e2b3a' : '#d2e9f8',
+        color: darkMode ? '#1e334a' : '#a8d5f2',
         transparent: true,
-        opacity: darkMode ? 0.32 : 0.22,
-        roughness: 0.08,
-        metalness: 0.18,
+        opacity: darkMode ? 0.52 : 0.44,
+        roughness: 0.06,
+        metalness: 0.6,
         depthWrite: false,
       }),
     [darkMode],
@@ -46,7 +47,25 @@ export function GlassCurtainWall({
     <group>
       {/* 1. Tấm kính phản chiếu trong suốt phủ toàn bộ diện tích vách */}
       <mesh position={[pos[0], pos[1], pos[2]]} material={glassMat}>
-        <boxGeometry args={isZ ? [L, H, 0.02] : [0.02, H, L]} />
+        <boxGeometry args={isZ ? [L, H, 0.03] : [0.03, H, L]} />
+      </mesh>
+
+      {/* Vệt phản quang ánh sáng chạy dọc trên mặt kính tạo cảm giác kính thật */}
+      <mesh
+        position={[
+          pos[0] + (isZ ? 0.2 : 0),
+          pos[1],
+          pos[2] + (isZ ? 0.016 : 0.2),
+        ]}
+        rotation={[0, 0, isZ ? 0.2 : 0]}
+      >
+        <planeGeometry args={isZ ? [L * 0.85, H * 0.04] : [H * 0.04, L * 0.85]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={darkMode ? 0.12 : 0.22}
+          depthWrite={false}
+        />
       </mesh>
 
       {/* 2. Khung nhôm định hình viền trên và dưới */}

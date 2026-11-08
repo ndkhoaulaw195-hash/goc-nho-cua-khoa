@@ -16,6 +16,7 @@ export const LIVE_ACTORS: {
   khoaYaw: number
   khoaWorldPos: V3
   girlPos: V3
+  girlFloorY: number
   girlYaw: number
   girlWorldPos: V3
   fpYaw: number
@@ -26,6 +27,7 @@ export const LIVE_ACTORS: {
   khoaYaw: 0.15,
   khoaWorldPos: [-1.1, 0, -1.2],
   girlPos: [-3.9, 4.35, -0.35],
+  girlFloorY: 4.35,
   girlYaw: -0.15,
   girlWorldPos: [-3.9, 4.35, -0.35],
   fpYaw: 0.15,
@@ -132,9 +134,9 @@ export const WALL_PHOTOS: WallPhoto[] = [
   },
 ]
 
-export const HOME_VIEW = { pos: [-1.5, 17.5, 34.0] as V3, target: [-1.5, 3.1, -0.5] as V3 }
-export const FLOOR1_VIEW = { pos: [-2.8, 17.0, 19.5] as V3, target: [-2.8, 0.5, 0.0] as V3 }
-export const FLOOR2_VIEW = { pos: [-0.6, 11.4, 16.8] as V3, target: [-0.6, 5.1, -1.8] as V3 }
+export const HOME_VIEW = { pos: [-1.5, 14.5, 30.5] as V3, target: [-1.5, 2.8, -0.5] as V3 }
+export const FLOOR1_VIEW = { pos: [-2.2, 9.2, 21.0] as V3, target: [-2.2, 1.4, -0.5] as V3 }
+export const FLOOR2_VIEW = { pos: [-0.6, 9.8, 15.2] as V3, target: [-0.6, 5.2, -1.8] as V3 }
 export const ATRIUM_VIEW = { pos: [-0.8, 6.8, 10.8] as V3, target: [2.3, 3.2, -1.8] as V3 }
 export const TV_VIEW = { pos: [2.6, 3.05, 6.4] as V3, target: [4.3, 1.05, 1.6] as V3 }
 export const PC_VIEW = { pos: [1.35, 2.45, -2.1] as V3, target: [2.85, 1.15, -5.2] as V3 }
@@ -233,9 +235,29 @@ export const STATIONS: Record<
   | 'girl_vanity'
   | 'girl_lounge'
   | 'girl_nook'
-  | 'girl_wardrobe',
+  | 'girl_wardrobe'
+  | 'piano'
+  | 'paint',
   StationConfig
 > = {
+  piano: {
+    entryPos: [0.47, -1.05],
+    entryYaw: Math.PI,
+    floorY: 4.35,
+    camera: { pos: [0.47, 5.85, 0.95], target: [0.47, 4.85, -1.55] },
+    fpPos: [0.47, 4.35 + 1.25, -1.05],
+    fpTarget: [0.47, 4.35 + 1.15, -1.6],
+    label: '🎹 Chơi đàn Piano',
+  },
+  paint: {
+    entryPos: [-0.71, -1.05],
+    entryYaw: 0.25,
+    floorY: 4.35,
+    camera: { pos: [-0.71, 5.75, 0.85], target: [-0.71, 4.95, -1.55] },
+    fpPos: [-0.71, 4.35 + 1.45, -1.05],
+    fpTarget: [-0.71, 4.35 + 1.45, -1.55],
+    label: '🎨 Vẽ tranh Canvas',
+  },
   girl_sleep: {
     entryPos: [-5.0, -1.8],
     entryYaw: Math.PI,

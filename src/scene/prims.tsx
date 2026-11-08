@@ -29,14 +29,14 @@ export function B({
   map,
   emissive,
   ei = 1,
-  shadow = true,
+  shadow: _shadow = false,
   opacity,
   polyOffset = false,
   depthWrite,
 }: BoxProps) {
   const isTransparent = opacity !== undefined && opacity < 1
   return (
-    <mesh position={p} rotation={r} castShadow={shadow && !isTransparent} receiveShadow>
+    <mesh position={p} rotation={r} castShadow={false} receiveShadow>
       <boxGeometry args={s} />
       <meshStandardMaterial
         color={c}
@@ -79,7 +79,7 @@ interface CylProps {
 }
 export function Cyl({ p = [0, 0, 0], r = [0, 0, 0], rt, rb, h, c = '#888', seg = 24, rough = 0.8, metal = 0, emissive, ei = 1, opacity }: CylProps) {
   return (
-    <mesh position={p} rotation={r} castShadow receiveShadow>
+    <mesh position={p} rotation={r} receiveShadow>
       <cylinderGeometry args={[rt, rb ?? rt, h, seg]} />
       <meshStandardMaterial
         color={c}
@@ -114,7 +114,7 @@ export function Sph({
   ei?: number
 }) {
   return (
-    <mesh position={p} rotation={r} scale={s} castShadow receiveShadow>
+    <mesh position={p} rotation={r} scale={s} receiveShadow>
       <sphereGeometry args={[1, 24, 16]} />
       <meshStandardMaterial
         color={c}

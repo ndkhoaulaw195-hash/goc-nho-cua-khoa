@@ -11,6 +11,7 @@ import {
   TV_CHANNELS,
   type V3,
 } from './data/config'
+import { claimRole, initPresenceSync, releaseRole, subscribePresence } from './presence'
 
 export type Mode = 'orbit' | 'fp'
 export type ActiveChar = 'boy' | 'girl'
@@ -34,6 +35,8 @@ export type Activity =
   | 'girl_lounge'
   | 'girl_nook'
   | 'girl_wardrobe'
+  | 'piano'
+  | 'paint'
 
 export type ActivityPhase = 'walking' | 'entering' | 'active'
 export type PcState = 'on' | 'rgb' | 'off'
@@ -46,7 +49,8 @@ export interface CamFocus {
 interface State {
   // Sảnh chờ & Tài khoản nhân vật ('boy' = Khoa, 'girl' = Bạn Gái)
   userRole: ActiveChar | null
-  setUserRole: (role: ActiveChar) => void
+  roleOccupancy: { boy: boolean; girl: boolean }
+  setUserRole: (role: ActiveChar) => boolean
   logout: () => void
 
   mode: Mode
@@ -118,7 +122,11 @@ interface State {
   acOn: boolean
   toggleAc: () => void
   curtainsOpen: boolean
-  toggleCurtains: () => void
+  curtainsFloor1Open: boolean
+  curtainsFloor2Open: boolean
+  toggleCurtains: (floor?: 1 | 2) => void
+  toggleCurtainsFloor1: () => void
+  toggleCurtainsFloor2: () => void
   wardrobeOpen: boolean
   setWardrobeOpen: (v: boolean) => void
   pcState: PcState
@@ -164,7 +172,7 @@ interface State {
 
 const getInitialRole = (): ActiveChar | null => {
   if (typeof window === 'undefined') return null
-  const r = localStorage.getItem('user_role')
+  const r = sessionStorage.getItem('user_role')
   return r === 'boy' || r === 'girl' ? r : null
 }
 const initRole = getInitialRole()
@@ -173,26 +181,38 @@ export const useStore = create<State>()(
   persist(
     (set) => ({
       userRole: initRole,
+      roleOccupancy: { boy: initRole === 'boy', girl: initRole === 'girl' },
       activeChar: initRole || 'boy',
-      boyAutoLife: initRole === 'girl',
-      girlAutoLife: initRole === 'boy',
+      // Khi chưa vào vai (hoặc người kia không vào vai), nhân vật tự động bật chế độ tự hoạt động
+      boyAutoLife: initRole !== 'boy',
+      girlAutoLife: initRole !== 'girl',
       setUserRole: (role: ActiveChar) => {
-        if (typeof window !== 'undefined') localStorage.setItem('user_role', role)
-        set(() => ({
+        const ok = claimRole(role)
+        if (!ok) {
+          set({ toastMessage: '⚠️ Vai này đã có người chọn! Vui lòng chọn vai còn lại.' })
+          return false
+        }
+        if (typeof window !== 'undefined') sessionStorage.setItem('user_role', role)
+        set((s) => ({
           userRole: role,
           activeChar: role,
-          boyAutoLife: role === 'girl',
-          girlAutoLife: role === 'boy',
+          boyAutoLife: role === 'girl' ? true : false,
+          girlAutoLife: role === 'boy' ? true : false,
+          roleOccupancy: { ...s.roleOccupancy, [role]: true },
           toastMessage: role === 'boy' ? '👦 Chào mừng Khoa về nhà!' : '👧 Chào mừng Bạn Gái về nhà!',
         }))
+        return true
       },
       logout: () => {
-        if (typeof window !== 'undefined') localStorage.removeItem('user_role')
+        releaseRole()
+        if (typeof window !== 'undefined') sessionStorage.removeItem('user_role')
         set(() => ({
           userRole: null,
           activeChar: 'boy',
-          boyAutoLife: false,
-          girlAutoLife: false,
+          boyAutoLife: true, // Khi không vào vai, nhân vật tự hoạt động
+          girlAutoLife: true, // Khi không vào vai, nhân vật tự hoạt động
+          roleOccupancy: { boy: false, girl: false },
+          toastMessage: '👋 Đã rời vai nhân vật',
         }))
       },
 
@@ -279,16 +299,14 @@ export const useStore = create<State>()(
 
       startActivity: (act, fromUser = true, forChar) =>
         set((s) => {
-          const char = forChar ?? (s.userRole || s.activeChar)
+          // Tủ đồ tầng 1 dành riêng cho Khoa, Tủ đồ tầng 2 dành riêng cho Bạn Gái
+          const char =
+            act === 'wardrobe'
+              ? 'boy'
+              : act === 'girl_wardrobe'
+                ? 'girl'
+                : (forChar ?? (s.userRole || s.activeChar || 'boy'))
           const curCharAct = char === 'boy' ? s.boyActivity : s.girlActivity
-
-          // Chức năng thay quần áo chỉ dành riêng cho từng nhân vật
-          if (fromUser && act === 'wardrobe' && char === 'girl') {
-            return { toastMessage: '👕 Tủ đồ riêng của Khoa' }
-          }
-          if (fromUser && act === 'girl_wardrobe' && char === 'boy') {
-            return { toastMessage: '👗 Tủ đồ riêng của Bạn Gái' }
-          }
 
           if (act === 'idle') {
             return {
@@ -314,7 +332,9 @@ export const useStore = create<State>()(
             act !== 'darts' &&
             act !== 'drink' &&
             act !== 'feed' &&
-            act !== 'pet'
+            act !== 'pet' &&
+            act !== 'wardrobe' &&
+            act !== 'girl_wardrobe'
           ) {
             return {
               boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
@@ -333,7 +353,6 @@ export const useStore = create<State>()(
           }
 
           const station = STATIONS[act]
-          // Cả 2 nhân vật có thể sử dụng chung tất cả các tiện ích cùng một thời điểm một cách thoải mái
           const nextBoyAct = char === 'boy' ? act : s.boyActivity
           const nextGirlAct = char === 'girl' ? act : s.girlActivity
 
@@ -342,20 +361,30 @@ export const useStore = create<State>()(
             boyPhase: char === 'boy' ? 'walking' : s.boyPhase,
             girlActivity: nextGirlAct,
             girlPhase: char === 'girl' ? 'walking' : s.girlPhase,
-            ...(s.activeChar === char
-              ? { activity: act, activityPhase: 'walking' }
-              : {}),
+            activeChar: char,
+            activity: act,
+            activityPhase: 'walking',
             isUserInitiated: fromUser ? true : s.isUserInitiated,
             boyAutoLife: fromUser && char === 'boy' ? false : s.boyAutoLife,
             girlAutoLife: fromUser && char === 'girl' ? false : s.girlAutoLife,
             avatarTarget: fromUser ? null : s.avatarTarget,
             activePhoto: fromUser ? null : s.activePhoto,
-            wardrobeOpen: act === 'wardrobe' ? s.wardrobeOpen : char === 'boy' ? false : s.wardrobeOpen,
-            girlWardrobeOpen:
-              act === 'girl_wardrobe' ? s.girlWardrobeOpen : char === 'girl' ? false : s.girlWardrobeOpen,
-            // Giữ nguyên góc nhìn tổng quan hiện tại, không tự ý zoom sát hay chuyển góc nhìn thứ nhất
+            wardrobeOpen: fromUser && act === 'wardrobe',
+            girlWardrobeOpen: fromUser && act === 'girl_wardrobe',
+            girlOutfitId:
+              !fromUser && act === 'girl_wardrobe'
+                ? GIRL_OUTFITS[(GIRL_OUTFITS.findIndex((o) => o.id === s.girlOutfitId) + 1) % GIRL_OUTFITS.length].id
+                : s.girlOutfitId,
+            girlOutfitSpinTick:
+              !fromUser && act === 'girl_wardrobe' ? s.girlOutfitSpinTick + 1 : s.girlOutfitSpinTick,
+            outfitId:
+              !fromUser && act === 'wardrobe'
+                ? OUTFITS[(OUTFITS.findIndex((o) => o.id === s.outfitId) + 1) % OUTFITS.length].id
+                : s.outfitId,
+            outfitSpinTick:
+              !fromUser && act === 'wardrobe' ? s.outfitSpinTick + 1 : s.outfitSpinTick,
             focus: s.focus,
-            toastMessage: fromUser ? station.label : s.toastMessage,
+            toastMessage: fromUser ? station?.label : s.toastMessage,
           }
         }),
 
@@ -470,14 +499,8 @@ export const useStore = create<State>()(
             wardrobeOpen: false,
             girlWardrobeOpen: false,
             activePhoto: null,
-            focus:
-              s.mode === 'orbit'
-                ? s.viewPreset === 'floor1'
-                  ? FLOOR1_VIEW
-                  : s.viewPreset === 'floor2'
-                    ? FLOOR2_VIEW
-                    : HOME_VIEW
-                : null,
+            viewPreset: 'overview',
+            focus: s.mode === 'orbit' ? HOME_VIEW : null,
           }
         }),
       cutWalls: { back: false, left: false, right: false },
@@ -496,11 +519,50 @@ export const useStore = create<State>()(
           toastMessage: !s.acOn ? '❄️ Bật điều hòa' : '❄️ Tắt điều hòa',
         })),
       curtainsOpen: true,
-      toggleCurtains: () =>
-        set((s) => ({
-          curtainsOpen: !s.curtainsOpen,
-          toastMessage: !s.curtainsOpen ? '🪟 Mở rèm cửa' : '🪟 Đóng rèm cửa',
-        })),
+      curtainsFloor1Open: true,
+      curtainsFloor2Open: true,
+      toggleCurtainsFloor1: () =>
+        set((s) => {
+          const next = !s.curtainsFloor1Open
+          return {
+            curtainsFloor1Open: next,
+            curtainsOpen: next,
+            toastMessage: next ? '🪟 Mở rèm cửa Tầng 1' : '🪟 Đóng rèm cửa Tầng 1',
+          }
+        }),
+      toggleCurtainsFloor2: () =>
+        set((s) => {
+          const next = !s.curtainsFloor2Open
+          return {
+            curtainsFloor2Open: next,
+            toastMessage: next ? '🪟 Mở rèm cửa Tầng 2' : '🪟 Đóng rèm cửa Tầng 2',
+          }
+        }),
+      toggleCurtains: (floor) =>
+        set((s) => {
+          if (floor === 2) {
+            const next = !s.curtainsFloor2Open
+            return {
+              curtainsFloor2Open: next,
+              toastMessage: next ? '🪟 Mở rèm cửa Tầng 2' : '🪟 Đóng rèm cửa Tầng 2',
+            }
+          }
+          if (floor === 1) {
+            const next = !s.curtainsFloor1Open
+            return {
+              curtainsFloor1Open: next,
+              curtainsOpen: next,
+              toastMessage: next ? '🪟 Mở rèm cửa Tầng 1' : '🪟 Đóng rèm cửa Tầng 1',
+            }
+          }
+          const next = !s.curtainsOpen
+          return {
+            curtainsOpen: next,
+            curtainsFloor1Open: next,
+            curtainsFloor2Open: next,
+            toastMessage: next ? '🪟 Mở tất cả rèm cửa' : '🪟 Đóng tất cả rèm cửa',
+          }
+        }),
       wardrobeOpen: false,
       setWardrobeOpen: (wardrobeOpen) => set({ wardrobeOpen }),
       pcState: 'on',
@@ -697,4 +759,22 @@ export const useStore = create<State>()(
 
 if (typeof window !== 'undefined') {
   ;(window as unknown as Record<string, unknown>).__store = useStore
+
+  initPresenceSync()
+  if (initRole) {
+    claimRole(initRole)
+  }
+
+  // Tự động lắng nghe và cập nhật trạng thái có người vào vai / nhả vai theo thời gian thực
+  subscribePresence((pres) => {
+    const s = useStore.getState()
+    const boyOcc = pres.boy.occupied
+    const girlOcc = pres.girl.occupied
+    useStore.setState({
+      roleOccupancy: { boy: boyOcc, girl: girlOcc },
+      // Khi không có ai vào vai (hoặc người chơi thoát), nhân vật tự động chạy Auto
+      boyAutoLife: s.userRole === 'boy' ? s.boyAutoLife : true,
+      girlAutoLife: s.userRole === 'girl' ? s.girlAutoLife : true,
+    })
+  })
 }

@@ -758,7 +758,7 @@ function LowCabinet() {
 /* ---------- Cửa sổ Panorama toàn cảnh bên tường phải + Rèm voan trắng & Rèm vải kem dài chạm sàn ---------- */
 function PanoramicWindow() {
   const darkMode = useStore((s) => s.darkMode)
-  const curtainsOpen = useStore((s) => s.curtainsOpen)
+  const curtainsFloor1Open = useStore((s) => s.curtainsFloor1Open)
   const cutRight = useStore((s) => s.cutWalls.right)
   const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
   const leftRef = useRef<THREE.Group>(null)
@@ -767,12 +767,12 @@ function PanoramicWindow() {
   useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 7)
     if (leftRef.current) {
-      leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsOpen ? -2.35 : -1.15, k)
-      leftRef.current.scale.x = THREE.MathUtils.lerp(leftRef.current.scale.x, curtainsOpen ? 1 : 2.1, k)
+      leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor1Open ? -2.35 : -1.15, k)
+      leftRef.current.scale.x = THREE.MathUtils.lerp(leftRef.current.scale.x, curtainsFloor1Open ? 1 : 2.1, k)
     }
     if (rightRef.current) {
-      rightRef.current.position.x = THREE.MathUtils.lerp(rightRef.current.position.x, curtainsOpen ? 2.35 : 1.15, k)
-      rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsOpen ? 1 : 2.1, k)
+      rightRef.current.position.x = THREE.MathUtils.lerp(rightRef.current.position.x, curtainsFloor1Open ? 2.35 : 1.15, k)
+      rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsFloor1Open ? 1 : 2.1, k)
     }
   })
 
@@ -780,8 +780,8 @@ function PanoramicWindow() {
 
   return (
     <Interact
-      hint="🪟 Rèm cửa"
-      onClick={() => useStore.getState().toggleCurtains()}
+      hint="🪟 Rèm cửa Tầng 1"
+      onClick={() => useStore.getState().toggleCurtainsFloor1()}
     >
       <G p={[9.95, 0, -1.0]} r={[0, -Math.PI / 2, 0]}>
         {/* Tấm bắt click rộng lớn phủ kín toàn bộ diện tích cửa sổ & rèm */}
