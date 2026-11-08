@@ -156,25 +156,36 @@ function Bathtub() {
 function ShowerBooth() {
   return (
     <G p={[-14.1, 0, -4.8]}>
-      {/* Vách kính cường lực trong suốt phân chia khu vực tắm */}
-      <BB p={[1.25, 0.05, 0]} s={[0.04, 2.5, 2.1]} c="#94a3b8" opacity={0.35} rough={0.1} metal={0.3} shadow={false} />
+      {/* Vách kính cường lực trong suốt phân chia khu vực tắm (MeshPhysicalMaterial chuẩn PBR) */}
+      <mesh position={[1.25, 1.3, 0]}>
+        <boxGeometry args={[0.03, 2.5, 2.1]} />
+        <meshPhysicalMaterial
+          color="#e0f2fe"
+          roughness={0.08}
+          metalness={0.1}
+          transmission={0.82}
+          transparent
+          ior={1.5}
+          thickness={0.12}
+        />
+      </mesh>
       {/* Nẹp kính & Tay nắm mạ vàng */}
-      <BB p={[1.25, 0.02, 0]} s={[0.06, 0.05, 2.1]} c="#d4af37" metal={0.85} rough={0.2} />
-      <B p={[1.25, 2.52, 0]} s={[0.06, 0.05, 2.1]} c="#d4af37" metal={0.85} rough={0.2} />
-      <B p={[1.28, 1.25, 0.55]} s={[0.02, 0.35, 0.025]} c="#d4af37" metal={0.85} rough={0.2} />
+      <BB p={[1.25, 0.02, 0]} s={[0.05, 0.04, 2.1]} c="#d4af37" metal={0.85} rough={0.18} />
+      <B p={[1.25, 2.52, 0]} s={[0.05, 0.04, 2.1]} c="#d4af37" metal={0.85} rough={0.18} />
+      <B p={[1.28, 1.25, 0.55]} s={[0.02, 0.35, 0.025]} c="#d4af37" metal={0.85} rough={0.18} />
 
       {/* Ga thoát sàn inox dài mạ vàng */}
-      <BB p={[-0.8, 0.016, 0]} s={[0.1, 0.012, 1.2]} c="#d4af37" metal={0.85} rough={0.3} polyOffset />
+      <BB p={[-0.8, 0.016, 0]} s={[0.1, 0.012, 1.2]} c="#d4af37" metal={0.85} rough={0.18} polyOffset />
 
       {/* Cây sen tắm đứng mạ vàng trên tường sau */}
       <G p={[0, 0, -1.18]}>
-        <Cyl p={[0, 1.35, 0.05]} rt={0.016} h={1.6} c="#d4af37" metal={0.85} rough={0.2} />
+        <Cyl p={[0, 1.35, 0.05]} rt={0.016} h={1.6} c="#d4af37" metal={0.85} rough={0.18} />
         {/* Cần sen vươn ra phía trước */}
-        <Cyl p={[0, 2.18, 0.28]} r={[Math.PI / 2, 0, 0]} rt={0.018} h={0.46} c="#d4af37" metal={0.85} rough={0.2} />
+        <Cyl p={[0, 2.18, 0.28]} r={[Math.PI / 2, 0, 0]} rt={0.018} h={0.46} c="#d4af37" metal={0.85} rough={0.18} />
         {/* Bát sen tắm mưa bản lớn */}
-        <Cyl p={[0, 2.15, 0.5]} rt={0.16} h={0.025} c="#d4af37" metal={0.85} rough={0.2} />
+        <Cyl p={[0, 2.15, 0.5]} rt={0.16} h={0.025} c="#d4af37" metal={0.85} rough={0.18} />
         {/* Van điều áp & núm xoay nóng lạnh */}
-        <BB p={[0, 1.05, 0.05]} s={[0.14, 0.28, 0.06]} c="#d4af37" metal={0.85} rough={0.2} />
+        <BB p={[0, 1.05, 0.05]} s={[0.14, 0.28, 0.06]} c="#d4af37" metal={0.85} rough={0.18} />
       </G>
 
       {/* Hốc âm tường để dầu gội & sữa tắm có đèn LED */}
@@ -250,24 +261,28 @@ function VanityAndWasher() {
             }}
           >
             <G p={[0, 2.3, -0.44]}>
+              {/* Quầng sáng LED tỏa mờ sau gương */}
+              {bathMirrorLightOn && (
+                <mesh position={[0, 0, -0.015]}>
+                  <circleGeometry args={[0.75, 36]} />
+                  <meshBasicMaterial color="#ffbe54" transparent opacity={0.32} depthWrite={false} />
+                </mesh>
+              )}
               {/* Vòng hào quang đèn LED sau gương */}
-              <mesh position={[0, 0, -0.01]}>
+              <mesh position={[0, 0, -0.008]}>
                 <ringGeometry args={[0.55, 0.64, 40]} />
                 <meshStandardMaterial
                   color="#fff4dc"
                   emissive="#ffb854"
-                  emissiveIntensity={bathMirrorLightOn ? 3.2 : 0.05}
+                  emissiveIntensity={bathMirrorLightOn ? 3.8 : 0.05}
                 />
               </mesh>
               {/* Viền kim loại & Mặt gương tròn */}
-              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#1e1e24" metal={0.8} />
+              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#1e1e24" metal={0.85} rough={0.18} />
               <mesh position={[0, 0, 0.015]}>
                 <circleGeometry args={[0.55, 40]} />
                 <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.05} />
               </mesh>
-              {bathMirrorLightOn && (
-                <pointLight position={[0, 0, 0.25]} intensity={1.8} distance={3.8} decay={2} color="#ffe8c2" />
-              )}
             </G>
           </Interact>
         </G>
@@ -317,14 +332,13 @@ function VanityAndWasher() {
 
             {/* Lồng giặt kim loại xoay tròn khi máy giặt hoạt động */}
             <group ref={drumRef} position={[0, 0, -0.06]}>
-              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.18} h={0.18} c="#71717a" metal={0.85} rough={0.3} />
+              <Cyl r={[Math.PI / 2, 0, 0]} rt={0.18} h={0.18} c="#71717a" metal={0.85} rough={0.18} />
               {/* Quần áo nhấp nhô bên trong lồng khi giặt */}
               {laundryRunning && (
                 <>
-                  <B p={[0.06, 0.05, 0]} s={[0.1, 0.08, 0.08]} c="#38bdf8" />
-                  <B p={[-0.05, -0.04, 0]} s={[0.09, 0.09, 0.08]} c="#f43f5e" />
-                  <B p={[0.02, -0.06, 0]} s={[0.08, 0.07, 0.08]} c="#fde047" />
-                  <pointLight position={[0, 0, 0.05]} intensity={1.5} distance={1.2} color="#60a5fa" />
+                  <B p={[0.06, 0.05, 0]} s={[0.1, 0.08, 0.08]} c="#38bdf8" emissive="#38bdf8" ei={1.5} />
+                  <B p={[-0.05, -0.04, 0]} s={[0.09, 0.09, 0.08]} c="#f43f5e" emissive="#f43f5e" ei={1.5} />
+                  <B p={[0.02, -0.06, 0]} s={[0.08, 0.07, 0.08]} c="#fde047" emissive="#fde047" ei={1.5} />
                 </>
               )}
             </group>
@@ -442,7 +456,10 @@ function MasterBathLounge() {
             />
           </mesh>
           {bathFullMirrorLightOn && (
-            <pointLight position={[0.25, 0, 0]} intensity={1.6} distance={3.5} decay={2} color="#ffe8c2" />
+            <mesh position={[0.015, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[0.96, 2.26]} />
+              <meshBasicMaterial color="#ffbe54" transparent opacity={0.25} depthWrite={false} />
+            </mesh>
           )}
         </G>
       </Interact>

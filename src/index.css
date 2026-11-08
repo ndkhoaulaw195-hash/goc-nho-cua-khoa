@@ -1,5 +1,5 @@
 :root {
-  --bg: #ece6dc;
+  --bg: radial-gradient(ellipse at center, #faf6f0 0%, #ece5db 55%, #ded5c6 100%);
   --card: rgba(250, 247, 242, 0.9);
   --card-border: rgba(255, 255, 255, 0.75);
   --ink: #1f1b18;
@@ -14,7 +14,7 @@
 }
 
 html.dark {
-  --bg: #111520;
+  --bg: radial-gradient(ellipse at center, #181d2c 0%, #111520 55%, #0a0d14 100%);
   --card: rgba(22, 26, 38, 0.88);
   --card-border: rgba(255, 255, 255, 0.12);
   --ink: #f3efe9;

@@ -1,7 +1,7 @@
 import { useMemo, useRef, type ReactNode } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph } from './prims'
+import { B, BB, Cyl, G, Sph, RBB } from './prims'
 import { dartboard, loadPhotoTexture, rng, screen, sunflowerArt, windowSky } from './textures'
 import { WALL_PHOTOS, type V3 } from '../data/config'
 import { useStore } from '../store'
@@ -288,21 +288,21 @@ function Bed() {
       onClick={() => useStore.getState().startActivity('sleep', true)}
     >
       <G p={[-2.6, 0, -4.3]}>
-        {/* Khung giường bọc nệm xám than */}
-        <BB p={[0, 0, 0]} s={[2.26, 0.36, 3.05]} c="#363432" rough={0.85} />
-        {/* Đệm kem dày êm ái */}
-        <BB p={[0, 0.36, 0.04]} s={[2.1, 0.26, 2.88]} c="#e8e2d8" rough={0.92} />
-        {/* Chăn phủ màu xám ấm gấp nếp mềm mại (không chồng lấn mặt phẳng với đệm) */}
-        <BB p={[0, 0.62, 0.38]} s={[2.14, 0.08, 2.05]} c="#9c968e" rough={0.95} shadow={false} />
+        {/* Khung giường bọc nệm xám than bo cạnh mềm mại */}
+        <RBB p={[0, 0, 0]} s={[2.26, 0.36, 3.05]} c="#363432" rough={0.9} radius={0.04} shadow />
+        {/* Đệm kem dày êm ái bo cạnh tròn trịa */}
+        <RBB p={[0, 0.36, 0.04]} s={[2.1, 0.26, 2.88]} c="#e8e2d8" rough={0.9} radius={0.05} />
+        {/* Chăn phủ màu xám ấm gấp nếp mềm mại */}
+        <RBB p={[0, 0.62, 0.38]} s={[2.14, 0.08, 2.05]} c="#9c968e" rough={0.92} radius={0.03} shadow={false} />
         {/* Khăn len đắp ngang chân giường */}
-        <BB p={[0, 0.7, 0.88]} s={[2.16, 0.04, 0.72]} c="#78736d" rough={1} shadow={false} />
-        <BB p={[0, 0.26, 1.46]} s={[2.14, 0.42, 0.05]} c="#8b857d" rough={0.95} shadow={false} />
-        {/* Gối tựa lưng lớn màu kem & trắng + Gối trang trí xám */}
-        <BB p={[-0.52, 0.65, -1.12]} r={[0.22, 0, 0]} s={[0.86, 0.22, 0.42]} c="#dfd7cb" rough={0.95} />
-        <BB p={[0.52, 0.65, -1.12]} r={[0.22, 0, 0]} s={[0.86, 0.22, 0.42]} c="#dfd7cb" rough={0.95} />
-        <BB p={[-0.48, 0.64, -0.82]} r={[0.15, 0, 0]} s={[0.76, 0.16, 0.38]} c="#f5f2ec" rough={0.95} />
-        <BB p={[0.48, 0.64, -0.82]} r={[0.15, 0, 0]} s={[0.76, 0.16, 0.38]} c="#f5f2ec" rough={0.95} />
-        <BB p={[0, 0.65, -0.58]} r={[0.1, 0, 0]} s={[0.56, 0.15, 0.3]} c="#57534e" rough={0.95} />
+        <RBB p={[0, 0.7, 0.88]} s={[2.16, 0.04, 0.72]} c="#78736d" rough={0.95} radius={0.02} shadow={false} />
+        <RBB p={[0, 0.26, 1.46]} s={[2.14, 0.42, 0.05]} c="#8b857d" rough={0.92} radius={0.02} shadow={false} />
+        {/* Gối tựa lưng lớn màu kem & trắng + Gối trang trí xám mềm mại */}
+        <RBB p={[-0.52, 0.65, -1.12]} r={[0.22, 0, 0]} s={[0.86, 0.22, 0.42]} c="#dfd7cb" rough={0.92} radius={0.04} shadow={false} />
+        <RBB p={[0.52, 0.65, -1.12]} r={[0.22, 0, 0]} s={[0.86, 0.22, 0.42]} c="#dfd7cb" rough={0.92} radius={0.04} shadow={false} />
+        <RBB p={[-0.48, 0.64, -0.82]} r={[0.15, 0, 0]} s={[0.76, 0.16, 0.38]} c="#f5f2ec" rough={0.92} radius={0.04} shadow={false} />
+        <RBB p={[0.48, 0.64, -0.82]} r={[0.15, 0, 0]} s={[0.76, 0.16, 0.38]} c="#f5f2ec" rough={0.92} radius={0.04} shadow={false} />
+        <RBB p={[0, 0.65, -0.58]} r={[0.1, 0, 0]} s={[0.56, 0.15, 0.3]} c="#57534e" rough={0.92} radius={0.04} shadow={false} />
       </G>
     </Interact>
   )
@@ -313,7 +313,7 @@ function RightNightstand() {
   const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
   return (
     <G p={[-0.65, 0, -5.5]}>
-      <BB p={[0, 0, 0]} s={[0.68, 0.56, 0.52]} c={WALNUT} rough={0.6} />
+      <BB p={[0, 0, 0]} s={[0.68, 0.56, 0.52]} c={WALNUT} rough={0.6} shadow />
       <BB p={[0, 0.3, 0.265]} s={[0.6, 0.2, 0.02]} c="#362419" />
       <BB p={[0, 0.08, 0.265]} s={[0.6, 0.18, 0.02]} c="#362419" />
       {/* Đèn ngủ đầu giường: Click trực tiếp để bật/tắt riêng biệt */}
@@ -323,7 +323,7 @@ function RightNightstand() {
       >
         <G p={[-0.08, 0, 0]}>
           <Cyl p={[0, 0.62, 0]} rt={0.07} rb={0.09} h={0.12} c="#d6cfc4" />
-          <Cyl p={[0, 0.75, 0]} rt={0.015} h={0.16} c="#b89d7a" metal={0.7} />
+          <Cyl p={[0, 0.75, 0]} rt={0.015} h={0.16} c="#b89d7a" metal={0.85} rough={0.18} />
           <Cyl
             p={[0, 0.88, 0]}
             rt={0.14}
@@ -331,11 +331,14 @@ function RightNightstand() {
             h={0.24}
             c={floor1BedLampOn ? '#fff3d6' : '#dfd8cc'}
             emissive={floor1BedLampOn ? '#ffbe55' : '#000000'}
-            ei={floor1BedLampOn ? 1.8 : 0}
+            ei={floor1BedLampOn ? 2.5 : 0}
             seg={24}
           />
           {floor1BedLampOn && (
-            <pointLight position={[0, 0.95, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} decay={2} />
+            <mesh position={[0, 0.88, 0]}>
+              <sphereGeometry args={[0.22, 16, 12]} />
+              <meshBasicMaterial color="#ffbe55" transparent opacity={0.25} depthWrite={false} />
+            </mesh>
           )}
         </G>
       </Interact>
@@ -761,7 +764,7 @@ function LowCabinet() {
       >
         <G p={[0.55, 0.63, 0]}>
           <Cyl p={[0, 0.02, 0]} rt={0.1} h={0.03} c="#27272a" />
-          <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#3f3f46" metal={0.6} />
+          <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#3f3f46" metal={0.85} rough={0.18} />
           <Cyl
             p={[0, 0.48, 0]}
             rt={0.18}
@@ -769,11 +772,14 @@ function LowCabinet() {
             h={0.28}
             c={floor1DeskLampOn ? '#fff3d6' : '#dfd8cc'}
             emissive={floor1DeskLampOn ? '#ffbe55' : '#000000'}
-            ei={floor1DeskLampOn ? 1.8 : 0}
+            ei={floor1DeskLampOn ? 2.5 : 0}
             seg={24}
           />
           {floor1DeskLampOn && (
-            <pointLight position={[0, 0.55, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} decay={2} />
+            <mesh position={[0, 0.48, 0]}>
+              <sphereGeometry args={[0.26, 16, 12]} />
+              <meshBasicMaterial color="#ffbe55" transparent opacity={0.25} depthWrite={false} />
+            </mesh>
           )}
         </G>
       </Interact>
@@ -1323,8 +1329,8 @@ function SmartTvScreen({
 function Ottoman() {
   return (
     <G p={[2.05, 0, 2.15]}>
-      <BB s={[1.06, 0.36, 1.06]} c="#7d6c5d" rough={0.9} />
-      <BB p={[0, 0.36, 0]} s={[1.02, 0.1, 1.02]} c="#948272" rough={0.9} />
+      <RBB s={[1.06, 0.36, 1.06]} c="#7d6c5d" rough={0.9} radius={0.04} shadow />
+      <RBB p={[0, 0.36, 0]} s={[1.02, 0.1, 1.02]} c="#948272" rough={0.9} radius={0.03} shadow={false} />
       <BB p={[0, 0, 0]} s={[0.98, 0.04, 0.98]} c="#2b211b" />
     </G>
   )
@@ -1335,15 +1341,15 @@ function CoffeeTable() {
   return (
     <Interact hint="📺 Đổi kênh TV" onClick={() => useStore.getState().cycleTvChannel()}>
       <G p={[4.15, 0, 2.15]}>
-        <BB p={[0, 0.4, 0]} s={[1.65, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.45} />
+        <RBB p={[0, 0.4, 0]} s={[1.65, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.42} metal={0.05} radius={0.03} shadow />
         <BB p={[0, 0.06, 0]} s={[1.55, 0.045, 0.84]} c={WALNUT} />
         {[-0.74, 0.74].map((x) => (
-          <BB key={x} p={[x, 0, 0]} s={[0.06, 0.4, 0.84]} c="#231c18" />
+          <BB key={x} p={[x, 0, 0]} s={[0.06, 0.4, 0.84]} c="#231c18" shadow />
         ))}
         {/* Sách tạp chí mở, tách cà phê & lọ hoa trên bàn trà */}
-        <BB p={[-0.22, 0.455, 0.04]} r={[0, 0.18, 0]} s={[0.42, 0.025, 0.3]} c="#f5f2ec" />
+        <BB p={[-0.22, 0.455, 0.04]} r={[0, 0.18, 0]} s={[0.42, 0.025, 0.3]} c="#f5f2ec" shadow={false} />
         <Cyl p={[0.32, 0.52, -0.08]} rt={0.05} rb={0.07} h={0.22} c="#d6cfc2" />
-        <BB p={[0.35, 0.455, 0.2]} r={[0, -0.25, 0]} s={[0.065, 0.02, 0.18]} c="#18181b" />
+        <BB p={[0.35, 0.455, 0.2]} r={[0, -0.25, 0]} s={[0.065, 0.02, 0.18]} c="#18181b" shadow={false} />
       </G>
     </Interact>
   )
@@ -1362,21 +1368,21 @@ function Sofa() {
       <group>
         {/* Nhánh dọc bên phải */}
         <G p={[6.35, 0, 2.0]}>
-          <BB s={[1.12, 0.4, 2.85]} c={LEATHER} rough={0.5} />
-          <BB p={[-0.06, 0.4, -0.68]} s={[0.96, 0.15, 1.32]} c={LEATHER_2} rough={0.45} />
-          <BB p={[-0.06, 0.4, 0.68]} s={[0.96, 0.15, 1.32]} c={LEATHER_2} rough={0.45} />
-          <BB p={[0.44, 0.4, 0]} s={[0.24, 0.52, 2.85]} c={LEATHER} rough={0.5} />
-          <BB p={[-0.04, 0.4, -1.32]} s={[1.06, 0.26, 0.2]} c={LEATHER} rough={0.5} />
-          <BB p={[0.22, 0.56, -0.75]} s={[0.14, 0.38, 0.48]} r={[0, 0, 0.2]} c="#2b1d16" />
+          <RBB s={[1.12, 0.4, 2.85]} c={LEATHER} rough={0.55} radius={0.04} shadow />
+          <RBB p={[-0.06, 0.4, -0.68]} s={[0.96, 0.15, 1.32]} c={LEATHER_2} rough={0.52} radius={0.03} />
+          <RBB p={[-0.06, 0.4, 0.68]} s={[0.96, 0.15, 1.32]} c={LEATHER_2} rough={0.52} radius={0.03} />
+          <RBB p={[0.44, 0.4, 0]} s={[0.24, 0.52, 2.85]} c={LEATHER} rough={0.55} radius={0.03} shadow />
+          <RBB p={[-0.04, 0.4, -1.32]} s={[1.06, 0.26, 0.2]} c={LEATHER} rough={0.55} radius={0.03} />
+          <RBB p={[0.22, 0.56, -0.75]} s={[0.14, 0.38, 0.48]} r={[0, 0, 0.2]} c="#2b1d16" rough={0.9} radius={0.03} />
         </G>
         {/* Nhánh ngang phía trước (Khoa ngồi xem TV tại đây) */}
         <G p={[4.45, 0, 3.65]}>
-          <BB s={[2.95, 0.4, 1.1]} c={LEATHER} rough={0.5} />
-          <BB p={[-0.72, 0.4, -0.06]} s={[1.38, 0.15, 0.94]} c={LEATHER_2} rough={0.45} />
-          <BB p={[0.72, 0.4, -0.06]} s={[1.38, 0.15, 0.94]} c={LEATHER_2} rough={0.45} />
-          <BB p={[0, 0.4, 0.42]} s={[2.95, 0.44, 0.24]} c={LEATHER} rough={0.5} />
-          <BB p={[-1.36, 0.4, -0.04]} s={[0.22, 0.26, 1.04]} c={LEATHER} rough={0.5} />
-          <BB p={[-0.85, 0.54, 0.2]} s={[0.48, 0.34, 0.14]} r={[0.2, 0, 0]} c="#2b1d16" />
+          <RBB s={[2.95, 0.4, 1.1]} c={LEATHER} rough={0.55} radius={0.04} shadow />
+          <RBB p={[-0.72, 0.4, -0.06]} s={[1.38, 0.15, 0.94]} c={LEATHER_2} rough={0.52} radius={0.03} />
+          <RBB p={[0.72, 0.4, -0.06]} s={[1.38, 0.15, 0.94]} c={LEATHER_2} rough={0.52} radius={0.03} />
+          <RBB p={[0, 0.4, 0.42]} s={[2.95, 0.44, 0.24]} c={LEATHER} rough={0.55} radius={0.03} shadow />
+          <RBB p={[-1.36, 0.4, -0.04]} s={[0.22, 0.26, 1.04]} c={LEATHER} rough={0.55} radius={0.03} />
+          <RBB p={[-0.85, 0.54, 0.2]} s={[0.48, 0.34, 0.14]} r={[0.2, 0, 0]} c="#2b1d16" rough={0.9} radius={0.03} />
         </G>
       </group>
     </Interact>

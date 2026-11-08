@@ -57,6 +57,10 @@ interface State {
   setMode: (m: Mode) => void
   darkMode: boolean
   toggleDarkMode: () => void
+  graphicMode: 'hd' | 'smooth'
+  toggleGraphicMode: () => void
+  isInteracting: boolean
+  setIsInteracting: (isInteracting: boolean) => void
 
   // Chọn nhân vật người chơi đang điều khiển: 'boy' (Khoa) hoặc 'girl' (Bạn Gái)
   activeChar: ActiveChar
@@ -256,6 +260,19 @@ export const useStore = create<State>()(
           darkMode: !s.darkMode,
           toastMessage: !s.darkMode ? '🌙 Ban đêm' : '☀️ Ban ngày',
         })),
+
+      graphicMode: 'hd',
+      toggleGraphicMode: () =>
+        set((s) => {
+          const next = s.graphicMode === 'hd' ? 'smooth' : 'hd'
+          return {
+            graphicMode: next,
+            toastMessage: next === 'hd' ? '✨ Chế độ HD (Siêu nét)' : '⚡ Chế độ Mượt (Tiết kiệm pin)',
+          }
+        }),
+
+      isInteracting: false,
+      setIsInteracting: (isInteracting) => set({ isInteracting }),
 
       setActiveChar: (activeChar) =>
         set((s) => {
@@ -821,6 +838,7 @@ export const useStore = create<State>()(
       name: 'goc-nho-cua-khoa-v9',
       partialize: (s) => ({
         darkMode: s.darkMode,
+        graphicMode: s.graphicMode,
         outfitId: s.outfitId,
         girlOutfitId: s.girlOutfitId,
       }),

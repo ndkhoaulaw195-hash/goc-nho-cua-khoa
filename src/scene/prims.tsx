@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type * as THREE from 'three'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import type { V3 } from '../data/config'
 
 interface BoxProps {
@@ -18,6 +19,11 @@ interface BoxProps {
   depthWrite?: boolean
 }
 
+interface RoundedBoxProps extends BoxProps {
+  radius?: number
+  segments?: number
+}
+
 /** Hộp cơ bản (vị trí là tâm hộp) */
 export function B({
   p = [0, 0, 0],
@@ -29,14 +35,14 @@ export function B({
   map,
   emissive,
   ei = 1,
-  shadow: _shadow = false,
+  shadow = false,
   opacity,
   polyOffset = false,
   depthWrite,
 }: BoxProps) {
   const isTransparent = opacity !== undefined && opacity < 1
   return (
-    <mesh position={p} rotation={r} castShadow={false} receiveShadow>
+    <mesh position={p} rotation={r} castShadow={shadow} receiveShadow>
       <boxGeometry args={s} />
       <meshStandardMaterial
         color={c}
@@ -61,6 +67,60 @@ export function BB(props: BoxProps) {
   const [x, y, z] = props.p ?? [0, 0, 0]
   const h = (props.s ?? [1, 1, 1])[1]
   return <B {...props} p={[x, y + h / 2, z]} />
+}
+
+/** Hộp bo tròn góc mềm mại (RoundedBox) bắt sáng cao cấp */
+export function RB({
+  p = [0, 0, 0],
+  s = [1, 1, 1],
+  c = '#888',
+  r = [0, 0, 0],
+  rough = 0.8,
+  metal = 0,
+  map,
+  emissive,
+  ei = 1,
+  shadow = false,
+  opacity,
+  polyOffset = false,
+  depthWrite,
+  radius = 0.04,
+  segments = 3,
+}: RoundedBoxProps) {
+  const isTransparent = opacity !== undefined && opacity < 1
+  const [w, h, d] = s
+  const maxRadius = Math.min(w, h, d) / 2 - 0.001
+  const safeRadius = Math.max(0.001, Math.min(radius, maxRadius > 0 ? maxRadius : 0.005))
+  const geom = useMemo(
+    () => new RoundedBoxGeometry(w, h, d, segments, safeRadius),
+    [w, h, d, segments, safeRadius],
+  )
+
+  return (
+    <mesh position={p} rotation={r} geometry={geom} castShadow={shadow} receiveShadow>
+      <meshStandardMaterial
+        color={c}
+        roughness={rough}
+        metalness={metal}
+        map={map}
+        emissive={emissive ?? '#000'}
+        emissiveIntensity={emissive ? ei : 0}
+        transparent={isTransparent}
+        opacity={opacity ?? 1}
+        depthWrite={depthWrite ?? !isTransparent}
+        polygonOffset={polyOffset}
+        polygonOffsetFactor={polyOffset ? -1 : 0}
+        polygonOffsetUnits={polyOffset ? -1 : 0}
+      />
+    </mesh>
+  )
+}
+
+/** Hộp bo tròn góc đặt theo đáy: y là mặt dưới */
+export function RBB(props: RoundedBoxProps) {
+  const [x, y, z] = props.p ?? [0, 0, 0]
+  const h = (props.s ?? [1, 1, 1])[1]
+  return <RB {...props} p={[x, y + h / 2, z]} />
 }
 
 interface CylProps {

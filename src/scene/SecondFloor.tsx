@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph } from './prims'
+import { B, BB, Cyl, G, Sph, RBB } from './prims'
 import { GlassCurtainWall } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
@@ -133,7 +133,8 @@ function FloorAndBeams() {
         <planeGeometry args={[20.0, 6.2]} />
         <meshStandardMaterial
           map={oakMap1}
-          roughness={0.52}
+          roughness={0.42}
+          metalness={0.05}
           color={darkMode ? '#cbb8a3' : '#ffffff'}
         />
       </mesh>
@@ -156,27 +157,32 @@ function FloorAndBeams() {
         <planeGeometry args={[6.5, 4.6]} />
         <meshStandardMaterial
           map={oakMap2}
-          roughness={0.52}
+          roughness={0.42}
+          metalness={0.05}
           color={darkMode ? '#cbb8a3' : '#ffffff'}
         />
       </mesh>
 
-      {/* --- LAN CAN KÍNH TRONG SUỐT TAY VỊN GỖ SỒI --- */}
+      {/* --- LAN CAN KÍNH TRONG SUỐT TAY VỊN GỖ SỒI (MeshPhysicalMaterial chuẩn PBR) --- */}
       {/* 1. Lan can ngang mép hành lang thông tầng (x từ -1.2 đến +9.9, tại z = 0.18) */}
       <G p={[4.35, Y, 0.18]}>
         <BB p={[0, 0.86, 0]} s={[11.1, 0.045, 0.065]} c="#c89d6c" rough={0.4} />
         <BB p={[0, 0.0, 0]} s={[11.1, 0.035, 0.05]} c="#b88c5a" rough={0.5} />
-        <B
-          p={[0, 0.44, 0]}
-          s={[10.95, 0.82, 0.016]}
-          c="#f8fafc"
-          opacity={0.22}
-          rough={0.04}
-          metal={0.1}
-          shadow={false}
-        />
+        <mesh position={[0, 0.44, 0]}>
+          <boxGeometry args={[10.95, 0.82, 0.016]} />
+          <meshPhysicalMaterial
+            color="#f0f8ff"
+            roughness={0.08}
+            metalness={0.1}
+            transmission={0.82}
+            transparent
+            ior={1.5}
+            thickness={0.12}
+            depthWrite={false}
+          />
+        </mesh>
         {[-5.4, -3.2, -1.0, 1.2, 3.4, 5.4].map((px, i) => (
-          <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.7} />
+          <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
         ))}
       </G>
 
@@ -184,17 +190,21 @@ function FloorAndBeams() {
       <G p={[-1.2, Y, 2.5]}>
         <BB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.6]} c="#c89d6c" rough={0.4} />
         <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.6]} c="#b88c5a" rough={0.5} />
-        <B
-          p={[0, 0.44, 0]}
-          s={[0.016, 0.82, 4.5]}
-          c="#f8fafc"
-          opacity={0.22}
-          rough={0.04}
-          metal={0.1}
-          shadow={false}
-        />
+        <mesh position={[0, 0.44, 0]}>
+          <boxGeometry args={[0.016, 0.82, 4.5]} />
+          <meshPhysicalMaterial
+            color="#f0f8ff"
+            roughness={0.08}
+            metalness={0.1}
+            transmission={0.82}
+            transparent
+            ior={1.5}
+            thickness={0.12}
+            depthWrite={false}
+          />
+        </mesh>
         {[-1.8, 0, 1.8].map((pz, i) => (
-          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.7} />
+          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.85} rough={0.18} />
         ))}
       </G>
 
@@ -202,15 +212,19 @@ function FloorAndBeams() {
       <G p={[-7.72, Y, 2.62]}>
         <BB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.35]} c="#c89d6c" rough={0.4} />
         <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.35]} c="#b88c5a" rough={0.5} />
-        <B
-          p={[0, 0.44, 0]}
-          s={[0.016, 0.82, 4.25]}
-          c="#f8fafc"
-          opacity={0.22}
-          rough={0.04}
-          metal={0.1}
-          shadow={false}
-        />
+        <mesh position={[0, 0.44, 0]}>
+          <boxGeometry args={[0.016, 0.82, 4.25]} />
+          <meshPhysicalMaterial
+            color="#f0f8ff"
+            roughness={0.08}
+            metalness={0.1}
+            transmission={0.82}
+            transparent
+            ior={1.5}
+            thickness={0.12}
+            depthWrite={false}
+          />
+        </mesh>
         {[-1.6, 0, 1.6].map((pz, i) => (
           <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#64748b" metal={0.7} />
         ))}
@@ -366,14 +380,8 @@ function WallsAndDoor() {
             polyOffset
           />
 
-          {/* 2. Vách lam gỗ sồi thẳng đứng phân khu (ốp nổi mặt trong tại z = -5.96) */}
-          <G p={[-1.05, Y, -5.96]}>
-            <B p={[0, H2 / 2, 0]} s={[1.45, H2, 0.05]} c="#c89b6e" rough={0.6} shadow={false} polyOffset />
-            {Array.from({ length: 15 }, (_, i) => {
-              const lx = -0.64 + (i / 14) * 1.28
-              return <B key={i} p={[lx, H2 / 2, 0.035]} s={[0.048, H2 - 0.04, 0.045]} c="#b08254" rough={0.55} shadow={false} polyOffset />
-            })}
-          </G>
+          {/* 2. Vách lam gỗ sồi thẳng đứng phân khu (ốp nổi mặt trong tại z = -5.96 - dùng chung Geometry/Material) */}
+          <WoodSlatsWall H2={H2} />
 
           {/* 3. Lớp sơn mặt trong cánh phải (Khu bàn học, bàn trang điểm & tủ đồ: x từ -1.05 đến +10.0) */}
           <B
@@ -477,6 +485,24 @@ function WallsAndDoor() {
   )
 }
 
+function WoodSlatsWall({ H2 }: { H2: number }) {
+  const slatGeom = useMemo(() => new THREE.BoxGeometry(0.048, H2 - 0.04, 0.045), [H2])
+  const slatMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#b08254', roughness: 0.55, metalness: 0.05 }),
+    [],
+  )
+
+  return (
+    <G p={[-1.05, FLOOR2_Y, -5.96]}>
+      <B p={[0, H2 / 2, 0]} s={[1.45, H2, 0.05]} c="#c89b6e" rough={0.6} shadow={false} polyOffset />
+      {Array.from({ length: 15 }, (_, i) => {
+        const lx = -0.64 + (i / 14) * 1.28
+        return <mesh key={i} position={[lx, H2 / 2, 0.035]} geometry={slatGeom} material={slatMat} />
+      })}
+    </G>
+  )
+}
+
 /* ============================================================================
  * 3. CẦU THANG GỖ - THÉP TRONG NHÀ (NHẤP CHUỘT ĐỂ ĐI BỘ LÊN / XUỐNG TỰ NHIÊN)
  * ============================================================================ */
@@ -485,6 +511,18 @@ function IndoorStaircase() {
   const startZ = 4.7
   const endZ = 0.45
   const totalH = FLOOR2_Y
+
+  // Tái sử dụng chung Geometry & Material cho toàn bộ 14 bậc cầu thang để giảm Draw Calls tối đa
+  const stepGeom = useMemo(() => new THREE.BoxGeometry(1.08, 0.065, 0.32), [])
+  const stepMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#c89b6e', roughness: 0.42, metalness: 0.05 }),
+    [],
+  )
+  const ledGeom = useMemo(() => new THREE.BoxGeometry(1.04, 0.018, 0.02), [])
+  const ledMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#fff3c4', emissive: '#fbbf24', emissiveIntensity: 1.2 }),
+    [],
+  )
 
   const handleStairClick = () => {
     const st = useStore.getState()
@@ -511,22 +549,22 @@ function IndoorStaircase() {
         {/* 2 dầm thép đen chịu lực chạy chéo */}
         <mesh position={[-0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
           <boxGeometry args={[0.07, 0.14, 6.1]} />
-          <meshStandardMaterial color="#1f2024" metalness={0.6} roughness={0.35} />
+          <meshStandardMaterial color="#1f2024" metalness={0.85} roughness={0.18} />
         </mesh>
         <mesh position={[0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
           <boxGeometry args={[0.07, 0.14, 6.1]} />
-          <meshStandardMaterial color="#1f2024" metalness={0.6} roughness={0.35} />
+          <meshStandardMaterial color="#1f2024" metalness={0.85} roughness={0.18} />
         </mesh>
 
-        {/* 14 Bậc thang gỗ sồi */}
+        {/* 14 Bậc thang gỗ sồi dùng chung biến Geometry & Material */}
         {Array.from({ length: steps }, (_, i) => {
           const t = (i + 0.5) / steps
           const sy = t * totalH
           const sz = THREE.MathUtils.lerp(startZ, endZ, t)
           return (
             <group key={i} position={[0, sy, sz]}>
-              <B p={[0, 0, 0]} s={[1.08, 0.065, 0.32]} c="#c89b6e" rough={0.5} />
-              <B p={[0, -0.04, 0.14]} s={[1.04, 0.018, 0.02]} c="#fff3c4" emissive="#fbbf24" ei={1.1} shadow={false} />
+              <mesh position={[0, 0, 0]} geometry={stepGeom} material={stepMat} receiveShadow />
+              <mesh position={[0, -0.04, 0.14]} geometry={ledGeom} material={ledMat} />
             </group>
           )
         })}
@@ -615,40 +653,37 @@ function GirlRoomFurniture() {
         />
       </mesh>
 
-      {/* 3. Giường ngủ màu kem + Chăn phủ & 3 gối tựa màu nâu cam đất (Terracotta / Burnt Orange) */}
+      {/* 3. Giường ngủ màu kem + Chăn phủ & 2 gối tựa cam đất (RoundedBox bo góc chuẩn PBR) */}
       <Interact
         hint="🛏️ Giường ngủ Tầng 2"
         onClick={() => useStore.getState().startActivity('girl_sleep', true)}
       >
         <G p={[-5.0, Y, -3.95]}>
-          {/* Khung giường bọc nệm kem chạm sàn (BB y = 0) */}
-          <BB p={[0, 0, 0]} s={[2.68, 0.34, 3.18]} c="#efeae1" rough={0.85} />
+          {/* Khung giường bọc nệm kem chạm sàn bo cạnh mềm mại */}
+          <RBB p={[0, 0, 0]} s={[2.68, 0.34, 3.18]} c="#efeae1" rough={0.9} radius={0.04} shadow />
           {/* Đầu giường bọc nệm kem cao */}
-          <BB p={[0, 0, -1.48]} s={[2.76, 1.48, 0.22]} c="#f3eee6" rough={0.85} />
+          <RBB p={[0, 0, -1.48]} s={[2.76, 1.48, 0.22]} c="#f3eee6" rough={0.9} radius={0.04} shadow />
 
-          {/* Đệm chính màu trắng kem */}
-          <BB p={[0, 0.34, 0.06]} s={[2.46, 0.26, 2.86]} c="#fbf9f5" rough={0.8} />
+          {/* Đệm chính màu trắng kem bo góc êm ái */}
+          <RBB p={[0, 0.34, 0.06]} s={[2.46, 0.26, 2.86]} c="#fbf9f5" rough={0.9} radius={0.05} />
 
-          {/* Chăn bông màu trắng kem (không tạo bóng tự đổ gây sọc đen) */}
-          <BB p={[0, 0.6, 0.32]} s={[2.48, 0.09, 2.15]} c="#f7f3eb" rough={0.85} shadow={false} />
+          {/* Chăn bông màu trắng kem */}
+          <RBB p={[0, 0.6, 0.32]} s={[2.48, 0.09, 2.15]} c="#f7f3eb" rough={0.92} radius={0.03} shadow={false} />
 
           {/* TẤM CHĂN PHỦ (THROW BLANKET) MÀU NÂU CAM ĐẤT VẮT NGANG CUỐI GIƯỜNG & RỦ XUỐNG 2 BÊN */}
-          {/* Phần vắt ngang trên mặt giường */}
-          <BB p={[0, 0.69, 0.85]} s={[2.52, 0.045, 0.82]} c="#a84624" rough={0.88} shadow={false} />
-          {/* Nếp gấp gợn trên mặt chăn cam đất */}
-          <BB p={[0, 0.735, 0.68]} s={[2.5, 0.025, 0.16]} c="#be5430" rough={0.88} shadow={false} />
-          <BB p={[0, 0.735, 1.02]} s={[2.5, 0.025, 0.16]} c="#933a1b" rough={0.88} shadow={false} />
-          {/* Phần chăn rủ xuống bên hông trái & phải của nệm */}
-          <BB p={[-1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.88} shadow={false} />
-          <BB p={[1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.88} shadow={false} />
+          <RBB p={[0, 0.69, 0.85]} s={[2.52, 0.045, 0.82]} c="#a84624" rough={0.92} radius={0.02} shadow={false} />
+          <RBB p={[0, 0.735, 0.68]} s={[2.5, 0.025, 0.16]} c="#be5430" rough={0.92} radius={0.015} shadow={false} />
+          <RBB p={[0, 0.735, 1.02]} s={[2.5, 0.025, 0.16]} c="#933a1b" rough={0.92} radius={0.015} shadow={false} />
+          <RBB p={[-1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.92} radius={0.02} shadow={false} />
+          <RBB p={[1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.92} radius={0.02} shadow={false} />
 
-          {/* 2 Gối ngủ lớn màu trắng kem tựa sát đầu giường */}
-          <BB p={[-0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.8} />
-          <BB p={[0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.8} />
+          {/* 2 Gối ngủ lớn màu trắng kem tựa sát đầu giường bo góc mềm */}
+          <RBB p={[-0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.9} radius={0.04} shadow={false} />
+          <RBB p={[0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.9} radius={0.04} shadow={false} />
 
           {/* 2 Chiếc gối tựa màu nâu cam đất (Terracotta) xếp ngay ngắn, đối xứng sang trọng */}
-          <BB p={[-0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.85} />
-          <BB p={[0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.85} />
+          <RBB p={[-0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.9} radius={0.04} shadow={false} />
+          <RBB p={[0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.9} radius={0.04} shadow={false} />
         </G>
       </Interact>
 
@@ -685,7 +720,10 @@ function GirlRoomFurniture() {
             shadow={false}
           />
           {floor2ArchLightOn && (
-            <pointLight position={[0, 2.4, 0.45]} color="#ffaa33" intensity={1.45} distance={5.0} decay={2} />
+            <mesh position={[0, 2.25, 0.02]}>
+              <planeGeometry args={[3.2, 1.8]} />
+              <meshBasicMaterial color="#ffaa28" transparent opacity={0.16} depthWrite={false} />
+            </mesh>
           )}
 
           {/* Bức tranh khung gỗ nhiều màu sắc treo chính giữa trong lòng vòm đèn */}
@@ -728,11 +766,11 @@ function GirlRoomFurniture() {
           onClick={() => useStore.getState().toggleGirlLamp()}
         >
           <G p={[nx, Y, -5.42]}>
-            {/* Tủ đầu giường chạm đúng mặt sàn (BB p[1] = 0) */}
-            <BB p={[0, 0, 0]} s={[0.68, 0.58, 0.52]} c="#d4a373" rough={0.6} />
+            {/* Tủ đầu giường chạm đúng mặt sàn bo góc tinh tế */}
+            <RBB p={[0, 0, 0]} s={[0.68, 0.58, 0.52]} c="#d4a373" rough={0.6} radius={0.03} shadow />
             <B p={[0, 0.3, 0.265]} s={[0.6, 0.015, 0.01]} c="#b08254" />
-            <Sph p={[0, 0.43, 0.27]} s={[0.022, 0.022, 0.022]} c="#d4af37" rough={0.3} />
-            <Sph p={[0, 0.17, 0.27]} s={[0.022, 0.022, 0.022]} c="#d4af37" rough={0.3} />
+            <Sph p={[0, 0.43, 0.27]} s={[0.022, 0.022, 0.022]} c="#d4af37" metal={0.85} rough={0.18} />
+            <Sph p={[0, 0.17, 0.27]} s={[0.022, 0.022, 0.022]} c="#d4af37" metal={0.85} rough={0.18} />
 
             {/* Đèn ngủ chụp tròn phát sáng vàng ấm đặt trên mặt tủ (y = 0.58) */}
             <Cyl p={[0, 0.64, 0]} rt={0.07} rb={0.095} h={0.12} c="#c89b6e" />
@@ -741,8 +779,14 @@ function GirlRoomFurniture() {
               s={[0.16, 0.15, 0.16]}
               c="#fffbeb"
               emissive="#ffaa28"
-              ei={girlLampOn ? 3.2 : 0.15}
+              ei={girlLampOn ? 3.5 : 0.15}
             />
+            {girlLampOn && (
+              <mesh position={[0, 0.78, 0]}>
+                <sphereGeometry args={[0.22, 16, 12]} />
+                <meshBasicMaterial color="#ffaa28" transparent opacity={0.25} depthWrite={false} />
+              </mesh>
+            )}
           </G>
         </Interact>
       ))}
@@ -1152,9 +1196,12 @@ function GirlRoomFurniture() {
             />
           </Interact>
 
-          {/* PointLight tạo hiệu ứng hắt sáng vàng ấm rực rỡ xuống mảng tường xanh Sage */}
+          {/* Mảng hắt sáng vàng ấm dịu dàng trên tường xanh Sage */}
           {girlShelfLedOn && (
-            <pointLight position={[0, 2.25, 0.25]} color="#ffaa28" intensity={1.5} distance={4.2} decay={2} />
+            <mesh position={[0, 2.6, 0.01]}>
+              <planeGeometry args={[5.2, 0.95]} />
+              <meshBasicMaterial color="#ffaa28" transparent opacity={0.16} depthWrite={false} />
+            </mesh>
           )}
 
           {/* Sách xếp đa sắc nổi bật (đỏ, cam, vàng, xanh lá, xanh dương, tím) trên tầng kệ trên */}
@@ -1356,7 +1403,10 @@ function GirlRoomFurniture() {
                 />
               </mesh>
               {girlVanityLightOn && (
-                <pointLight position={[0, 0, 0.35]} color="#ffe0a0" intensity={1.65} distance={3.8} decay={2} />
+                <mesh position={[0, 0, 0.015]}>
+                  <circleGeometry args={[0.58, 36]} />
+                  <meshBasicMaterial color="#ffe0a0" transparent opacity={0.28} depthWrite={false} />
+                </mesh>
               )}
             </G>
           </Interact>
@@ -1487,7 +1537,6 @@ function GirlRoomFurniture() {
               />
             </group>
           ))}
-          <pointLight position={[0, 2.2, 0.35]} color="#ffaa33" intensity={1.35} distance={3.8} decay={2} />
 
           {[-0.48, 0.48].map((dx, side) => (
             <group key={side} position={[dx, 0.12, 0.52]}>
@@ -1495,15 +1544,19 @@ function GirlRoomFurniture() {
               <BB p={[0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#3b2314" />
               <BB p={[0, 0, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
               <BB p={[0, 3.12, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
-              <BB
-                p={[0, 0.08, 0]}
-                s={[0.82, 3.04, 0.018]}
-                c="#fff8eb"
-                opacity={0.22}
-                rough={0.06}
-                metal={0.1}
-                shadow={false}
-              />
+              <mesh position={[0, 1.6, 0]}>
+                <boxGeometry args={[0.82, 3.04, 0.018]} />
+                <meshPhysicalMaterial
+                  color="#fff8eb"
+                  roughness={0.08}
+                  metalness={0.1}
+                  transmission={0.82}
+                  transparent
+                  ior={1.5}
+                  thickness={0.12}
+                  depthWrite={false}
+                />
+              </mesh>
               <BB
                 p={[side === 0 ? 0.38 : -0.38, 1.35, 0.03]}
                 s={[0.022, 0.48, 0.025]}
@@ -1532,7 +1585,7 @@ function GirlRoomFurniture() {
           />
         </mesh>
 
-        {/* 2. Ghế bành bọc da màu nâu bò (Caramel Leather Armchair) xoay chéo hướng vào trong */}
+        {/* 2. Ghế bành bọc da màu nâu bò (Caramel Leather Armchair) bo góc mềm mại */}
         <Interact
           hint="🪑 Ghế đọc sách"
           onClick={() => useStore.getState().startActivity('girl_nook', true)}
@@ -1543,25 +1596,25 @@ function GirlRoomFurniture() {
                 <Cyl key={`${i}-${j}`} p={[lx, 0.12, lz]} rt={0.026} rb={0.016} h={0.24} c="#271c15" />
               )),
             )}
-            <BB p={[0, 0.22, 0]} s={[0.88, 0.18, 0.84]} c="#b86224" rough={0.48} />
-            <BB p={[0, 0.38, 0.03]} s={[0.72, 0.12, 0.72]} c="#c9702e" rough={0.45} />
-            <BB p={[0, 0.42, -0.34]} r={[-0.18, 0, 0]} s={[0.84, 0.62, 0.16]} c="#b86224" rough={0.48} />
-            <BB p={[0, 0.48, -0.27]} r={[-0.18, 0, 0]} s={[0.72, 0.26, 0.1]} c="#cf7634" rough={0.44} />
-            <BB p={[0, 0.76, -0.32]} r={[-0.18, 0, 0]} s={[0.72, 0.24, 0.1]} c="#cf7634" rough={0.44} />
-            <BB p={[-0.4, 0.36, 0.02]} s={[0.14, 0.26, 0.78]} c="#c26828" rough={0.46} />
-            <BB p={[0.4, 0.36, 0.02]} s={[0.14, 0.26, 0.78]} c="#c26828" rough={0.46} />
+            <RBB p={[0, 0.22, 0]} s={[0.88, 0.18, 0.84]} c="#b86224" rough={0.52} radius={0.04} shadow />
+            <RBB p={[0, 0.38, 0.03]} s={[0.72, 0.12, 0.72]} c="#c9702e" rough={0.5} radius={0.04} />
+            <RBB p={[0, 0.42, -0.34]} r={[-0.18, 0, 0]} s={[0.84, 0.62, 0.16]} c="#b86224" rough={0.52} radius={0.04} shadow />
+            <RBB p={[0, 0.48, -0.27]} r={[-0.18, 0, 0]} s={[0.72, 0.26, 0.1]} c="#cf7634" rough={0.5} radius={0.03} />
+            <RBB p={[0, 0.76, -0.32]} r={[-0.18, 0, 0]} s={[0.72, 0.24, 0.1]} c="#cf7634" rough={0.5} radius={0.03} />
+            <RBB p={[-0.4, 0.36, 0.02]} s={[0.14, 0.26, 0.78]} c="#c26828" rough={0.5} radius={0.03} />
+            <RBB p={[0.4, 0.36, 0.02]} s={[0.14, 0.26, 0.78]} c="#c26828" rough={0.5} radius={0.03} />
           </G>
         </Interact>
 
-        {/* 3. Đôn gác chân (Ottoman) bọc da màu nâu bò đồng bộ */}
+        {/* 3. Đôn gác chân (Ottoman) bọc da màu nâu bò bo góc êm ái */}
         <G p={[-0.95, 0, -0.05]} r={[0, 0.25, 0]}>
           {[-0.26, 0.26].map((lx, i) =>
             [-0.2, 0.2].map((lz, j) => (
               <Cyl key={`${i}-${j}`} p={[lx, 0.1, lz]} rt={0.022} rb={0.015} h={0.2} c="#271c15" />
             )),
           )}
-          <BB p={[0, 0.18, 0]} s={[0.68, 0.18, 0.54]} c="#c46b2b" rough={0.46} />
-          <BB p={[0, 0.34, 0]} s={[0.64, 0.06, 0.5]} c="#d17736" rough={0.44} />
+          <RBB p={[0, 0.18, 0]} s={[0.68, 0.18, 0.54]} c="#c46b2b" rough={0.5} radius={0.04} shadow />
+          <RBB p={[0, 0.34, 0]} s={[0.64, 0.06, 0.5]} c="#d17736" rough={0.48} radius={0.03} />
         </G>
 
         {/* 4. Bàn trà tròn bằng gỗ + BỘ ẤM TRÀ SỨ & ĐĨA BÁNH NGỌT MACARON */}
@@ -1622,8 +1675,8 @@ function GirlRoomFurniture() {
           onClick={() => useStore.getState().toggleFloor2ReadingLamp()}
         >
           <G p={[2.18, 0, 0.42]}>
-            <Cyl p={[0, 0.025, 0]} rt={0.22} rb={0.24} h={0.05} c="#1e2024" metal={0.5} />
-            <Cyl p={[0, 0.78, 0]} rt={0.02} rb={0.024} h={1.5} c="#1e2024" metal={0.6} />
+            <Cyl p={[0, 0.025, 0]} rt={0.22} rb={0.24} h={0.05} c="#1e2024" metal={0.85} rough={0.18} />
+            <Cyl p={[0, 0.78, 0]} rt={0.02} rb={0.024} h={1.5} c="#1e2024" metal={0.85} rough={0.18} />
             <Cyl
               p={[0, 1.56, 0]}
               rt={0.23}
@@ -1631,10 +1684,13 @@ function GirlRoomFurniture() {
               h={0.42}
               c="#fff7e2"
               emissive="#ffaa2b"
-              ei={floor2ReadingLampOn ? 2.8 : 0.15}
+              ei={floor2ReadingLampOn ? 3.2 : 0.15}
             />
             {floor2ReadingLampOn && (
-              <pointLight position={[0, 1.45, 0]} color="#ffaa33" intensity={1.15} distance={4.2} decay={2} />
+              <mesh position={[0, 1.45, 0]}>
+                <sphereGeometry args={[0.3, 16, 12]} />
+                <meshBasicMaterial color="#ffaa33" transparent opacity={0.22} depthWrite={false} />
+              </mesh>
             )}
           </G>
         </Interact>

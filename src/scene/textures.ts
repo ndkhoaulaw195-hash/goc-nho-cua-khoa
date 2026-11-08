@@ -14,7 +14,10 @@ function canvasTex(key: string, w: number, h: number, draw: Draw) {
   draw(c.getContext('2d')!, w, h)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 16
+  t.generateMipmaps = true
+  t.minFilter = THREE.LinearMipmapLinearFilter
+  t.magFilter = THREE.LinearFilter
+  t.anisotropy = 8
   cache.set(key, t)
   return t
 }
@@ -25,7 +28,10 @@ export function loadPhotoTexture(url: string) {
   const loader = new THREE.TextureLoader()
   const tex = loader.load(url)
   tex.colorSpace = THREE.SRGBColorSpace
-  tex.anisotropy = 16
+  tex.generateMipmaps = true
+  tex.minFilter = THREE.LinearMipmapLinearFilter
+  tex.magFilter = THREE.LinearFilter
+  tex.anisotropy = 8
   imgCache.set(url, tex)
   return tex
 }

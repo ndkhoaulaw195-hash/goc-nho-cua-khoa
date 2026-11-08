@@ -83,12 +83,6 @@ export function Room() {
 
   return (
     <group>
-      {/* Nền Studio bao quanh mô hình: TẮT receiveShadow để tuyệt đối không in bóng đen bẩn thỉu của đồ đạc bên ngoài nhà */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.66, 0]} receiveShadow={false}>
-        <planeGeometry args={[140, 140]} />
-        <meshStandardMaterial color={darkMode ? '#0d1017' : '#ece6dd'} roughness={0.98} />
-      </mesh>
-
       {/* Lớp sàn lót kiến trúc màu sáng (từ y = -0.07 đến y = -0.015) ngăn cách hoàn toàn mặt sàn với đế đen */}
       <B p={[-2.8, -0.042, 0]} s={[25.6, 0.055, 12.0]} c={darkMode ? '#3e342b' : '#d8cbb8'} rough={0.85} shadow={false} />
 
@@ -107,7 +101,7 @@ export function Room() {
         <planeGeometry args={[w, d]} />
         <meshStandardMaterial
           map={floorMap}
-          roughness={0.54}
+          roughness={0.42}
           metalness={0.05}
           color={darkMode ? '#b59e8a' : '#ffffff'}
         />
@@ -327,11 +321,8 @@ function Rug({
 
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
-  const lampOn = useStore((s) => s.lampOn)
-  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
-  const curtainsOpen = useStore((s) => s.curtainsOpen)
-  const pcState = useStore((s) => s.pcState)
-  const tvOn = useStore((s) => s.tvOn)
+  const graphicMode = useStore((s) => s.graphicMode)
+  const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
 
   return (
     <>
@@ -344,21 +335,21 @@ export function Lights() {
       />
       <ambientLight intensity={darkMode ? 0.22 : 0.36} color={darkMode ? '#9cb4ff' : '#ffeedd'} />
 
-      {/* Ánh sáng mặt trời chính tạo bóng đổ mềm mại như studio 3D */}
+      {/* Ánh sáng mặt trời chính: khung shadow camera ôm khít ngôi nhà, mapSize 2048x2048 cực nét, bias chuẩn */}
       <directionalLight
         position={[-9, 22, 16]}
-        intensity={darkMode ? 0.45 : 1.8}
+        intensity={darkMode ? 0.45 : 1.85}
         color={darkMode ? '#8da8ff' : '#fff2df'}
         castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-18}
-        shadow-camera-right={16}
-        shadow-camera-top={16}
-        shadow-camera-bottom={-14}
+        shadow-mapSize={[shadowResolution, shadowResolution]}
+        shadow-camera-left={-16}
+        shadow-camera-right={14}
+        shadow-camera-top={14}
+        shadow-camera-bottom={-12}
         shadow-camera-near={2}
-        shadow-camera-far={50}
-        shadow-bias={-0.0015}
-        shadow-normalBias={0.06}
+        shadow-camera-far={45}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.04}
       />
 
       {/* Ánh sáng phụ phía sau-trái giúp mặt ngoài tường sau & tường trái sáng rõ đều màu */}
@@ -367,79 +358,36 @@ export function Lights() {
         intensity={darkMode ? 0.18 : 0.75}
         color={darkMode ? '#8da8ff' : '#fff6eb'}
       />
+
+      {/* 3 PointLight bao quát 3 vùng kiến trúc chính không đổ bóng (castShadow = false) để tối ưu GPU */}
+      {/* 1. Vùng Tầng 1: phòng ngủ & phòng khách ấm áp */}
       <pointLight
-        position={[9.1, 2.3, -1.0]}
-        intensity={curtainsOpen ? (darkMode ? 1.8 : 5.0) : 0.9}
+        position={[-1.2, 3.2, -0.5]}
+        intensity={darkMode ? 3.2 : 1.8}
+        distance={14}
+        decay={2}
+        color={darkMode ? '#8da8ff' : '#ffeed4'}
+        castShadow={false}
+      />
+
+      {/* 2. Vùng Tầng 2: phòng ngủ & góc làm việc trên gác */}
+      <pointLight
+        position={[0.2, 7.5, -1.0]}
+        intensity={darkMode ? 3.0 : 1.6}
+        distance={13}
+        decay={2}
+        color={darkMode ? '#8da8ff' : '#fff1db'}
+        castShadow={false}
+      />
+
+      {/* 3. Vùng Phòng tắm Master: đá cẩm thạch trắng sáng trong trẻo */}
+      <pointLight
+        position={[-12.8, 3.2, -0.5]}
+        intensity={darkMode ? 2.6 : 1.5}
         distance={9}
         decay={2}
-        color={darkMode ? '#8ab4ff' : '#fff5e4'}
-      />
-
-      {/* Đèn LED hắt trần phòng ngủ ấm áp */}
-      <pointLight
-        position={[-5.2, 3.85, -4.8]}
-        intensity={darkMode ? 4.2 : 2.5}
-        distance={7}
-        decay={2}
-        color="#ffbe66"
-      />
-      {floor1HeadboardLedOn && (
-        <pointLight
-          position={[-2.6, 1.65, -4.9]}
-          intensity={darkMode ? 3.6 : 2.2}
-          distance={5.2}
-          decay={2}
-          color="#ffb85c"
-        />
-      )}
-
-      {/* Đèn rọi tranh hướng dương & 3 khung ảnh kỷ niệm */}
-      <pointLight
-        position={[1.5, 3.6, -5.1]}
-        intensity={darkMode ? 3.2 : 2.0}
-        distance={5}
-        decay={2}
-        color="#ffd285"
-      />
-
-      {/* Đèn cây đứng góc phải trước (bật/tắt riêng) */}
-      {lampOn && (
-        <pointLight
-          position={[8.75, 1.95, 3.45]}
-          intensity={darkMode ? 7.2 : 4.5}
-          distance={7.5}
-          decay={2}
-          color="#ffbe64"
-        />
-      )}
-
-      {pcState !== 'off' && (
-        <pointLight
-          position={[2.85, 1.55, -4.5]}
-          intensity={darkMode ? 3.6 : 1.8}
-          distance={4.5}
-          decay={2}
-          color={pcState === 'rgb' ? '#d946ef' : '#9cc7ff'}
-        />
-      )}
-
-      {tvOn && (
-        <pointLight
-          position={[4.15, 1.45, 0.85]}
-          intensity={darkMode ? 4.8 : 2.2}
-          distance={5}
-          decay={2}
-          color="#818cf8"
-        />
-      )}
-
-      {/* Đèn trần phòng tắm dịu nhẹ */}
-      <pointLight
-        position={[-12.8, 3.4, -2.5]}
-        intensity={darkMode ? 3.6 : 2.0}
-        distance={6}
-        decay={2}
-        color="#fff1db"
+        color={darkMode ? '#a5b4fc' : '#fff5eb'}
+        castShadow={false}
       />
     </>
   )

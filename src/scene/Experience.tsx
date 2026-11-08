@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
@@ -9,27 +10,65 @@ import { Avatar, CORGI, Dog, PUG } from './Characters'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
 
+/** Thiết lập RoomEnvironment & PMREMGenerator tạo phản chiếu chân thực cho PBR Materials */
+function SetupEnvironment() {
+  const { gl, scene } = useThree()
+  const darkMode = useStore((s) => s.darkMode)
+
+  useEffect(() => {
+    const pmremGenerator = new THREE.PMREMGenerator(gl)
+    pmremGenerator.compileEquirectangularShader()
+    const roomEnv = new RoomEnvironment()
+    const envTexture = pmremGenerator.fromScene(roomEnv, 0.04).texture
+    scene.environment = envTexture
+    scene.environmentIntensity = darkMode ? 0.22 : 0.35
+
+    return () => {
+      scene.environment = null
+      envTexture.dispose()
+      roomEnv.dispose()
+      pmremGenerator.dispose()
+    }
+  }, [gl, scene, darkMode])
+
+  return null
+}
+
 export function Experience() {
   const mode = useStore((s) => s.mode)
-  const darkMode = useStore((s) => s.darkMode)
+  const graphicMode = useStore((s) => s.graphicMode)
+  const isInteracting = useStore((s) => s.isInteracting)
   const controlsRef = useRef<OrbitControlsImpl>(null)
+
+  // Adaptive DPR: Khi kéo xoay chuột, tạm hạ DPR xuống để duy trì 60fps mượt mà; dừng xoay đưa lên Retina siêu nét
+  const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
+  const currentDpr =
+    graphicMode === 'hd'
+      ? isInteracting
+        ? 1.25
+        : Math.min(deviceDpr, 2)
+      : isInteracting
+        ? 1.0
+        : 1.25
 
   return (
     <Canvas
-      shadows
+      shadows={{ type: THREE.PCFShadowMap }}
       performance={{ min: 0.6 }}
       gl={{
         antialias: true,
+        alpha: true,
         powerPreference: 'high-performance',
         stencil: false,
         depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.02,
+        toneMappingExposure: 1.08,
+        outputColorSpace: THREE.SRGBColorSpace,
       }}
-      dpr={[1, 1.35]}
+      dpr={currentDpr}
       camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
     >
-      <color attach="background" args={[darkMode ? '#111520' : '#ece6dd']} />
+      <SetupEnvironment />
       <Lights />
       <Room />
       <Furniture />
@@ -64,6 +103,8 @@ export function Experience() {
             minDistance={1.0}
             maxDistance={46}
             maxPolarAngle={Math.PI / 2.02}
+            onStart={() => useStore.getState().setIsInteracting(true)}
+            onEnd={() => useStore.getState().setIsInteracting(false)}
           />
           <CameraRig controlsRef={controlsRef} />
         </>

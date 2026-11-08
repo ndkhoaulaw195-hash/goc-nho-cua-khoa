@@ -25,15 +25,18 @@ export function GlassCurtainWall({
   const [L, H] = size
   const frameColor = darkMode ? '#181b20' : '#232830'
 
-  // Kính kiến trúc trong suốt mờ mờ nguyên khối không chia ô, nhìn thấu rõ ràng toàn bộ bên trong
+  // Kính kiến trúc trong suốt mờ mờ nguyên khối không chia ô, dùng MeshPhysicalMaterial truyền sáng cao cấp
   const glassMat = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
-        color: darkMode ? '#5a82a6' : '#d4ebf9',
+      new THREE.MeshPhysicalMaterial({
+        color: darkMode ? '#8ab4d8' : '#eaf4fc',
         transparent: true,
-        opacity: darkMode ? 0.22 : 0.18,
+        opacity: 0.88,
         roughness: 0.08,
-        metalness: 0.12,
+        metalness: 0.1,
+        transmission: 0.82,
+        ior: 1.5,
+        thickness: 0.12,
         side: THREE.DoubleSide,
         depthWrite: false,
       }),

@@ -276,6 +276,8 @@ function TopRight({
   const setMode = useStore((s) => s.setMode)
   const darkMode = useStore((s) => s.darkMode)
   const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  const graphicMode = useStore((s) => s.graphicMode)
+  const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
   const activity = useStore((s) => s.activity)
   const userRole = useStore((s) => s.userRole)
@@ -362,6 +364,15 @@ function TopRight({
           onClick={toggleDarkMode}
         >
           {darkMode ? I.sun : I.moon}
+        </button>
+
+        <button
+          className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
+          onClick={toggleGraphicMode}
+          title={graphicMode === 'hd' ? 'Đồ họa Retina HD + Shadow 2K (Bấm để đổi sang Mượt)' : 'Đồ họa Mượt mà (Bấm để đổi sang HD)'}
+          style={{ padding: '0 8px', fontSize: 11.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}
+        >
+          {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
         </button>
 
         <span className="dock-sep" />
