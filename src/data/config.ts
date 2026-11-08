@@ -14,15 +14,21 @@ export const LIVE_ACTORS: {
   khoaPos: [number, number]
   khoaFloorY: number
   khoaYaw: number
+  khoaWorldPos: V3
   girlPos: V3
   girlYaw: number
+  girlWorldPos: V3
+  fpYaw: number
   dogs: Record<'mochi' | 'bo', { pos: V3; floorMeetPos: [number, number] }>
 } = {
   khoaPos: [-1.1, -1.2],
   khoaFloorY: 0,
   khoaYaw: 0.15,
+  khoaWorldPos: [-1.1, 0, -1.2],
   girlPos: [-3.9, 4.35, -0.35],
   girlYaw: -0.15,
+  girlWorldPos: [-3.9, 4.35, -0.35],
+  fpYaw: 0.15,
   dogs: {
     mochi: { pos: [-5.8, 0, 1.2], floorMeetPos: [-5.2, 1.2] },
     bo: { pos: [-4.2, 0, 2.2], floorMeetPos: [-4.2, 2.2] },
@@ -127,7 +133,7 @@ export const WALL_PHOTOS: WallPhoto[] = [
 ]
 
 export const HOME_VIEW = { pos: [-1.5, 17.5, 34.0] as V3, target: [-1.5, 3.1, -0.5] as V3 }
-export const FLOOR1_VIEW = { pos: [-2.2, 11.8, 23.5] as V3, target: [-2.2, 0.75, -0.3] as V3 }
+export const FLOOR1_VIEW = { pos: [-2.8, 17.0, 19.5] as V3, target: [-2.8, 0.5, 0.0] as V3 }
 export const FLOOR2_VIEW = { pos: [-0.6, 11.4, 16.8] as V3, target: [-0.6, 5.1, -1.8] as V3 }
 export const ATRIUM_VIEW = { pos: [-0.8, 6.8, 10.8] as V3, target: [2.3, 3.2, -1.8] as V3 }
 export const TV_VIEW = { pos: [2.6, 3.05, 6.4] as V3, target: [4.3, 1.05, 1.6] as V3 }
@@ -285,7 +291,7 @@ export const STATIONS: Record<
     label: '👗 Tủ đồ Bạn Gái',
   },
   tv: {
-    entryPos: [2.85, 3.25],
+    entryPos: [3.85, 2.85],
     entryYaw: Math.PI,
     floorY: 0,
     camera: TV_VIEW,

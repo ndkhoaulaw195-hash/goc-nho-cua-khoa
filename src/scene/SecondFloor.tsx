@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Sph } from './prims'
+import { GlassCurtainWall } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
   AUTO_SEQUENCE_GIRL,
@@ -67,13 +68,20 @@ function Interact({
 }
 
 export function SecondFloor() {
+  const viewPreset = useStore((s) => s.viewPreset)
+  const isFloor1 = viewPreset === 'floor1'
+
   return (
     <group>
-      <FloorAndBeams />
-      <WallsAndDoor />
+      {!isFloor1 && (
+        <>
+          <FloorAndBeams />
+          <WallsAndDoor />
+          <GirlRoomFurniture />
+        </>
+      )}
       <IndoorStaircase />
-      <GirlRoomFurniture />
-      <GirlfriendAvatar />
+      <GirlfriendAvatar hideIfUpstairs={isFloor1} />
     </group>
   )
 }
@@ -230,8 +238,8 @@ function WallsAndDoor() {
 
   return (
     <group>
-      {/* 1. Tường sau Tầng 2: Ẩn hoàn toàn khi camera xoay ra phía sau */}
-      {!cutWalls.back && (
+      {/* 1. Tường sau Tầng 2: Thay thế bằng Vách kính hiện đại khi camera xoay ra phía sau */}
+      {!cutWalls.back ? (
         <>
           <B
             p={[0, Y - 0.12 + (H2 + 0.12) / 2, -6.14]}
@@ -273,10 +281,12 @@ function WallsAndDoor() {
           {/* Phào chỉ trần nhà màu trắng kem chạy dọc phía trên tường */}
           <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c="#f8f5f0" shadow={false} polyOffset />
         </>
+      ) : (
+        <GlassCurtainWall pos={[0, Y + H2 / 2, -6.04]} size={[20.48, H2]} orientation="z" numPanels={6} />
       )}
 
-      {/* 4. Tường bên trái Tầng 2: Ẩn hoàn toàn khi camera xoay sang bên trái */}
-      {!cutWalls.left && (
+      {/* 4. Tường bên trái Tầng 2: Thay thế bằng Vách kính hiện đại khi camera nhìn sang trái */}
+      {!cutWalls.left ? (
         <>
           <B
             p={[-10.14, Y - 0.12 + (H2 + 0.12) / 2, -0.66]}
@@ -312,6 +322,8 @@ function WallsAndDoor() {
             <Sph p={[0.45, 0, 0.025]} s={[0.17, 0.2, 0.01]} c="#ca8a04" />
           </G>
         </>
+      ) : (
+        <GlassCurtainWall pos={[-10.04, Y + H2 / 2, -0.66]} size={[11.16, H2]} orientation="x" numPanels={4} />
       )}
 
       {/* Cây Bàng Singapore ở góc tường bên trái */}
@@ -325,8 +337,8 @@ function WallsAndDoor() {
         ))}
       </G>
 
-      {/* 5. TƯỜNG BÊN PHẢI TẦNG 2: Ẩn hoàn toàn khi camera xoay sang bên phải */}
-      {!cutWalls.right && (
+      {/* 5. TƯỜNG BÊN PHẢI TẦNG 2: Thay thế bằng Vách kính hiện đại khi camera nhìn sang phải */}
+      {!cutWalls.right ? (
         <>
           <B
             p={[10.14, Y - 0.12 + (H2 + 0.12) / 2, -2.96]}
@@ -344,6 +356,8 @@ function WallsAndDoor() {
             polyOffset
           />
         </>
+      ) : (
+        <GlassCurtainWall pos={[10.04, Y + H2 / 2, -2.96]} size={[6.56, H2]} orientation="x" numPanels={3} />
       )}
       {/* Phào chỉ trần tường phải */}
       {!cutWalls.right && (
@@ -1633,7 +1647,7 @@ function SleepingCat({ p }: { p: V3 }) {
 /* ============================================================================
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
-function GirlfriendAvatar() {
+function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const leftArm = useRef<THREE.Group>(null)
@@ -1651,9 +1665,6 @@ function GirlfriendAvatar() {
   const SKIN = '#f3cbb2'
   const HAIR = '#2b1b12'
 
-  const mode = useStore((s) => s.mode)
-  const activeChar = useStore((s) => s.activeChar)
-  const isUserInitiated = useStore((s) => s.isUserInitiated)
   const girlActivity = useStore((s) => s.girlActivity)
   const girlOutfitId = useStore((s) => s.girlOutfitId)
   const girlOutfitSpinTick = useStore((s) => s.girlOutfitSpinTick)
@@ -1667,6 +1678,7 @@ function GirlfriendAvatar() {
 
   const prevGirlAct = useRef<Activity>(girlActivity)
   const phaseTimer = useRef(0)
+  const walkWatchdog = useRef(0)
   const autoIdleTimer = useRef(1.8)
   const autoSeqIdx = useRef(0)
   const lastSpinTick = useRef(girlOutfitSpinTick)
@@ -1697,7 +1709,6 @@ function GirlfriendAvatar() {
   useFrame(({ clock }, dt) => {
     if (!root.current) return
     const st = useStore.getState()
-    if (st.mode === 'fp' && st.activeChar === 'girl' && st.isUserInitiated && st.girlActivity !== 'idle') return
 
     const t = clock.elapsedTime
     const delta = Math.min(dt, 0.05)
@@ -1719,17 +1730,25 @@ function GirlfriendAvatar() {
     }
 
     const kb = keys.current
-    const isControllingGirl = st.activeChar === 'girl'
-    const canControlGirlWithKeys = st.mode === 'orbit' && isControllingGirl
-    const moveZ = canControlGirlWithKeys
-      ? (kb.KeyS || kb.ArrowDown ? 1 : 0) - (kb.KeyW || kb.ArrowUp ? 1 : 0)
-      : 0
-    const moveX = canControlGirlWithKeys
-      ? (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
-      : 0
+    const isControllingGirl = (st.userRole || st.activeChar) === 'girl'
+    let moveZ = 0
+    let moveX = 0
+    if (st.mode === 'orbit' && isControllingGirl) {
+      moveZ = (kb.KeyS || kb.ArrowDown ? 1 : 0) - (kb.KeyW || kb.ArrowUp ? 1 : 0)
+      moveX = (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
+    } else if (st.mode === 'fp' && isControllingGirl) {
+      const f = (kb.KeyW || kb.ArrowUp ? 1 : 0) - (kb.KeyS || kb.ArrowDown ? 1 : 0)
+      const r = (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
+      if (f !== 0 || r !== 0) {
+        const cosY = Math.cos(LIVE_ACTORS.fpYaw)
+        const sinY = Math.sin(LIVE_ACTORS.fpYaw)
+        moveX = -sinY * f + cosY * r
+        moveZ = -cosY * f - sinY * r
+      }
+    }
 
     if ((moveX !== 0 || moveZ !== 0) && st.girlActivity !== 'idle') {
-      st.startActivity('idle', true)
+      st.startActivity('idle', true, 'girl')
       return
     }
 
@@ -1753,6 +1772,7 @@ function GirlfriendAvatar() {
 
     // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1)
     if (st.girlActivity === 'idle') {
+      walkWatchdog.current = 0
       let moving = false
       if (isControllingGirl && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
         moving = stepCharacterWalk(
@@ -1811,6 +1831,10 @@ function GirlfriendAvatar() {
 
       if (st.girlPhase === 'walking') {
         const targetV3: V3 = [entry.entryX, entry.floorY, entry.entryZ]
+        walkWatchdog.current += delta
+        const distToEntry = Math.hypot(walkPos.current[0] - entry.entryX, walkPos.current[1] - entry.entryZ)
+        const distFloorY = Math.abs(walkFloorY.current - entry.floorY)
+
         const moving = stepCharacterWalk(
           walkPos,
           walkFloorY,
@@ -1825,10 +1849,21 @@ function GirlfriendAvatar() {
             walkFloorY.current = entry.floorY
             walkYaw.current = entry.entryYaw
             phaseTimer.current = 0
+            walkWatchdog.current = 0
             st.setActivityPhase('entering', 'girl')
           },
           delta,
         )
+
+        // CHỐNG KẸT (Anti-stuck watchdog): tới sát 0.45m hoặc quá 4.2s tự động vào phase entering
+        if ((distToEntry < 0.45 && distFloorY < 0.3) || walkWatchdog.current > 4.2) {
+          walkPos.current = [entry.entryX, entry.entryZ]
+          walkFloorY.current = entry.floorY
+          walkYaw.current = entry.entryYaw
+          phaseTimer.current = 0
+          walkWatchdog.current = 0
+          st.setActivityPhase('entering', 'girl')
+        }
         const s = Math.sin(walkPhase.current)
         const swing = moving ? s * 0.54 : 0
         const bob = moving ? Math.abs(Math.cos(walkPhase.current)) * 0.034 : 0
@@ -1947,10 +1982,16 @@ function GirlfriendAvatar() {
       root.current.position.z,
     ]
     LIVE_ACTORS.girlYaw = root.current.rotation.y
+    LIVE_ACTORS.girlWorldPos = [
+      root.current.position.x,
+      root.current.position.y,
+      root.current.position.z,
+    ]
 
     if (head.current) {
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
       head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, headY, k)
+      head.current.visible = !(st.mode === 'fp' && isControllingGirl)
     }
     if (leftArm.current) {
       leftArm.current.rotation.x = THREE.MathUtils.lerp(leftArm.current.rotation.x, lArmX, k)
@@ -1988,14 +2029,14 @@ function GirlfriendAvatar() {
     }
   })
 
-  const hideInFp = mode === 'fp' && activeChar === 'girl' && isUserInitiated && girlActivity !== 'idle'
+  const isHiddenByFloor1 = Boolean(hideIfUpstairs && walkFloorY.current > 2.0)
   const sleeping = girlActivity === 'sleep' || girlActivity === 'girl_sleep'
 
   return (
     <group
       ref={root}
       position={[-3.9, Y, -0.35]}
-      visible={!hideInFp}
+      visible={!isHiddenByFloor1}
       onClick={(e) => {
         e.stopPropagation()
         useStore.getState().setActiveChar('girl')

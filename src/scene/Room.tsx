@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B } from './prims'
+import { GlassCurtainWall } from './GlassCurtainWall'
 import { marbleTiles, rugWeave, woodFloor, woodSlats } from './textures'
 import { useStore } from '../store'
 
@@ -105,9 +106,9 @@ export function Room() {
         </mesh>
       )}
 
-      {/* ---------- HỆ THỐNG VÁCH TƯỜNG KIẾN TRÚC ĐỒNG NHẤT MÀU KEM/BE BÊN NGOÀI + TỰ ĐỘNG ẨN TƯỜNG KHI XOAY CAMERA ---------- */}
-      {/* 1. Tường sau: Ẩn hoàn toàn khi camera xoay ra phía sau để luôn nhìn thấu nội thất bên trong không bị che khuất */}
-      {!cutWalls.back && (
+      {/* ---------- HỆ THỐNG VÁCH TƯỜNG KIẾN TRÚC: HIỂN THỊ TƯỜNG ĐẶC KHI NHÌN TỪ TRONG, VÁCH KÍNH HIỆN ĐẠI KHI CẮT LÁT ---------- */}
+      {/* 1. Tường sau: Khi xoay ra sau sẽ hiện Vách kính tràn viền sang trọng thay vì để trống toang hoác */}
+      {!cutWalls.back ? (
         <>
           <B
             p={[-2.8, h / 2, -6.14]}
@@ -148,10 +149,12 @@ export function Room() {
           <B p={[-13.8, 3.25, -5.97]} s={[1.72, 0.72, 0.02]} c="#27272a" shadow={false} polyOffset />
           <B p={[-12.8, h - 0.1, -5.94]} s={[5.4, 0.035, 0.04]} c="#fff4dc" emissive="#ffb854" ei={2.2} shadow={false} />
         </>
+      ) : (
+        <GlassCurtainWall pos={[-2.8, h / 2, -6.04]} size={[26.08, h]} orientation="z" numPanels={8} />
       )}
 
-      {/* 2. Tường trái phòng tắm: Ẩn hoàn toàn khi camera xoay sang bên trái */}
-      {!cutWalls.left && (
+      {/* 2. Tường trái phòng tắm: Thay thế bằng Vách kính hiện đại khi camera nhìn từ bên trái */}
+      {!cutWalls.left ? (
         <>
           <B
             p={[-15.72, h / 2, -0.12]}
@@ -164,6 +167,8 @@ export function Room() {
           <B p={[-15.56, 3.25, 2.2]} s={[0.03, 0.65, 1.8]} c="#dbeafe" opacity={0.65} rough={0.2} metal={0.3} shadow={false} polyOffset />
           <B p={[-15.57, 3.25, 2.2]} s={[0.02, 0.72, 1.88]} c="#27272a" shadow={false} polyOffset />
         </>
+      ) : (
+        <GlassCurtainWall pos={[-15.6, h / 2, -0.12]} size={[12.24, h]} orientation="x" numPanels={4} />
       )}
 
       {/* 3. Vách ngăn giữa phòng tắm và phòng ngủ (tại x = -10, có ô cửa thông phòng tại z = -3.4) */}

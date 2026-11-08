@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import {
+  FLOOR1_VIEW,
+  FLOOR2_VIEW,
   GIRL_OUTFITS,
   HOME_VIEW,
   LIVE_ACTORS,
@@ -200,9 +202,11 @@ export const useStore = create<State>()(
           mode,
           focus:
             mode === 'orbit'
-              ? s.isUserInitiated && s.activity !== 'idle'
-                ? STATIONS[s.activity].camera
-                : HOME_VIEW
+              ? s.viewPreset === 'floor1'
+                ? FLOOR1_VIEW
+                : s.viewPreset === 'floor2'
+                  ? FLOOR2_VIEW
+                  : HOME_VIEW
               : null,
           activePhoto: null,
           toastMessage: mode === 'fp' ? '👁️ Góc nhìn thứ nhất' : '🏠 Góc nhìn toàn cảnh',
@@ -323,7 +327,7 @@ export const useStore = create<State>()(
               wardrobeOpen: char === 'boy' ? false : s.wardrobeOpen,
               girlWardrobeOpen: char === 'girl' ? false : s.girlWardrobeOpen,
               activePhoto: null,
-              focus: s.mode === 'orbit' ? HOME_VIEW : null,
+              focus: s.focus,
               toastMessage: '🚶 Đã đứng dậy',
             }
           }
@@ -349,7 +353,8 @@ export const useStore = create<State>()(
             wardrobeOpen: act === 'wardrobe' ? s.wardrobeOpen : char === 'boy' ? false : s.wardrobeOpen,
             girlWardrobeOpen:
               act === 'girl_wardrobe' ? s.girlWardrobeOpen : char === 'girl' ? false : s.girlWardrobeOpen,
-            focus: fromUser && s.mode === 'orbit' ? station.camera : s.focus,
+            // Giữ nguyên góc nhìn tổng quan hiện tại, không tự ý zoom sát hay chuyển góc nhìn thứ nhất
+            focus: s.focus,
             toastMessage: fromUser ? station.label : s.toastMessage,
           }
         }),
@@ -568,7 +573,8 @@ export const useStore = create<State>()(
             activePhoto: fromUser ? null : s.activePhoto,
             wardrobeOpen: false,
             girlWardrobeOpen: false,
-            focus: fromUser && s.mode === 'orbit' ? cam : s.focus,
+            // Giữ nguyên góc nhìn tổng quan hiện tại
+            focus: s.focus,
             toastMessage: fromUser ? `🐶 Vuốt ve ${dogName}` : s.toastMessage,
           }
         }),

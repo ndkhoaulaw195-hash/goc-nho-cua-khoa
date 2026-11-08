@@ -1416,10 +1416,10 @@ export const COLLIDERS: [number, number, number, number][] = [
   [-9.65, 0.35, -8.05, 4.58], // Gầm cầu thang (chỉ vào cầu thang từ chiếu nghỉ z = 4.92)
   [0.2, -0.6, 0.9, 0.1],
   [2.7, 0.0, 5.6, 0.7],
-  [1.5, 1.6, 2.6, 2.7],
-  [3.3, 1.65, 5.0, 2.65],
-  [5.75, 0.55, 6.95, 3.45],
-  [2.95, 3.1, 5.95, 4.25],
+  [1.55, 1.65, 2.55, 2.55], // Đôn ottoman
+  [3.35, 1.7, 4.95, 2.5],   // Bàn trà phòng khách (để thoáng khoảng z: 2.55 .. 3.2 cho lối đi sofa)
+  [5.85, 0.55, 6.95, 3.45],  // Nhánh sofa dọc bên phải
+  [3.1, 3.25, 5.9, 4.25],   // Thân đệm ghế sofa chính (chừa mép trước z = 2.85 làm điểm ngồi)
 
   // Đồ nội thất phòng tắm & giặt ủi
   [-14.8, -2.4, -12.8, -0.8], // Bồn tắm oval

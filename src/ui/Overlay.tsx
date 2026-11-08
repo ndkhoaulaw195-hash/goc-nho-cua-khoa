@@ -304,7 +304,7 @@ function TopRight({
         {userRole ? (
           <div className="user-role-badge">
             <span className="role-current-tag">
-              {userRole === 'boy' ? '👦 Vai: Khoa' : '👧 Vai: Bạn Gái'}
+              {userRole === 'boy' ? '👦 Khoa' : '👧 Bạn Gái'}
             </span>
             <button
               className={`auto-toggle-chip ${(userRole === 'boy' ? boyAutoLife : girlAutoLife) ? 'on' : ''}`}

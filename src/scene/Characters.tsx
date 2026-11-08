@@ -65,9 +65,9 @@ const NAV_NODES: [number, number][] = [
   [-0.5, 2.8],
   [-0.5, 4.6],
   [1.2, 0.8],
-  [1.2, 3.2],
-  [2.85, 3.25],
-  [4.45, 4.65],
+  [1.2, 2.85],
+  [2.85, 2.85],
+  [4.15, 2.85],
   [7.35, 2.2],
   [7.35, -2.0],
   [-10.0, -3.4],
@@ -460,8 +460,8 @@ export function getStationEntryForChar(
   if (act === 'tv') {
     // Sofa xem TV phòng khách: Cả 2 cùng ngồi cạnh nhau trên sofa (Khoa bên trái, Bạn Gái bên phải)
     return char === 'boy'
-      ? { entryX: 3.85, entryZ: 2.7, floorY: 0, entryYaw: Math.PI }
-      : { entryX: 4.85, entryZ: 2.7, floorY: 0, entryYaw: Math.PI }
+      ? { entryX: 3.85, entryZ: 2.85, floorY: 0, entryYaw: Math.PI }
+      : { entryX: 4.85, entryZ: 2.85, floorY: 0, entryYaw: Math.PI }
   }
   if (act === 'girl_lounge' && bothHere && char === 'boy') {
     return { entryX: -2.45, entryZ: 0.45, floorY: 4.35, entryYaw: -0.5 }
@@ -537,10 +537,11 @@ export function computeCharActivityPose(
   if (phase === 'entering') {
     if (act === 'tv') {
       const targetSofaX = bothHere ? (char === 'boy' ? 4.05 : 4.85) : 4.45
+      const startSofaX = bothHere ? (char === 'boy' ? 3.85 : 4.85) : 4.45
       pos = [
-        THREE.MathUtils.lerp(2.85, targetSofaX, pNorm),
+        THREE.MathUtils.lerp(startSofaX, targetSofaX, pNorm),
         THREE.MathUtils.lerp(0, -0.22 + sitOffset, pNorm),
-        THREE.MathUtils.lerp(3.25, 3.55, pNorm),
+        THREE.MathUtils.lerp(2.85, 3.55, pNorm),
       ]
       rotY = Math.PI
       lHipX = -1.2 * pNorm
@@ -1033,10 +1034,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const remoteRef = useRef<THREE.Mesh>(null)
   const bookRef = useRef<THREE.Group>(null)
 
-  const mode = useStore((s) => s.mode)
-  const activeChar = useStore((s) => s.activeChar)
   const boyActivity = useStore((s) => s.boyActivity)
-  const isUserInitiated = useStore((s) => s.isUserInitiated)
   const outfitId = useStore((s) => s.outfitId)
   const outfitSpinTick = useStore((s) => s.outfitSpinTick)
   const readBookPage = useStore((s) => s.readBookPage)
@@ -1049,6 +1047,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
 
   const prevActivity = useRef<Activity>('idle')
   const phaseTimer = useRef(0)
+  const walkWatchdog = useRef(0)
   const autoIdleTimer = useRef(1.4)
   const autoSeqIdx = useRef(0)
   const lastSpinTick = useRef(outfitSpinTick)
@@ -1076,7 +1075,6 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   useFrame(({ clock }, dt) => {
     const st = useStore.getState()
     if (!root.current) return
-    if (st.mode === 'fp' && st.activeChar === 'boy' && st.isUserInitiated && st.boyActivity !== 'idle') return
 
     const delta = Math.min(dt, 0.05)
     const t = clock.elapsedTime
@@ -1116,22 +1114,31 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     let showBook = false
 
     const kb = keys.current
-    const isControllingBoy = st.activeChar === 'boy'
-    const canControlBoyWithKeys = st.mode === 'orbit' && isControllingBoy
-    const moveZ = canControlBoyWithKeys
-      ? (kb.KeyS || kb.ArrowDown ? 1 : 0) - (kb.KeyW || kb.ArrowUp ? 1 : 0)
-      : 0
-    const moveX = canControlBoyWithKeys
-      ? (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
-      : 0
+    const isControllingBoy = (st.userRole || st.activeChar) === 'boy'
+    let moveZ = 0
+    let moveX = 0
+    if (st.mode === 'orbit' && isControllingBoy) {
+      moveZ = (kb.KeyS || kb.ArrowDown ? 1 : 0) - (kb.KeyW || kb.ArrowUp ? 1 : 0)
+      moveX = (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
+    } else if (st.mode === 'fp' && isControllingBoy) {
+      const f = (kb.KeyW || kb.ArrowUp ? 1 : 0) - (kb.KeyS || kb.ArrowDown ? 1 : 0)
+      const r = (kb.KeyD || kb.ArrowRight ? 1 : 0) - (kb.KeyA || kb.ArrowLeft ? 1 : 0)
+      if (f !== 0 || r !== 0) {
+        const cosY = Math.cos(LIVE_ACTORS.fpYaw)
+        const sinY = Math.sin(LIVE_ACTORS.fpYaw)
+        moveX = -sinY * f + cosY * r
+        moveZ = -cosY * f - sinY * r
+      }
+    }
 
     if ((moveX !== 0 || moveZ !== 0) && st.boyActivity !== 'idle') {
-      st.startActivity('idle', true)
+      st.startActivity('idle', true, 'boy')
       return
     }
 
     // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2)
     if (st.boyActivity === 'idle') {
+      walkWatchdog.current = 0
       let moving = false
 
       if (isControllingBoy && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
@@ -1181,6 +1188,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
 
       if (st.boyPhase === 'walking') {
         const targetV3: V3 = [entry.entryX, entry.floorY, entry.entryZ]
+        walkWatchdog.current += delta
+        const distToEntry = Math.hypot(walkPos.current[0] - entry.entryX, walkPos.current[1] - entry.entryZ)
+        const distFloorY = Math.abs(walkFloorY.current - entry.floorY)
+
         const moving = stepCharacterWalk(
           walkPos,
           walkFloorY,
@@ -1195,10 +1206,22 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
             walkFloorY.current = entry.floorY
             walkYaw.current = entry.entryYaw
             phaseTimer.current = 0
+            walkWatchdog.current = 0
             st.setActivityPhase('entering', 'boy')
           },
           delta,
         )
+
+        // CHỐNG KẸT (Anti-stuck watchdog): tới sát 0.45m hoặc quá 4.2s tự động vào phase entering
+        if ((distToEntry < 0.45 && distFloorY < 0.3) || walkWatchdog.current > 4.2) {
+          walkPos.current = [entry.entryX, entry.entryZ]
+          walkFloorY.current = entry.floorY
+          walkYaw.current = entry.entryYaw
+          phaseTimer.current = 0
+          walkWatchdog.current = 0
+          st.setActivityPhase('entering', 'boy')
+        }
+
         const swing = moving ? Math.sin(walkPhase.current) * 0.6 : 0
         const bob = moving ? Math.abs(Math.sin(walkPhase.current)) * 0.04 : 0
         targetPos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
@@ -1310,6 +1333,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     LIVE_ACTORS.khoaPos = [root.current.position.x, root.current.position.z]
     LIVE_ACTORS.khoaFloorY = walkFloorY.current
     LIVE_ACTORS.khoaYaw = root.current.rotation.y
+    LIVE_ACTORS.khoaWorldPos = [root.current.position.x, root.current.position.y, root.current.position.z]
 
     if (torso.current) {
       const isBoySleeping = st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep'
@@ -1336,6 +1360,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     if (head.current) {
       head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, headY, k)
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
+      head.current.visible = !(st.mode === 'fp' && isControllingBoy)
     }
 
     if (cupRef.current) cupRef.current.visible = showCup
@@ -1358,7 +1383,6 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     }
   })
 
-  const hideInFp = mode === 'fp' && activeChar === 'boy' && isUserInitiated && boyActivity !== 'idle'
   const SKIN = '#deb089'
   const sleeping = boyActivity === 'sleep' || boyActivity === 'girl_sleep'
 
@@ -1367,7 +1391,6 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       ref={root}
       position={p}
       rotation={[0, ry, 0]}
-      visible={!hideInFp}
       onClick={(e: ThreeEvent<MouseEvent>) => {
         e.stopPropagation()
         useStore.getState().setActiveChar('boy')
