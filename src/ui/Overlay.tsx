@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
+import { GtaHud } from './GtaHud'
 import {
   StickyNotesModal,
   QuestsModal,
@@ -95,6 +96,7 @@ export function Overlay() {
       <DartsGameModal />
       <PcArcadeModal />
       <MemoryModal />
+      <GtaHud />
       <LoginLobby />
 
       {mode === 'fp' && <div className="fp-crosshair" />}

@@ -49,6 +49,7 @@ export type Activity =
 
 export type ActivityPhase = 'walking' | 'entering' | 'active'
 export type PcState = 'on' | 'rgb' | 'off'
+export type GtaWeapon = 'unarmed' | 'water_gun' | 'pillow' | 'nerf'
 
 export type WeatherMode = 'clear' | 'sunset' | 'rain' | 'night'
 
@@ -333,6 +334,34 @@ interface State {
   tennisBall: TennisBallState
   throwTennisBall: (target: [number, number, number]) => void
   retrieveTennisBall: () => void
+
+  // === GTA ROOM ACTION SYSTEM ===
+  isDrivingVacuum: boolean
+  startDrivingVacuum: () => void
+  stopDrivingVacuum: () => void
+  vacuumPos: [number, number, number]
+  vacuumYaw: number
+  vacuumSpeed: number
+  setVacuumTransform: (pos: [number, number, number], yaw: number, speed: number) => void
+
+  weaponWheelOpen: boolean
+  setWeaponWheelOpen: (v: boolean) => void
+  currentWeapon: GtaWeapon
+  setWeapon: (w: GtaWeapon) => void
+
+  wantedStars: number
+  addWantedStar: (amount?: number) => void
+  clearWanted: () => void
+
+  isWasted: boolean
+  wastedReason: string
+  triggerWasted: (reason?: string) => void
+  respawnPlayer: () => void
+
+  raceActive: boolean
+  raceStartTime: number
+  startRace: () => void
+  stopRace: () => void
 
   // Gợi ý & thông báo ngắn
   hoverHint: string | null
@@ -1346,6 +1375,106 @@ export const useStore = create<State>()(
           }
           broadcastWorldChange('tennisBall', next)
           return { tennisBall: next, toastMessage: '🐶 Bé cún đã ngoạm bóng mang về!' }
+        }),
+
+      // === GTA ROOM ACTION SYSTEM ===
+      isDrivingVacuum: false,
+      startDrivingVacuum: () => {
+        const char = useStore.getState().activeChar
+        if (char === 'boy') {
+          useStore.setState({ boyActivity: 'idle', boyPhase: 'active' })
+        } else {
+          useStore.setState({ girlActivity: 'idle', girlPhase: 'active' })
+        }
+        set({
+          isDrivingVacuum: true,
+          activity: 'idle',
+          activityPhase: 'active',
+          toastMessage: '🏎️ BẮT ĐẦU LÁI XE! (WASD lái, Shift Nitro, Space Drift, F xuống xe)',
+        })
+      },
+      stopDrivingVacuum: () => {
+        set({
+          isDrivingVacuum: false,
+          toastMessage: '🚶 Đã xuống xe',
+        })
+      },
+      vacuumPos: [0, 0.05, 0],
+      vacuumYaw: 0,
+      vacuumSpeed: 0,
+      setVacuumTransform: (vacuumPos, vacuumYaw, vacuumSpeed) => set({ vacuumPos, vacuumYaw, vacuumSpeed }),
+
+      weaponWheelOpen: false,
+      setWeaponWheelOpen: (weaponWheelOpen) => set({ weaponWheelOpen }),
+      currentWeapon: 'unarmed',
+      setWeapon: (currentWeapon) => {
+        const labels: Record<GtaWeapon, string> = {
+          unarmed: '👊 Tay không',
+          water_gun: '💦 Súng bắn nước Super Soaker',
+          pillow: '🥊 Gối chiến đấu (Pillow Fight)',
+          nerf: '🎯 Súng đạn xốp Nerf Gun',
+        }
+        set({ currentWeapon, weaponWheelOpen: false, toastMessage: labels[currentWeapon] })
+      },
+
+      wantedStars: 0,
+      addWantedStar: (amount = 1) =>
+        set((s) => {
+          const next = Math.min(5, s.wantedStars + amount)
+          broadcastWorldChange('wantedStars', next)
+          if (next >= 3) {
+            return {
+              wantedStars: next,
+              toastMessage: '🚨 TRUY NÃ CỰC KỲ NGUY HIỂM! CẢNH SÁT RƯỢT ĐUỔI!',
+            }
+          }
+          return {
+            wantedStars: next,
+            toastMessage: `⭐ Cảnh cáo quậy phá! (${next}/5 Sao)`,
+          }
+        }),
+      clearWanted: () => {
+        broadcastWorldChange('wantedStars', 0)
+        set({ wantedStars: 0, toastMessage: '😇 Đã thoát khỏi lệnh truy nã!' })
+      },
+
+      isWasted: false,
+      wastedReason: 'BỊ TÓM BẮT',
+      triggerWasted: (reason = 'WASTED') => {
+        set({ isWasted: true, wastedReason: reason })
+        setTimeout(() => {
+          useStore.getState().respawnPlayer()
+        }, 3200)
+      },
+      respawnPlayer: () => {
+        set(() => {
+          broadcastWorldChange('wantedStars', 0)
+          return {
+            isWasted: false,
+            wantedStars: 0,
+            isDrivingVacuum: false,
+            toastMessage: '✨ Đã hồi sinh tại góc phòng bình yên!',
+          }
+        })
+      },
+
+      raceActive: false,
+      raceStartTime: 0,
+      startRace: () =>
+        set({
+          raceActive: true,
+          raceStartTime: performance.now(),
+          isDrivingVacuum: true,
+          toastMessage: '🏁 BẮT ĐẦU ĐUA XE TÍNH GIỜ! LÁI TỚI BAN CÔNG TẦNG 2!',
+        }),
+      stopRace: () =>
+        set((s) => {
+          if (!s.raceActive) return {}
+          const time = ((performance.now() - s.raceStartTime) / 1000).toFixed(2)
+          return {
+            raceActive: false,
+            toastMessage: `🏆 CÁN ĐÍCH! Thời gian hoàn thành: ${time} giây!`,
+          }
         }),
 
       toastMessage: null,

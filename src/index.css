@@ -683,4 +683,163 @@ html.dark .dock-btn.primary { color: #111520; }
 }
 .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
+/* =========================================================================
+   GTA ROOM EDITION: HUD, WEAPON WHEEL, SPEEDOMETER, WASTED SCREEN
+   ========================================================================= */
+
+/* --- 1. Wanted Stars (Sao truy nã) --- */
+.gta-wanted-container {
+  position: absolute; top: 68px; right: 20px; z-index: 105;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  pointer-events: none;
+}
+.gta-wanted-container.active { pointer-events: auto; }
+.wanted-stars {
+  display: flex; gap: 4px;
+}
+.star-icon {
+  font-size: 26px; line-height: 1; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.75);
+}
+.empty-star { color: rgba(255, 255, 255, 0.18); }
+.flashing-star {
+  color: #fbbf24;
+  animation: starBlink 0.45s ease-in-out infinite alternate;
+}
+@keyframes starBlink {
+  0% { color: #f59e0b; transform: scale(1); filter: drop-shadow(0 0 4px #f59e0b); }
+  100% { color: #ef4444; transform: scale(1.15); filter: drop-shadow(0 0 10px #ef4444); }
+}
+.police-chase-tag {
+  background: rgba(239, 68, 68, 0.9); color: #ffffff; font-weight: 800; font-size: 11px;
+  padding: 3px 10px; border-radius: 999px; letter-spacing: 0.05em;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+.bribe-police-btn {
+  background: rgba(15, 23, 42, 0.8); color: #cbd5e1; font-size: 11px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer; transition: all 0.2s; margin-top: 2px;
+}
+.bribe-police-btn:hover { background: #16a34a; color: #fff; }
+
+/* --- 2. Quick Action Bar góc phải dưới --- */
+.gta-quick-action-bar {
+  position: absolute; bottom: 84px; right: 20px; z-index: 105;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.weapon-badge-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card); backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  padding: 8px 14px; border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  cursor: pointer; transition: all 0.2s;
+}
+.weapon-badge-btn:hover { transform: translateY(-2px); border-color: #38bdf8; }
+.weapon-badge-btn .w-icon { font-size: 20px; }
+.weapon-badge-btn .w-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.weapon-badge-btn .w-hint { font-size: 10px; font-weight: 800; color: #38bdf8; background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px; }
+
+.drive-quick-btn {
+  background: linear-gradient(135deg, #0284c7, #0369a1); color: #ffffff;
+  font-size: 13px; font-weight: 700; padding: 9px 16px; border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4); cursor: pointer; transition: all 0.2s;
+}
+.drive-quick-btn:hover { transform: translateY(-2px) scale(1.02); background: #0ea5e9; }
+
+/* --- 3. GTA Weapon Wheel (Bánh xe vũ khí tròn xoay) --- */
+.weapon-wheel-overlay {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease-out;
+}
+.weapon-wheel-card {
+  background: rgba(24, 24, 27, 0.95); border: 2px solid rgba(56, 189, 248, 0.5);
+  border-radius: 24px; padding: 24px; width: 440px; text-align: center;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.25);
+  animation: pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.wheel-title { font-size: 15px; font-weight: 800; color: #38bdf8; letter-spacing: 0.1em; margin-bottom: 16px; }
+.wheel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wheel-slot {
+  background: rgba(39, 39, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 12px; border-radius: 16px; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; cursor: pointer; transition: all 0.18s;
+}
+.wheel-slot:hover { background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; transform: scale(1.04); }
+.wheel-slot.active {
+  background: rgba(56, 189, 248, 0.25); border-color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+}
+.wheel-slot .slot-icon { font-size: 32px; }
+.wheel-slot .slot-name { font-size: 13.5px; font-weight: 700; color: #ffffff; }
+.wheel-slot .slot-desc { font-size: 11px; color: #94a3b8; }
+.wheel-tip { font-size: 11.5px; color: #a1a1aa; margin-top: 16px; }
+
+/* --- 4. Speedometer & Nitro HUD (Lái xe) --- */
+.gta-speedometer-hud {
+  position: absolute; bottom: 84px; right: 20px; z-index: 110;
+  background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  padding: 16px 20px; border-radius: 20px; width: 230px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.2);
+  display: flex; flex-direction: column; gap: 10px;
+  animation: slideUp 0.2s ease-out;
+}
+.speed-dial { display: flex; align-items: baseline; gap: 6px; }
+.speed-number { font-size: 38px; font-weight: 900; color: #38bdf8; line-height: 1; font-family: monospace; }
+.speed-unit { font-size: 13px; font-weight: 800; color: #94a3b8; letter-spacing: 0.1em; }
+.nitro-bar-wrap { display: flex; flex-direction: column; gap: 4px; }
+.nitro-label { font-size: 10.5px; font-weight: 800; color: #06b6d4; letter-spacing: 0.08em; }
+.nitro-bar {
+  width: 100%; height: 7px; background: rgba(255, 255, 255, 0.1); border-radius: 999px; overflow: hidden;
+}
+.nitro-fill {
+  width: 100%; height: 100%; background: linear-gradient(90deg, #06b6d4, #38bdf8);
+  box-shadow: 0 0 8px #06b6d4;
+}
+.drive-controls-guide {
+  font-size: 11px; color: #cbd5e1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.exit-vehicle-btn {
+  background: #ef4444; color: #fff; font-size: 10.5px; font-weight: 700;
+  padding: 3px 8px; border-radius: 6px; margin-top: 4px; cursor: pointer;
+}
+
+/* --- 5. Màn hình WASTED / BUSTED Huyền Thoại --- */
+.gta-wasted-screen {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: grayscale(100%) contrast(140%);
+  -webkit-backdrop-filter: grayscale(100%) contrast(140%);
+  animation: wastedFadeIn 0.4s ease-out;
+}
+.wasted-banner {
+  width: 100%; background: rgba(0, 0, 0, 0.85);
+  border-top: 3px solid #dc2626; border-bottom: 3px solid #dc2626;
+  padding: 24px 0; text-align: center;
+  box-shadow: 0 0 50px rgba(220, 38, 38, 0.8);
+  animation: wastedBannerZoom 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.wasted-text {
+  font-size: 58px; font-weight: 900; color: #dc2626; letter-spacing: 0.18em;
+  text-shadow: 0 0 20px #ef4444, 0 4px 10px #000000;
+  font-family: 'Impact', 'Arial Black', sans-serif;
+  margin: 0;
+}
+.wasted-sub {
+  font-size: 13px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.25em; margin-top: 6px;
+}
+
+@keyframes wastedFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes wastedBannerZoom {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+
 
