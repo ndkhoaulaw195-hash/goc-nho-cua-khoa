@@ -461,16 +461,18 @@ export function getStationEntryForChar(
   const sideOffset = bothHere ? (char === 'boy' ? -0.38 : 0.38) : 0
 
   if (act === 'sleep') {
-    // Giường đôi Tầng 1: Cả 2 cùng nằm cạnh nhau (Khoa bên trái, Bạn Gái bên phải)
-    return char === 'boy'
-      ? { entryX: -3.85, entryZ: -3.55, floorY: 0, entryYaw: Math.PI / 2 }
-      : { entryX: -1.35, entryZ: -3.55, floorY: 0, entryYaw: -Math.PI / 2 }
+    // Giường đôi Tầng 1: Nếu cả 2 cùng ngủ thì Khoa bên trái -3.05, Bạn Gái bên phải -2.15; nếu 1 người thì nằm giữa -2.60
+    return {
+      entryX: bothHere ? (char === 'boy' ? -3.85 : -1.35) : -2.60,
+      entryZ: -3.55,
+      floorY: 0,
+      entryYaw: 0,
+    }
   }
   if (act === 'girl_sleep') {
-    // Giường đôi Tầng 2: Cả 2 cùng nằm cạnh nhau (Khoa bên trái -5.55, Bạn Gái bên phải -4.35)
-    return char === 'boy'
-      ? { entryX: -5.55, entryZ: -1.8, floorY: 4.35, entryYaw: Math.PI }
-      : { entryX: -4.35, entryZ: -1.8, floorY: 4.35, entryYaw: Math.PI }
+    // Giường đôi Tầng 2: Nếu cả 2 cùng ngủ thì Khoa bên trái -5.48, Bạn Gái bên phải -4.52; nếu 1 người thì nằm giữa -5.0
+    const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
+    return { entryX: bedX, entryZ: -1.8, floorY: 4.35, entryYaw: 0 }
   }
   if (act === 'tv') {
     // Sofa xem TV phòng khách: Cả 2 cùng ngồi cạnh nhau trên sofa (Khoa bên trái, Bạn Gái bên phải)
@@ -579,17 +581,17 @@ export function computeCharActivityPose(
       lArmX = -0.85 * pNorm
       rArmX = -0.85 * pNorm
     } else if (act === 'sleep') {
-      const bedX = char === 'boy' ? -3.08 : -2.12
-      const targetY = isGirl ? 0.85 : 0.86
-      const targetZ = isGirl ? -3.68 : -3.55
+      const bedX = bothHere ? (char === 'boy' ? -3.05 : -2.15) : -2.60
+      const targetY = 0.82
+      const targetZ = -3.45
       pos = [
-        THREE.MathUtils.lerp(char === 'boy' ? -3.85 : -1.35, bedX, pNorm),
+        THREE.MathUtils.lerp(bothHere ? (char === 'boy' ? -3.85 : -1.35) : -2.60, bedX, pNorm),
         THREE.MathUtils.lerp(0, targetY, pNorm),
         THREE.MathUtils.lerp(-3.55, targetZ, pNorm),
       ]
       rotX = (-Math.PI / 2) * pNorm
       rotY = 0
-      headX = 0.26 * pNorm
+      headX = 0.15 * pNorm
     } else if (act === 'wardrobe') {
       pos = [-7.1, 0, -4.15]
       rotY = Math.PI
@@ -663,9 +665,9 @@ export function computeCharActivityPose(
       rArmX = -1.25 * pNorm
       headX = 0.2 * pNorm
     } else if (act === 'girl_sleep') {
-      const bedX = char === 'boy' ? -5.55 : -4.35
-      const targetY = Y2 + (isGirl ? 0.88 : 0.89)
-      const targetZ = isGirl ? -3.85 : -3.8
+      const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
+      const targetY = Y2 + (isGirl ? 0.74 : 0.75)
+      const targetZ = -3.45
       pos = [
         bedX,
         THREE.MathUtils.lerp(Y2, targetY, pNorm),
@@ -673,7 +675,7 @@ export function computeCharActivityPose(
       ]
       rotX = (-Math.PI / 2) * pNorm
       rotY = 0
-      headX = 0.26 * pNorm
+      headX = 0.15 * pNorm
     } else if (act === 'piano') {
       pos = [
         0.47,
@@ -792,21 +794,22 @@ export function computeCharActivityPose(
     rArmX = -1.14 + Math.cos(t * 15) * 0.08
     headY = Math.sin(t * 1.2) * 0.22
   } else if (act === 'sleep') {
-    // Giường đôi Tầng 1: Khoa nằm bên trái (-3.08), Bạn Gái nằm bên phải (-2.12), nổi hoàn toàn trên chăn, đầu gối đúng lên gối
-    const bedX = char === 'boy' ? -3.08 : -2.12
-    pos = [bedX, isGirl ? 0.85 : 0.86, isGirl ? -3.68 : -3.55]
+    // Giường đôi Tầng 1: Khoa nằm bên trái (-3.05), Bạn Gái bên phải (-2.15); nếu 1 người thì nằm giữa -2.60
+    const bedX = bothHere ? (char === 'boy' ? -3.05 : -2.15) : -2.60
+    pos = [bedX, isGirl ? 0.82 : 0.83, -3.45]
     rotX = -Math.PI / 2
     rotY = 0
-    lHipX = -0.04
-    rHipX = -0.14
-    rHipZ = 0.05
-    rKneeX = 0.18
-    lArmX = -0.22
-    lArmZ = 0.22
-    rArmX = -0.15
-    rArmZ = -0.1
-    headY = char === 'boy' ? 0.12 : -0.12
-    headX = 0.28
+    lHipX = 0
+    rHipX = 0
+    rHipZ = 0
+    lKneeX = 0
+    rKneeX = 0
+    lArmX = 0
+    lArmZ = 0.08
+    rArmX = 0
+    rArmZ = -0.08
+    headY = 0
+    headX = 0.15
   } else if (act === 'wardrobe') {
     const spinning = t < spinUntil
     const spinProgress = spinning ? 1 - (spinUntil - t) / 0.95 : 0
@@ -896,21 +899,22 @@ export function computeCharActivityPose(
     lArmX = -0.25
     headX = 0.32
   } else if (act === 'girl_sleep') {
-    // Giường đôi Tầng 2: Cả 2 cùng nằm cạnh nhau (Khoa bên trái -5.55, Bạn Gái bên phải -4.35)
-    const bedX = char === 'boy' ? -5.55 : -4.35
-    pos = [bedX, Y2 + (isGirl ? 0.88 : 0.89), isGirl ? -3.85 : -3.8]
+    // Giường đôi Tầng 2: Nếu cả 2 cùng ngủ thì Khoa bên trái -5.48, Bạn Gái bên phải -4.52; nếu 1 người thì nằm giữa -5.0
+    const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
+    pos = [bedX, Y2 + (isGirl ? 0.74 : 0.75), -3.45]
     rotX = -Math.PI / 2
     rotY = 0
-    lHipX = -0.04
-    rHipX = -0.14
-    rHipZ = 0.05
-    rKneeX = 0.18
-    lArmX = -0.2
-    lArmZ = 0.2
-    rArmX = -0.15
-    rArmZ = -0.1
-    headX = 0.28
-    headY = char === 'boy' ? 0.12 : -0.12
+    lHipX = 0
+    rHipX = 0
+    rHipZ = 0
+    lKneeX = 0
+    rKneeX = 0
+    lArmX = 0
+    lArmZ = 0.08
+    rArmX = 0
+    rArmZ = -0.08
+    headX = 0.15
+    headY = 0
   } else if (act === 'girl_pc') {
     pos = [2.25 + sideOffset, Y2 - 0.24 + sitOffset, -4.64]
     rotY = Math.PI
@@ -1415,13 +1419,20 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, targetPos[0], k)
     root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, targetPos[1], k)
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, targetPos[2], k)
-    root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, targetRotX, k)
-
-    const rotDiff = Math.atan2(
-      Math.sin(targetRotY - root.current.rotation.y),
-      Math.cos(targetRotY - root.current.rotation.y),
-    )
-    root.current.rotation.y += rotDiff * k
+    const isBoySleeping =
+      (st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active'
+    if (isBoySleeping) {
+      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.y = 0
+      root.current.rotation.z = 0
+    } else {
+      root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, targetRotX, k)
+      const rotDiff = Math.atan2(
+        Math.sin(targetRotY - root.current.rotation.y),
+        Math.cos(targetRotY - root.current.rotation.y),
+      )
+      root.current.rotation.y += rotDiff * k
+    }
 
     LIVE_ACTORS.khoaPos = [root.current.position.x, root.current.position.z]
     LIVE_ACTORS.khoaFloorY = walkFloorY.current

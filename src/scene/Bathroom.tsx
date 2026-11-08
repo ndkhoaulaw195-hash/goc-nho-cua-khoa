@@ -266,7 +266,7 @@ function VanityAndWasher() {
                 <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.05} />
               </mesh>
               {bathMirrorLightOn && (
-                <pointLight position={[0, 0, 0.25]} intensity={1.8} distance={3.8} color="#ffe8c2" />
+                <pointLight position={[0, 0, 0.25]} intensity={1.8} distance={3.8} decay={2} color="#ffe8c2" />
               )}
             </G>
           </Interact>
@@ -442,7 +442,7 @@ function MasterBathLounge() {
             />
           </mesh>
           {bathFullMirrorLightOn && (
-            <pointLight position={[0.25, 0, 0]} intensity={1.6} distance={3.5} color="#ffe8c2" />
+            <pointLight position={[0.25, 0, 0]} intensity={1.6} distance={3.5} decay={2} color="#ffe8c2" />
           )}
         </G>
       </Interact>

@@ -318,6 +318,12 @@ export const useStore = create<State>()(
 
       startActivity: (act, fromUser = true, forChar) =>
         set((s) => {
+          // Bảo vệ quyền riêng tư trang phục: Khoa không dùng tủ đồ Bạn Gái, Bạn Gái không dùng tủ đồ Khoa
+          if (fromUser) {
+            if (s.userRole === 'boy' && act === 'girl_wardrobe') return {}
+            if (s.userRole === 'girl' && act === 'wardrobe') return {}
+          }
+
           // Tủ đồ tầng 1 dành riêng cho Khoa, Tủ đồ tầng 2 dành riêng cho Bạn Gái
           const char =
             act === 'wardrobe'

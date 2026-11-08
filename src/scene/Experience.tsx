@@ -17,13 +17,16 @@ export function Experience() {
   return (
     <Canvas
       shadows
+      performance={{ min: 0.6 }}
       gl={{
         antialias: true,
         powerPreference: 'high-performance',
+        stencil: false,
+        depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.02,
       }}
-      dpr={[1, 2]}
+      dpr={[1, 1.35]}
       camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
     >
       <color attach="background" args={[darkMode ? '#111520' : '#ece6dd']} />
@@ -129,9 +132,11 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const controls = controlsRef.current
     const st = useStore.getState()
     const f = st.focus
-    const cutBack = camera.position.z < 0.5
-    const cutLeft = camera.position.x < -8.0
-    const cutRight = camera.position.x > 7.0
+    const targetZ = controls ? controls.target.z : 0
+    const targetX = controls ? controls.target.x : 0
+    const cutBack = camera.position.z < targetZ + 4.5
+    const cutLeft = camera.position.x < targetX - 5.5
+    const cutRight = camera.position.x > targetX + 5.5
     if (
       st.cutWalls.back !== cutBack ||
       st.cutWalls.left !== cutLeft ||

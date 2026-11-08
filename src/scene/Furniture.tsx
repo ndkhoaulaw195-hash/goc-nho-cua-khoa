@@ -74,6 +74,8 @@ export function Furniture() {
 /* ---------- Tủ quần áo cánh kính tối màu có đèn LED hắt sáng bên trong ---------- */
 function Wardrobe() {
   const open = useStore((s) => s.wardrobeOpen)
+  const userRole = useStore((s) => s.userRole)
+  const canUseWardrobe = userRole === 'boy'
   const leftDoor = useRef<THREE.Group>(null)
   const midDoor = useRef<THREE.Group>(null)
   const rightDoor = useRef<THREE.Group>(null)
@@ -95,61 +97,67 @@ function Wardrobe() {
     { x: 0.82, c: '#1e293b', h: 0.82 },
   ]
 
+  const wardrobeBody = (
+    <G p={[-7.3, 0, -5.45]}>
+      {/* Khung tủ gỗ óc chó sẫm */}
+      <BB p={[0, 0, -0.42]} s={[2.32, 2.78, 0.06]} c={DARK} rough={0.5} />
+      <BB p={[-1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
+      <BB p={[1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
+      <BB p={[-0.36, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
+      <BB p={[0.38, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
+      <BB p={[0, 0, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
+      <BB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
+      <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#352923" />
+
+      {/* Đèn LED ấm áp bên trong tủ quần áo */}
+      <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#fff3d6" emissive="#ffbe5c" ei={2.2} shadow={false} />
+      <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#4a392c" emissive="#ffbe5c" ei={0.28} shadow={false} />
+
+      {/* Thanh treo & Quần áo bên trong */}
+      <Cyl p={[0, 2.42, 0]} r={[0, 0, Math.PI / 2]} rt={0.018} h={2.15} c="#d4c5b0" metal={0.8} />
+      {shirts.map((sh, i) => (
+        <BB key={i} p={[sh.x, 2.38 - sh.h, 0]} s={[0.18, sh.h, 0.46]} c={sh.c} rough={0.85} />
+      ))}
+
+      {/* Ngăn kéo & Hộp đồ phía dưới */}
+      <BB p={[-0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#dfd9ce" />
+      <BB p={[0.0, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#cfc7b8" />
+      <BB p={[0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#e2dcd3" />
+      <BB p={[-0.75, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#cbc3b5" />
+      <BB p={[0.0, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#dfd9ce" />
+
+      {/* 3 Cánh cửa kính khói viền gỗ tối */}
+      <group ref={leftDoor} position={[-1.1, 0, 0.43]}>
+        <BB p={[0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
+        <BB p={[0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
+        <B p={[0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+      </group>
+
+      <group ref={midDoor} position={[-0.36, 0, 0.43]}>
+        <BB p={[0.37, 0.05, 0]} s={[0.74, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[0.03, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
+        <BB p={[0.71, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
+        <B p={[0.66, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+      </group>
+
+      <group ref={rightDoor} position={[1.1, 0, 0.43]}>
+        <BB p={[-0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[-0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
+        <BB p={[-0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
+        <B p={[-0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+      </group>
+    </G>
+  )
+
+  if (!canUseWardrobe) return wardrobeBody
+
   return (
     <Interact
-      hint="👕 Tủ quần áo"
+      hint="👕 Tủ quần áo của Khoa"
       onClick={() => useStore.getState().startActivity('wardrobe', true)}
     >
-      <G p={[-7.3, 0, -5.45]}>
-        {/* Khung tủ gỗ óc chó sẫm */}
-        <BB p={[0, 0, -0.42]} s={[2.32, 2.78, 0.06]} c={DARK} rough={0.5} />
-        <BB p={[-1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
-        <BB p={[1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} />
-        <BB p={[-0.36, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
-        <BB p={[0.38, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
-        <BB p={[0, 0, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
-        <BB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
-        <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#352923" />
-
-        {/* Đèn LED ấm áp bên trong tủ quần áo */}
-        <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#fff3d6" emissive="#ffbe5c" ei={2.2} shadow={false} />
-        <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#4a392c" emissive="#ffbe5c" ei={0.28} shadow={false} />
-
-        {/* Thanh treo & Quần áo bên trong */}
-        <Cyl p={[0, 2.42, 0]} r={[0, 0, Math.PI / 2]} rt={0.018} h={2.15} c="#d4c5b0" metal={0.8} />
-        {shirts.map((sh, i) => (
-          <BB key={i} p={[sh.x, 2.38 - sh.h, 0]} s={[0.18, sh.h, 0.46]} c={sh.c} rough={0.85} />
-        ))}
-
-        {/* Ngăn kéo & Hộp đồ phía dưới */}
-        <BB p={[-0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#dfd9ce" />
-        <BB p={[0.0, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#cfc7b8" />
-        <BB p={[0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#e2dcd3" />
-        <BB p={[-0.75, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#cbc3b5" />
-        <BB p={[0.0, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#dfd9ce" />
-
-        {/* 3 Cánh cửa kính khói viền gỗ tối */}
-        <group ref={leftDoor} position={[-1.1, 0, 0.43]}>
-          <BB p={[0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
-          <BB p={[0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-          <BB p={[0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-          <B p={[0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
-        </group>
-
-        <group ref={midDoor} position={[-0.36, 0, 0.43]}>
-          <BB p={[0.37, 0.05, 0]} s={[0.74, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
-          <BB p={[0.03, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
-          <BB p={[0.71, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
-          <B p={[0.66, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
-        </group>
-
-        <group ref={rightDoor} position={[1.1, 0, 0.43]}>
-          <BB p={[-0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
-          <BB p={[-0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-          <BB p={[-0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-          <B p={[-0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
-        </group>
-      </G>
+      {wardrobeBody}
     </Interact>
   )
 }
@@ -327,7 +335,7 @@ function RightNightstand() {
             seg={24}
           />
           {floor1BedLampOn && (
-            <pointLight position={[0, 0.95, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} />
+            <pointLight position={[0, 0.95, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} decay={2} />
           )}
         </G>
       </Interact>
@@ -765,7 +773,7 @@ function LowCabinet() {
             seg={24}
           />
           {floor1DeskLampOn && (
-            <pointLight position={[0, 0.55, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} />
+            <pointLight position={[0, 0.55, 0.12]} color="#ffbe55" intensity={1.5} distance={4.5} decay={2} />
           )}
         </G>
       </Interact>
@@ -1007,7 +1015,7 @@ function DogCorner() {
 
       {/* 4. Nệm tròn Donut êm ái trên thảm */}
       <G p={[-6.0, 0, 0.85]}>
-        <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.46, 0.13, 16, 40]} />
           <meshStandardMaterial color="#ede6dc" roughness={0.95} />
         </mesh>
@@ -1397,7 +1405,6 @@ export function Monstera({ p }: { p: V3 }) {
             <mesh
               position={[x / 2, 0.55 + l.h / 2, z / 2]}
               rotation={[Math.sin(l.a) * 0.5, 0, -Math.cos(l.a) * 0.5]}
-              castShadow
             >
               <cylinderGeometry args={[0.012, 0.018, Math.hypot(l.len, l.h), 6]} />
               <meshStandardMaterial color="#3f6b2b" />
@@ -1406,8 +1413,6 @@ export function Monstera({ p }: { p: V3 }) {
               position={[x, 0.55 + l.h, z]}
               rotation={[0, -l.a, l.tilt]}
               scale={[0.32, 0.025, 0.24]}
-              castShadow
-              receiveShadow
             >
               <sphereGeometry args={[1, 16, 10]} />
               <meshStandardMaterial color={i % 2 ? '#367d39' : '#459348'} roughness={0.55} />

@@ -509,11 +509,11 @@ function IndoorStaircase() {
     >
       <G p={[-8.85, 0, 0]}>
         {/* 2 dầm thép đen chịu lực chạy chéo */}
-        <mesh position={[-0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]} castShadow>
+        <mesh position={[-0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
           <boxGeometry args={[0.07, 0.14, 6.1]} />
           <meshStandardMaterial color="#1f2024" metalness={0.6} roughness={0.35} />
         </mesh>
-        <mesh position={[0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]} castShadow>
+        <mesh position={[0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
           <boxGeometry args={[0.07, 0.14, 6.1]} />
           <meshStandardMaterial color="#1f2024" metalness={0.6} roughness={0.35} />
         </mesh>
@@ -532,7 +532,7 @@ function IndoorStaircase() {
         })}
 
         {/* Tay vịn cầu thang gỗ sồi & trụ thép */}
-        <mesh position={[0.52, totalH / 2 + 0.82, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]} castShadow>
+        <mesh position={[0.52, totalH / 2 + 0.82, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
           <boxGeometry args={[0.055, 0.055, 6.15]} />
           <meshStandardMaterial color="#b8895a" roughness={0.45} />
         </mesh>
@@ -563,6 +563,8 @@ function GirlRoomFurniture() {
   const girlPcState = useStore((s) => s.girlPcState)
   const girlChairSpinTick = useStore((s) => s.girlChairSpinTick)
   const girlBookPage = useStore((s) => s.girlBookPage)
+  const userRole = useStore((s) => s.userRole)
+  const canUseGirlWardrobe = userRole === 'girl'
 
   const creamRugTex = useMemo(() => fluffyCreamRug(), [])
   const persianRugTex = useMemo(() => persianTerracottaRug(), [])
@@ -640,14 +642,13 @@ function GirlRoomFurniture() {
           <BB p={[-1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.88} shadow={false} />
           <BB p={[1.26, 0.22, 0.85]} s={[0.05, 0.5, 0.82]} c="#9e4020" rough={0.88} shadow={false} />
 
-          {/* 2 Gối ngủ lớn màu trắng kem phía sau */}
-          <BB p={[-0.64, 0.6, -1.08]} s={[0.88, 0.22, 0.42]} r={[0.22, 0, 0]} c="#ffffff" rough={0.8} />
-          <BB p={[0.64, 0.6, -1.08]} s={[0.88, 0.22, 0.42]} r={[0.22, 0, 0]} c="#ffffff" rough={0.8} />
+          {/* 2 Gối ngủ lớn màu trắng kem tựa sát đầu giường */}
+          <BB p={[-0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.8} />
+          <BB p={[0.64, 0.62, -1.16]} s={[0.92, 0.18, 0.44]} r={[0.18, 0, 0]} c="#ffffff" rough={0.8} />
 
-          {/* 3 CHIẾC GỐI TỰA MÀU NÂU CAM ĐẤT (TERRACOTTA) TẠO ĐỘ TƯƠNG PHẢN ẤM ÁP */}
-          <BB p={[-0.58, 0.62, -0.78]} s={[0.62, 0.24, 0.32]} r={[0.28, 0.04, 0]} c="#b84d27" rough={0.85} />
-          <BB p={[0.58, 0.62, -0.78]} s={[0.62, 0.24, 0.32]} r={[0.28, -0.04, 0]} c="#b84d27" rough={0.85} />
-          <BB p={[0, 0.61, -0.58]} s={[0.56, 0.19, 0.28]} r={[0.18, 0, 0]} c="#cc6238" rough={0.85} />
+          {/* 2 Chiếc gối tựa màu nâu cam đất (Terracotta) xếp ngay ngắn, đối xứng sang trọng */}
+          <BB p={[-0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.85} />
+          <BB p={[0.64, 0.64, -0.92]} s={[0.68, 0.16, 0.28]} r={[0.22, 0, 0]} c="#b84d27" rough={0.85} />
         </G>
       </Interact>
 
@@ -684,7 +685,7 @@ function GirlRoomFurniture() {
             shadow={false}
           />
           {floor2ArchLightOn && (
-            <pointLight position={[0, 2.4, 0.45]} color="#ffaa33" intensity={1.45} distance={5.5} />
+            <pointLight position={[0, 2.4, 0.45]} color="#ffaa33" intensity={1.45} distance={5.0} decay={2} />
           )}
 
           {/* Bức tranh khung gỗ nhiều màu sắc treo chính giữa trong lòng vòm đèn */}
@@ -858,8 +859,8 @@ function GirlRoomFurniture() {
 
       {/* 2. Giá treo quần áo chữ A bằng gỗ/đồng (A-Frame Garment Rack) treo 4 bộ váy màu Pastel + Túi xách & Hộp giày */}
       <Interact
-        hint="👗 Giá treo váy Pastel"
-        onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+        hint={canUseGirlWardrobe ? '👗 Giá treo váy Pastel' : undefined}
+        onClick={canUseGirlWardrobe ? () => useStore.getState().startActivity('girl_wardrobe', true) : undefined}
       >
         <G p={[-1.12, Y, -5.32]}>
           {/* Khung chữ A hai bên bằng gỗ sồi ấm */}
@@ -935,8 +936,6 @@ function GirlRoomFurniture() {
               position={[lx, ly, lz]}
               rotation={[Math.sin(angle) * 0.35, -angle, 0.28 + (idx % 3) * 0.12]}
               scale={[0.28, 0.032, 0.19]}
-              castShadow
-              receiveShadow
             >
               <sphereGeometry args={[1, 14, 10]} />
               <meshStandardMaterial color={leafColors[idx % leafColors.length]} roughness={0.55} />
@@ -1153,12 +1152,9 @@ function GirlRoomFurniture() {
             />
           </Interact>
 
-          {/* PointLights tạo hiệu ứng hắt sáng vàng ấm rực rỡ xuống mảng tường xanh Sage */}
+          {/* PointLight tạo hiệu ứng hắt sáng vàng ấm rực rỡ xuống mảng tường xanh Sage */}
           {girlShelfLedOn && (
-            <>
-              <pointLight position={[-1.4, 2.25, 0.25]} color="#ffaa28" intensity={1.1} distance={3.2} />
-              <pointLight position={[1.4, 2.25, 0.25]} color="#ffaa28" intensity={1.1} distance={3.2} />
-            </>
+            <pointLight position={[0, 2.25, 0.25]} color="#ffaa28" intensity={1.5} distance={4.2} decay={2} />
           )}
 
           {/* Sách xếp đa sắc nổi bật (đỏ, cam, vàng, xanh lá, xanh dương, tím) trên tầng kệ trên */}
@@ -1360,7 +1356,7 @@ function GirlRoomFurniture() {
                 />
               </mesh>
               {girlVanityLightOn && (
-                <pointLight position={[0, 0, 0.35]} color="#ffe0a0" intensity={1.65} distance={3.8} />
+                <pointLight position={[0, 0, 0.35]} color="#ffe0a0" intensity={1.65} distance={3.8} decay={2} />
               )}
             </G>
           </Interact>
@@ -1418,8 +1414,8 @@ function GirlRoomFurniture() {
        * F. TỦ QUẦN ÁO GỖ NÂU TRẦM (DARK WALNUT) CHẠM SÀN, 2 CÁNH KÍNH TRONG SUỐT & ĐÈN LED ẤM
        * ===================================================================== */}
       <Interact
-        hint="👗 Tủ quần áo"
-        onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+        hint={canUseGirlWardrobe ? '👗 Tủ quần áo Bạn Gái' : undefined}
+        onClick={canUseGirlWardrobe ? () => useStore.getState().startActivity('girl_wardrobe', true) : undefined}
       >
         <G p={[7.65, Y, -5.25]}>
           {/* Khung vỏ tủ gỗ nâu trầm (Dark Walnut) chạm đúng mặt sàn tầng 2 (BB p[1] = 0) */}
@@ -1491,7 +1487,7 @@ function GirlRoomFurniture() {
               />
             </group>
           ))}
-          <pointLight position={[0, 2.2, 0.35]} color="#ffaa33" intensity={1.35} distance={3.8} />
+          <pointLight position={[0, 2.2, 0.35]} color="#ffaa33" intensity={1.35} distance={3.8} decay={2} />
 
           {[-0.48, 0.48].map((dx, side) => (
             <group key={side} position={[dx, 0.12, 0.52]}>
@@ -1638,7 +1634,7 @@ function GirlRoomFurniture() {
               ei={floor2ReadingLampOn ? 2.8 : 0.15}
             />
             {floor2ReadingLampOn && (
-              <pointLight position={[0, 1.45, 0]} color="#ffaa33" intensity={1.15} distance={4.2} />
+              <pointLight position={[0, 1.45, 0]} color="#ffaa33" intensity={1.15} distance={4.2} decay={2} />
             )}
           </G>
         </Interact>
@@ -2044,13 +2040,19 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
     root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, pos[0], k)
     root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, pos[1], k)
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, pos[2], k)
-    root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, rotX, k)
-
-    const rotDiff = Math.atan2(
-      Math.sin(rotY - root.current.rotation.y),
-      Math.cos(rotY - root.current.rotation.y),
-    )
-    root.current.rotation.y += rotDiff * k
+    const isGirlSleeping = (st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active'
+    if (isGirlSleeping) {
+      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.y = 0
+      root.current.rotation.z = 0
+    } else {
+      root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, rotX, k)
+      const rotDiff = Math.atan2(
+        Math.sin(rotY - root.current.rotation.y),
+        Math.cos(rotY - root.current.rotation.y),
+      )
+      root.current.rotation.y += rotDiff * k
+    }
 
     LIVE_ACTORS.girlPos = [
       root.current.position.x,

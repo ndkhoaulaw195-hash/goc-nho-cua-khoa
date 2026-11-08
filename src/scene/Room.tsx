@@ -138,24 +138,16 @@ export function Room() {
       )}
 
       {/* ---------- HỆ THỐNG VÁCH TƯỜNG KIẾN TRÚC: HIỂN THỊ TƯỜNG ĐẶC KHI NHÌN TỪ TRONG, VÁCH KÍNH HIỆN ĐẠI KHI CẮT LÁT ---------- */}
-      {/* 1. Tường sau: Khi xoay ra sau sẽ hiện Vách kính tràn viền sang trọng thay vì để trống toang hoác */}
+      {/* 1. Tường sau: Phòng tắm lắp vách kính mờ nguyên khối kiến trúc, phòng khách/ngủ giữ tường be ấm cúng */}
       {!cutWalls.back ? (
         <>
+          {/* Tường sau khu vực phòng ngủ & phòng khách (x: -10.0 .. +10.48) */}
           <B
-            p={[-2.8, h / 2, -6.14]}
-            s={[26.08, h, 0.2]}
+            p={[0.24, h / 2, -6.14]}
+            s={[20.48, h, 0.2]}
             c={extWallColor}
             rough={0.9}
             shadow={false}
-          />
-          {/* Lớp sơn mặt trong tường sau phòng tắm (x: -15.6 .. -10.0) */}
-          <B
-            p={[-12.8, h / 2, -6.01]}
-            s={[5.6, h, 0.04]}
-            c={darkMode ? '#3a3836' : '#ede8e1'}
-            rough={0.9}
-            shadow={false}
-            polyOffset
           />
           {/* Lớp sơn mặt trong tường sau phòng ngủ (x: -10.0 .. -0.8) */}
           <B
@@ -175,10 +167,9 @@ export function Room() {
             shadow={false}
             polyOffset
           />
-          {/* Cửa sổ lấy sáng trên cao mặt trong phòng tắm */}
-          <B p={[-13.8, 3.25, -5.96]} s={[1.65, 0.65, 0.03]} c="#dbeafe" opacity={0.65} rough={0.2} metal={0.3} shadow={false} polyOffset />
-          <B p={[-13.8, 3.25, -5.97]} s={[1.72, 0.72, 0.02]} c="#27272a" shadow={false} polyOffset />
-          <B p={[-12.8, h - 0.1, -5.94]} s={[5.4, 0.035, 0.04]} c="#fff4dc" emissive="#ffb854" ei={2.2} shadow={false} />
+          {/* Vách kính mờ mặt sau phòng tắm (x: -15.6 .. -10.0): Che chắn sang trọng, đồng bộ với vách trước và vách trái */}
+          <GlassCurtainWall pos={[-12.8, h / 2, -6.0]} size={[5.6, h]} orientation="z" />
+          <B p={[-12.8, h - 0.06, -5.98]} s={[5.4, 0.035, 0.04]} c="#fff4dc" emissive="#ffb854" ei={2.2} shadow={false} />
         </>
       ) : (
         <GlassCurtainWall pos={[-2.8, h / 2, -6.04]} size={[26.08, h]} orientation="z" numPanels={8} />
@@ -211,6 +202,26 @@ export function Room() {
 
       {/* 3b. Vách kính mặt trước phòng tắm: Che chắn mặt cắt phía trước phòng tắm kín đáo, thẩm mỹ, kính mờ nhìn thấu bên trong */}
       <GlassCurtainWall pos={[-12.8, h / 2, 6.0]} size={[5.6, h]} orientation="z" />
+
+      {/* 3c. Trần kính mờ nóc phòng tắm (Glass Skylight Ceiling): Che chắn nóc phòng tắm tinh tế, mờ mờ nhìn thấu bên trong */}
+      <group position={[-12.8, h, 0]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[5.6, 12.0]} />
+          <meshStandardMaterial
+            color="#d8edfb"
+            transparent
+            opacity={0.16}
+            roughness={0.12}
+            metalness={0.15}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        <B p={[0, 0.02, -6.0]} s={[5.64, 0.04, 0.05]} c="#1e2024" metal={0.8} rough={0.3} shadow={false} />
+        <B p={[0, 0.02, 6.0]} s={[5.64, 0.04, 0.05]} c="#1e2024" metal={0.8} rough={0.3} shadow={false} />
+        <B p={[-2.8, 0.02, 0]} s={[0.05, 0.04, 12.0]} c="#1e2024" metal={0.8} rough={0.3} shadow={false} />
+        <B p={[2.8, 0.02, 0]} s={[0.05, 0.04, 12.0]} c="#1e2024" metal={0.8} rough={0.3} shadow={false} />
+      </group>
 
       {/* Ốp gỗ lam dọc đầu giường (Walnut Wainscot) + Đèn LED hắt ngang đầu giường */}
       {!cutWalls.back && (
@@ -317,8 +328,6 @@ function Rug({
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
   const lampOn = useStore((s) => s.lampOn)
-  const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
-  const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
   const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
   const curtainsOpen = useStore((s) => s.curtainsOpen)
   const pcState = useStore((s) => s.pcState)
@@ -360,52 +369,36 @@ export function Lights() {
       />
       <pointLight
         position={[9.1, 2.3, -1.0]}
-        intensity={curtainsOpen ? (darkMode ? 2.2 : 6.5) : 1.2}
-        distance={11}
+        intensity={curtainsOpen ? (darkMode ? 1.8 : 5.0) : 0.9}
+        distance={9}
+        decay={2}
         color={darkMode ? '#8ab4ff' : '#fff5e4'}
       />
 
-      {/* Đèn LED hắt trần & đầu giường ấm áp */}
+      {/* Đèn LED hắt trần phòng ngủ ấm áp */}
       <pointLight
         position={[-5.2, 3.85, -4.8]}
-        intensity={darkMode ? 5.5 : 3.6}
-        distance={8}
+        intensity={darkMode ? 4.2 : 2.5}
+        distance={7}
+        decay={2}
         color="#ffbe66"
       />
       {floor1HeadboardLedOn && (
         <pointLight
           position={[-2.6, 1.65, -4.9]}
-          intensity={darkMode ? 4.8 : 3.2}
-          distance={6}
+          intensity={darkMode ? 3.6 : 2.2}
+          distance={5.2}
+          decay={2}
           color="#ffb85c"
-        />
-      )}
-
-      {/* Đèn ngủ trên tab đầu giường (bật/tắt riêng) */}
-      {floor1BedLampOn && (
-        <pointLight
-          position={[-0.65, 1.15, -5.35]}
-          intensity={darkMode ? 5.2 : 3.4}
-          distance={5.5}
-          color="#ffbe64"
-        />
-      )}
-
-      {/* Đèn bàn góc phải bàn máy tính (bật/tắt riêng) */}
-      {floor1DeskLampOn && (
-        <pointLight
-          position={[7.55, 1.25, -5.35]}
-          intensity={darkMode ? 5.0 : 3.4}
-          distance={6}
-          color="#ffbe64"
         />
       )}
 
       {/* Đèn rọi tranh hướng dương & 3 khung ảnh kỷ niệm */}
       <pointLight
         position={[1.5, 3.6, -5.1]}
-        intensity={darkMode ? 4.2 : 2.8}
-        distance={5.5}
+        intensity={darkMode ? 3.2 : 2.0}
+        distance={5}
+        decay={2}
         color="#ffd285"
       />
 
@@ -413,8 +406,9 @@ export function Lights() {
       {lampOn && (
         <pointLight
           position={[8.75, 1.95, 3.45]}
-          intensity={darkMode ? 9.5 : 5.5}
-          distance={8.5}
+          intensity={darkMode ? 7.2 : 4.5}
+          distance={7.5}
+          decay={2}
           color="#ffbe64"
         />
       )}
@@ -422,8 +416,9 @@ export function Lights() {
       {pcState !== 'off' && (
         <pointLight
           position={[2.85, 1.55, -4.5]}
-          intensity={darkMode ? 4.5 : 2.4}
-          distance={5}
+          intensity={darkMode ? 3.6 : 1.8}
+          distance={4.5}
+          decay={2}
           color={pcState === 'rgb' ? '#d946ef' : '#9cc7ff'}
         />
       )}
@@ -431,24 +426,20 @@ export function Lights() {
       {tvOn && (
         <pointLight
           position={[4.15, 1.45, 0.85]}
-          intensity={darkMode ? 6.0 : 2.8}
-          distance={6}
+          intensity={darkMode ? 4.8 : 2.2}
+          distance={5}
+          decay={2}
           color="#818cf8"
         />
       )}
 
-      {/* Đèn trần phòng tắm sang trọng & Đèn gương LED */}
+      {/* Đèn trần phòng tắm dịu nhẹ */}
       <pointLight
         position={[-12.8, 3.4, -2.5]}
-        intensity={darkMode ? 4.8 : 2.8}
-        distance={7.5}
+        intensity={darkMode ? 3.6 : 2.0}
+        distance={6}
+        decay={2}
         color="#fff1db"
-      />
-      <pointLight
-        position={[-12.4, 2.2, -5.2]}
-        intensity={darkMode ? 3.8 : 2.2}
-        distance={4.5}
-        color="#ffe8c2"
       />
     </>
   )
