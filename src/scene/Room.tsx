@@ -299,6 +299,7 @@ function Rug({
 
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
+  const weather = useStore((s) => s.weather)
   const graphicMode = useStore((s) => s.graphicMode)
   const lampOn = useStore((s) => s.lampOn)
   const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
@@ -306,22 +307,64 @@ export function Lights() {
   const pcState = useStore((s) => s.pcState)
   const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
 
+  // Tùy chỉnh màu sắc & cường độ theo chế độ thời tiết (Nắng ấm / Hoàng hôn / Mưa / Đêm)
+  const hemiSky = darkMode
+    ? '#1e2538'
+    : weather === 'sunset'
+      ? '#fde68a'
+      : weather === 'rain'
+        ? '#94a3b8'
+        : '#fff6ea'
+  const hemiGround = darkMode
+    ? '#08090e'
+    : weather === 'sunset'
+      ? '#7c2d12'
+      : weather === 'rain'
+        ? '#334155'
+        : '#5c4532'
+  const hemiIntensity = darkMode ? 0.10 : weather === 'sunset' ? 0.72 : weather === 'rain' ? 0.48 : 0.62
+
+  const sunColor = darkMode
+    ? '#5872a8'
+    : weather === 'sunset'
+      ? '#fb923c'
+      : weather === 'rain'
+        ? '#cbd5e1'
+        : '#fff2df'
+  const sunIntensity = darkMode
+    ? 0.12
+    : weather === 'sunset'
+      ? 1.95
+      : weather === 'rain'
+        ? 0.78
+        : 1.75
+  const sunPos: [number, number, number] = weather === 'sunset' ? [-14, 16, 20] : [-10, 24, 17]
+
+  const ambientColor = darkMode
+    ? '#1a2238'
+    : weather === 'sunset'
+      ? '#fed7aa'
+      : weather === 'rain'
+        ? '#94a3b8'
+        : '#ffeedd'
+  const ambientIntensity = darkMode
+    ? 0.04
+    : weather === 'sunset'
+      ? 0.32
+      : weather === 'rain'
+        ? 0.38
+        : 0.24
+
   return (
     <>
-      <hemisphereLight
-        args={[
-          darkMode ? '#1e2538' : '#fff6ea',
-          darkMode ? '#08090e' : '#5c4532',
-          darkMode ? 0.10 : 0.62,
-        ]}
-      />
-      <ambientLight intensity={darkMode ? 0.04 : 0.24} color={darkMode ? '#1a2238' : '#ffeedd'} />
+      <hemisphereLight args={[hemiSky, hemiGround, hemiIntensity]} />
+      <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
       {/* Ánh sáng mặt trời chính: khung shadow camera ôm khít ngôi nhà, mapSize 2048x2048 cực nét, bias chuẩn */}
       <directionalLight
-        position={[-10, 24, 17]}
-        intensity={darkMode ? 0.12 : 1.75}
-        color={darkMode ? '#5872a8' : '#fff2df'}
+        position={sunPos}
+        intensity={sunIntensity}
+        color={sunColor}
         castShadow
         shadow-mapSize={[shadowResolution, shadowResolution]}
         shadow-camera-left={-16.5}

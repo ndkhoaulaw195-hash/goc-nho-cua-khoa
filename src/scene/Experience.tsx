@@ -7,8 +7,63 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
 import { Avatar, CORGI, Dog, PUG } from './Characters'
+import { MemoryCollectibles, TennisBall } from './MemoryCollectibles'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
+
+/** Hiệu ứng hạt mưa rơi lãng mạn bên ngoài cửa sổ (Lofi Rain Effect) */
+function RainEffect() {
+  const weather = useStore((s) => s.weather)
+  const count = 350
+  const pointsRef = useRef<THREE.Points>(null)
+
+  const [positions, speeds] = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    const spd = new Float32Array(count)
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 28 - 2
+      pos[i * 3 + 1] = Math.random() * 14
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 22 - 1
+      spd[i] = 11 + Math.random() * 8
+    }
+    return [pos, spd]
+  }, [count])
+
+  useFrame((_, dt) => {
+    if (!pointsRef.current || weather !== 'rain') return
+    const posAttr = pointsRef.current.geometry.attributes.position as THREE.BufferAttribute
+    const array = posAttr.array as Float32Array
+    const delta = Math.min(dt, 0.05)
+
+    for (let i = 0; i < count; i++) {
+      array[i * 3 + 1] -= speeds[i] * delta
+      array[i * 3] -= delta * 1.5
+      if (array[i * 3 + 1] < -0.2) {
+        array[i * 3 + 1] = 12 + Math.random() * 2
+        array[i * 3] = (Math.random() - 0.5) * 28 - 2
+      }
+    }
+    posAttr.needsUpdate = true
+  })
+
+  if (weather !== 'rain') return null
+
+  return (
+    <points ref={pointsRef}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial
+        color="#a5b4fc"
+        size={0.065}
+        transparent
+        opacity={0.65}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
+  )
+}
 
 /** Thiết lập RoomEnvironment & PMREMGenerator tạo phản chiếu chân thực cho PBR Materials (chỉ khởi tạo 1 lần) */
 function SetupEnvironment() {
@@ -139,6 +194,9 @@ export function Experience() {
       <Lights />
       <Room />
       <Furniture />
+      <RainEffect />
+      <MemoryCollectibles />
+      <TennisBall />
       <Avatar p={[-1.1, 0, -1.2]} ry={0.15} />
       <Dog
         id="mochi"

@@ -57,6 +57,7 @@ export function Furniture() {
       <Painting />
       <FloatingWallShelves />
       <WaterDispenser />
+      <Refrigerator />
       <LowCabinet />
       <PanoramicWindow />
       <WindowPlantBench />
@@ -738,6 +739,52 @@ function WaterDispenser() {
           <Cyl p={[0, -0.05, 0]} rt={0.036} h={0.075} c="#ffffff" />
         </group>
         <Cyl p={[0, 1.28, 0]} rt={0.16} h={0.42} c="#60a5fa" rough={0.12} opacity={0.72} />
+      </G>
+    </Interact>
+  )
+}
+
+/* ---------- Tủ lạnh hiện đại (Dán giấy nhắn yêu thương của Khoa & Bạn Gái) ---------- */
+function Refrigerator() {
+  const stickyNotes = useStore((s) => s.stickyNotes)
+
+  return (
+    <Interact
+      hint="🧊 Tủ lạnh (Xem & Dán giấy nhắn tình yêu)"
+      onClick={() => useStore.getState().toggleRefrigerator()}
+    >
+      <G p={[4.45, 0, -5.5]}>
+        {/* Thân tủ lạnh kim loại xám titan cao cấp bo cạnh */}
+        <RBB p={[0, 0.85, 0]} s={[0.68, 1.7, 0.65]} c="#334155" metal={0.65} rough={0.3} radius={0.03} shadow />
+        {/* Rãnh ngăn ngăn đá trên và ngăn mát dưới */}
+        <B p={[0, 1.15, 0.33]} s={[0.64, 0.015, 0.02]} c="#0f172a" />
+        {/* Tay nắm cửa âm tường viền kim loại */}
+        <B p={[0.26, 0.95, 0.335]} s={[0.02, 0.35, 0.015]} c="#94a3b8" metal={0.9} />
+        <B p={[0.26, 1.35, 0.335]} s={[0.02, 0.25, 0.015]} c="#94a3b8" metal={0.9} />
+
+        {/* Các mẩu giấy note dán trên cánh tủ lạnh */}
+        {stickyNotes.slice(0, 3).map((note, idx) => {
+          const offsets: [number, number, number][] = [
+            [-0.14, 0.85, 0.332],
+            [0.1, 0.72, 0.332],
+            [-0.05, 0.52, 0.332],
+          ]
+          const rots = [-0.08, 0.06, -0.04]
+          const [nx, ny, nz] = offsets[idx]
+          return (
+            <group key={note.id} position={[nx, ny, nz]} rotation={[0, 0, rots[idx]]}>
+              <mesh>
+                <planeGeometry args={[0.11, 0.11]} />
+                <meshStandardMaterial color={note.color || '#fef08a'} roughness={0.7} />
+              </mesh>
+              {/* Nam châm tròn gắn giữ giấy */}
+              <mesh position={[0, 0.042, 0.003]}>
+                <circleGeometry args={[0.012, 16]} />
+                <meshStandardMaterial color="#ef4444" roughness={0.3} metalness={0.5} />
+              </mesh>
+            </group>
+          )
+        })}
       </G>
     </Interact>
   )

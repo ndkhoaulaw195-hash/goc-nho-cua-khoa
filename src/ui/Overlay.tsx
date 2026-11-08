@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
 import {
+  StickyNotesModal,
+  QuestsModal,
+  DartsGameModal,
+  PcArcadeModal,
+  MemoryModal,
+} from './CozyFeaturesModal'
+import {
   FLOOR1_VIEW,
   FLOOR2_VIEW,
   GIRL_OUTFITS,
@@ -83,6 +90,11 @@ export function Overlay() {
       <WardrobeModal />
       <GirlWardrobeModal />
       <PhotoModal />
+      <StickyNotesModal />
+      <QuestsModal />
+      <DartsGameModal />
+      <PcArcadeModal />
+      <MemoryModal />
       <LoginLobby />
 
       {mode === 'fp' && <div className="fp-crosshair" />}
@@ -137,6 +149,9 @@ function ContextualDock() {
           <button className="dock-btn" onClick={() => useStore.getState().cyclePcState()}>
             🖥️ Màn hình: {pcState === 'on' ? 'Code' : pcState === 'rgb' ? 'RGB' : 'Tắt'}
           </button>
+          <button className="dock-btn" onClick={() => useStore.getState().setPcGameModalOpen(true)}>
+            🎮 Chơi Game PC
+          </button>
           <button className="dock-btn" onClick={() => useStore.getState().spinChair()}>
             🔄 Xoay ghế
           </button>
@@ -161,21 +176,38 @@ function ContextualDock() {
       )}
 
       {activity === 'darts' && (
-        <button className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
-          🎯 Phóng thêm phi tiêu
-        </button>
+        <>
+          <button className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
+            🎯 Phóng thêm phi tiêu
+          </button>
+          <button className="dock-btn" onClick={() => useStore.getState().setDartsModalOpen(true)}>
+            🏆 Bảng đấu Phi Tiêu
+          </button>
+        </>
       )}
 
       {activity === 'pet' && (
-        <button
-          className="dock-btn"
-          onClick={() => {
-            const nextId = useStore.getState().petTargetId === 'mochi' ? 'bo' : 'mochi'
-            useStore.getState().petDog(nextId, true)
-          }}
-        >
-          🐶 Đổi sang vuốt ve {useStore.getState().petTargetId === 'mochi' ? 'Bơ' : 'Mochi'}
-        </button>
+        <>
+          <button
+            className="dock-btn"
+            onClick={() => {
+              const nextId = useStore.getState().petTargetId === 'mochi' ? 'bo' : 'mochi'
+              useStore.getState().petDog(nextId, true)
+            }}
+          >
+            🐶 Đổi sang vuốt ve {useStore.getState().petTargetId === 'mochi' ? 'Bơ' : 'Mochi'}
+          </button>
+          <button
+            className="dock-btn"
+            onClick={() => {
+              const rx = -1.5 + Math.random() * 3.5
+              const rz = 0.5 + Math.random() * 3.0
+              useStore.getState().throwTennisBall([rx, 0.05, rz])
+            }}
+          >
+            🎾 Ném bóng cho cún
+          </button>
+        </>
       )}
 
       {activity === 'read' && (
@@ -274,8 +306,11 @@ function TopRight({
 }) {
   const mode = useStore((s) => s.mode)
   const setMode = useStore((s) => s.setMode)
-  const darkMode = useStore((s) => s.darkMode)
-  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  const weather = useStore((s) => s.weather)
+  const cycleWeather = useStore((s) => s.cycleWeather)
+  const quests = useStore((s) => s.quests)
+  const lovePoints = useStore((s) => s.lovePoints)
+  const pendingQuests = quests.filter((q) => !q.completed).length
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
@@ -359,11 +394,51 @@ function TopRight({
           )}
         </button>
 
+        {/* Nút Đổi Thời tiết & Bầu không khí (Nắng ấm / Hoàng hôn / Mưa Lofi / Đêm) */}
         <button
-          className={`dock-icon-btn ${darkMode ? 'active' : ''}`}
-          onClick={toggleDarkMode}
+          className="dock-icon-btn"
+          onClick={cycleWeather}
+          title={`Thời tiết: ${weather === 'clear' ? 'Nắng ấm' : weather === 'sunset' ? 'Hoàng hôn' : weather === 'rain' ? 'Mưa Lofi' : 'Đêm ấm'} (Bấm để chuyển)`}
+          style={{ fontSize: 16 }}
         >
-          {darkMode ? I.sun : I.moon}
+          {weather === 'clear' ? '☀️' : weather === 'sunset' ? '🌇' : weather === 'rain' ? '🌧️' : '🌙'}
+        </button>
+
+        {/* Nút Bảng Nhiệm Vụ Hàng Ngày */}
+        <button
+          className="dock-pill-btn"
+          onClick={() => useStore.getState().setQuestModalOpen(true)}
+          title="Sổ nhiệm vụ hàng ngày & Tim Hạnh Phúc"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700 }}
+        >
+          📋 Nhiệm vụ
+          {pendingQuests > 0 ? (
+            <span
+              style={{
+                background: '#ef4444',
+                color: '#ffffff',
+                fontSize: 10,
+                fontWeight: 800,
+                padding: '0 5px',
+                borderRadius: 999,
+                lineHeight: '14px',
+              }}
+            >
+              {pendingQuests}
+            </span>
+          ) : (
+            <span style={{ color: '#e11d48', fontSize: 11 }}>❤️ {lovePoints}</span>
+          )}
+        </button>
+
+        {/* Nút Bảng Tin Nhắn Tủ Lạnh */}
+        <button
+          className="dock-pill-btn"
+          onClick={() => useStore.getState().toggleRefrigerator()}
+          title="Xem & Dán giấy nhắn tình yêu lên Tủ lạnh"
+          style={{ fontSize: 12, fontWeight: 600 }}
+        >
+          🧊 Tủ lạnh
         </button>
 
         <button
