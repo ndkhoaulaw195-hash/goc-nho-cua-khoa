@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -40,24 +40,91 @@ function SetupEnvironment() {
   return null
 }
 
+/** Tối ưu GPU & CPU khi người dùng đang thao tác trên các ứng dụng khác (Background Performance Optimizer) */
+function BackgroundOptimizer({ isWindowFocused }: { isWindowFocused: boolean }) {
+  const gl = useThree((s) => s.gl)
+  const lastRenderTime = useRef(0)
+
+  useFrame(() => {
+    // Khi người dùng đang gõ phím/làm việc ở app khác (unfocused):
+    // Giới hạn tốc độ render nền ở 24 FPS và tắt cập nhật shadowMap để giải phóng 75% tải GPU/CPU
+    if (!isWindowFocused) {
+      const now = performance.now()
+      if (now - lastRenderTime.current < 42) {
+        return
+      }
+      lastRenderTime.current = now
+      if (gl.shadowMap.autoUpdate) {
+        gl.shadowMap.autoUpdate = false
+      }
+    } else {
+      if (!gl.shadowMap.autoUpdate) {
+        gl.shadowMap.autoUpdate = true
+        gl.shadowMap.needsUpdate = true
+      }
+    }
+  })
+
+  return null
+}
+
 export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
   const controlsRef = useRef<OrbitControlsImpl>(null)
 
-  // DPR ổn định: Chế độ HD dùng độ nét Retina sắc mịn (1.75), Chế độ Mượt dùng 1.0 chuẩn FPS cao.
-  // Tuyệt đối không thay đổi DPR động khi di chuột để không bị giật lag và không bị drop click.
+  // Quản lý trạng thái tab và focus để ngừng/giảm tải khi người dùng dùng các ứng dụng khác
+  const [isPageVisible, setIsPageVisible] = useState(() =>
+    typeof document !== 'undefined' ? !document.hidden : true,
+  )
+  const [isWindowFocused, setIsWindowFocused] = useState(() =>
+    typeof document !== 'undefined' ? document.hasFocus() : true,
+  )
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return
+
+    const handleVisibility = () => {
+      setIsPageVisible(!document.hidden)
+      if (!document.hidden) setIsWindowFocused(true)
+    }
+    const handleFocus = () => {
+      setIsWindowFocused(true)
+      setIsPageVisible(true)
+    }
+    const handleBlur = () => {
+      setIsWindowFocused(false)
+    }
+    const handlePointer = () => {
+      if (!isWindowFocused) setIsWindowFocused(true)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('blur', handleBlur)
+    window.addEventListener('pointermove', handlePointer, { passive: true })
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('pointermove', handlePointer)
+    }
+  }, [isWindowFocused])
+
+  // DPR ổn định: Chế độ HD dùng độ nét Retina sắc mịn (1.75 khi active, 1.0 khi nền), Chế độ Mượt dùng 1.0 chuẩn FPS cao.
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
-  const dpr = graphicMode === 'hd' ? Math.min(deviceDpr, 1.75) : 1.0
+  const dpr = graphicMode === 'hd' ? (isWindowFocused ? Math.min(deviceDpr, 1.75) : 1.0) : 1.0
 
   return (
     <Canvas
+      frameloop={isPageVisible ? 'always' : 'never'}
       shadows={{ type: THREE.PCFShadowMap }}
-      performance={{ min: 0.6 }}
+      performance={{ min: 0.5, max: 1 }}
       gl={{
         antialias: true,
         alpha: true,
-        powerPreference: 'high-performance',
+        powerPreference: graphicMode === 'hd' ? 'high-performance' : 'default',
         stencil: false,
         depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
@@ -67,6 +134,7 @@ export function Experience() {
       dpr={dpr}
       camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
     >
+      <BackgroundOptimizer isWindowFocused={isWindowFocused} />
       <SetupEnvironment />
       <Lights />
       <Room />
@@ -120,6 +188,7 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
   const tp = useMemo(() => new THREE.Vector3(), [])
   const tt = useMemo(() => new THREE.Vector3(), [])
   const downPos = useRef<[number, number] | null>(null)
+  const lastDbgUpdate = useRef(0)
 
   useEffect(() => {
     camera.fov = 34
@@ -173,36 +242,40 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const controls = controlsRef.current
     const st = useStore.getState()
     const f = st.focus
-    ;(window as unknown as Record<string, unknown>).__store = useStore
-    ;(window as unknown as Record<string, unknown>).__camDbg = {
-      pos: [
-        Number(camera.position.x.toFixed(2)),
-        Number(camera.position.y.toFixed(2)),
-        Number(camera.position.z.toFixed(2)),
-      ],
-      target: controls
-        ? [
-            Number(controls.target.x.toFixed(2)),
-            Number(controls.target.y.toFixed(2)),
-            Number(controls.target.z.toFixed(2)),
-          ]
-        : null,
-      focus: f,
-      activeChar: st.activeChar,
-      activity: st.activity,
-      activityPhase: st.activityPhase,
-      boyActivity: st.boyActivity,
-      boyPhase: st.boyPhase,
-      girlActivity: st.girlActivity,
-      girlPhase: st.girlPhase,
-      boyAutoLife: st.boyAutoLife,
-      girlAutoLife: st.girlAutoLife,
-      isUserInitiated: st.isUserInitiated,
-      petTargetId: st.petTargetId,
-      khoaPos: LIVE_ACTORS.khoaPos,
-      khoaFloorY: LIVE_ACTORS.khoaFloorY,
-      girlPos: LIVE_ACTORS.girlPos,
-      dogs: LIVE_ACTORS.dogs,
+
+    const now = performance.now()
+    if (now - lastDbgUpdate.current > 800) {
+      lastDbgUpdate.current = now
+      ;(window as unknown as Record<string, unknown>).__camDbg = {
+        pos: [
+          Number(camera.position.x.toFixed(2)),
+          Number(camera.position.y.toFixed(2)),
+          Number(camera.position.z.toFixed(2)),
+        ],
+        target: controls
+          ? [
+              Number(controls.target.x.toFixed(2)),
+              Number(controls.target.y.toFixed(2)),
+              Number(controls.target.z.toFixed(2)),
+            ]
+          : null,
+        focus: f,
+        activeChar: st.activeChar,
+        activity: st.activity,
+        activityPhase: st.activityPhase,
+        boyActivity: st.boyActivity,
+        boyPhase: st.boyPhase,
+        girlActivity: st.girlActivity,
+        girlPhase: st.girlPhase,
+        boyAutoLife: st.boyAutoLife,
+        girlAutoLife: st.girlAutoLife,
+        isUserInitiated: st.isUserInitiated,
+        petTargetId: st.petTargetId,
+        khoaPos: LIVE_ACTORS.khoaPos,
+        khoaFloorY: LIVE_ACTORS.khoaFloorY,
+        girlPos: LIVE_ACTORS.girlPos,
+        dogs: LIVE_ACTORS.dogs,
+      }
     }
     if (!f || !controls) return
     const delta = Math.min(dt, 0.05)

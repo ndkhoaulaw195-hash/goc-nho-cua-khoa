@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useStore, type Activity } from '../store'
 import { isBlocked, isBlockedTier2 } from './Furniture'
 import { LIVE_ACTORS, OUTFITS, STATIONS, type V3 } from '../data/config'
+import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import { openBookPages } from './textures'
 
 function Capsule({
@@ -461,18 +462,24 @@ export function getStationEntryForChar(
   const sideOffset = bothHere ? (char === 'boy' ? -0.38 : 0.38) : 0
 
   if (act === 'sleep') {
-    // Giường đôi Tầng 1: Nếu cả 2 cùng ngủ thì Khoa bên trái -3.05, Bạn Gái bên phải -2.15; nếu 1 người thì nằm giữa -2.60
+    // Giường đôi Tầng 1: Cho phép cả 2 người cùng ngủ trên một giường
+    // Khoa nằm bên trái (-3.08), Bạn Gái nằm bên phải (-2.12)
     return {
-      entryX: bothHere ? (char === 'boy' ? -3.85 : -1.35) : -2.60,
+      entryX: char === 'boy' ? -3.65 : -1.55,
       entryZ: -3.55,
       floorY: 0,
-      entryYaw: 0,
+      entryYaw: char === 'boy' ? Math.PI / 2 : -Math.PI / 2,
     }
   }
   if (act === 'girl_sleep') {
-    // Giường đôi Tầng 2: Nếu cả 2 cùng ngủ thì Khoa bên trái -5.48, Bạn Gái bên phải -4.52; nếu 1 người thì nằm giữa -5.0
-    const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
-    return { entryX: bedX, entryZ: -1.8, floorY: 4.35, entryYaw: 0 }
+    // Giường đôi Tầng 2: Cho phép cả 2 người cùng ngủ trên một giường
+    // Khoa nằm bên trái (-5.60), Bạn Gái nằm bên phải (-4.40)
+    return {
+      entryX: char === 'boy' ? -5.60 : -4.40,
+      entryZ: -2.10,
+      floorY: 4.35,
+      entryYaw: 0,
+    }
   }
   if (act === 'tv') {
     // Sofa xem TV phòng khách: Cả 2 cùng ngồi cạnh nhau trên sofa (Khoa bên trái, Bạn Gái bên phải)
@@ -581,17 +588,23 @@ export function computeCharActivityPose(
       lArmX = -0.85 * pNorm
       rArmX = -0.85 * pNorm
     } else if (act === 'sleep') {
-      const bedX = bothHere ? (char === 'boy' ? -3.05 : -2.15) : -2.60
-      const targetY = 0.82
-      const targetZ = -3.45
+      // Giường đôi Tầng 1: Khoa nằm bên trái (-3.08), Bạn Gái nằm bên phải (-2.12)
+      const bedX = char === 'boy' ? -3.08 : -2.12
+      const targetY = 0.73
+      const targetZ = -3.58
+      const startX = char === 'boy' ? -3.65 : -1.55
       pos = [
-        THREE.MathUtils.lerp(bothHere ? (char === 'boy' ? -3.85 : -1.35) : -2.60, bedX, pNorm),
+        THREE.MathUtils.lerp(startX, bedX, pNorm),
         THREE.MathUtils.lerp(0, targetY, pNorm),
         THREE.MathUtils.lerp(-3.55, targetZ, pNorm),
       ]
-      rotX = (Math.PI / 2) * pNorm
-      rotY = 0
-      headX = -0.05 * pNorm
+      rotX = (-Math.PI / 2) * pNorm
+      rotY = (char === 'boy' ? 0.05 : -0.05) * pNorm
+      lArmX = -0.35 * pNorm
+      rArmX = -0.35 * pNorm
+      lArmZ = 0.28 * pNorm
+      rArmZ = -0.28 * pNorm
+      headX = 0.1 * pNorm
     } else if (act === 'wardrobe') {
       pos = [-7.1, 0, -4.15]
       rotY = Math.PI
@@ -665,17 +678,23 @@ export function computeCharActivityPose(
       rArmX = -1.25 * pNorm
       headX = 0.2 * pNorm
     } else if (act === 'girl_sleep') {
-      const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
-      const targetY = Y2 + (isGirl ? 0.74 : 0.75)
-      const targetZ = -3.45
+      // Giường đôi Tầng 2: Khoa nằm bên trái (-5.60), Bạn Gái nằm bên phải (-4.40)
+      const bedX = char === 'boy' ? -5.60 : -4.40
+      const targetY = Y2 + 0.71
+      const targetZ = -3.42
+      const startX = char === 'boy' ? -5.60 : -4.40
       pos = [
-        bedX,
+        THREE.MathUtils.lerp(startX, bedX, pNorm),
         THREE.MathUtils.lerp(Y2, targetY, pNorm),
-        THREE.MathUtils.lerp(-1.8, targetZ, pNorm),
+        THREE.MathUtils.lerp(-2.10, targetZ, pNorm),
       ]
-      rotX = (Math.PI / 2) * pNorm
-      rotY = 0
-      headX = -0.05 * pNorm
+      rotX = (-Math.PI / 2) * pNorm
+      rotY = (char === 'boy' ? 0.05 : -0.05) * pNorm
+      lArmX = -0.35 * pNorm
+      rArmX = -0.35 * pNorm
+      lArmZ = 0.28 * pNorm
+      rArmZ = -0.28 * pNorm
+      headX = 0.1 * pNorm
     } else if (act === 'piano') {
       pos = [
         0.47,
@@ -794,22 +813,26 @@ export function computeCharActivityPose(
     rArmX = -1.14 + Math.cos(t * 15) * 0.08
     headY = Math.sin(t * 1.2) * 0.22
   } else if (act === 'sleep') {
-    // Giường đôi Tầng 1: Khoa nằm bên trái (-3.05), Bạn Gái bên phải (-2.15); nếu 1 người thì nằm giữa -2.60
-    const bedX = bothHere ? (char === 'boy' ? -3.05 : -2.15) : -2.60
-    pos = [bedX, isGirl ? 0.82 : 0.83, -3.45]
-    rotX = Math.PI / 2
-    rotY = 0
-    lHipX = 0
-    rHipX = 0
-    rHipZ = 0
-    lKneeX = 0
-    rKneeX = 0
-    lArmX = 0
-    lArmZ = 0.08
-    rArmX = 0
-    rArmZ = -0.08
-    headY = 0
-    headX = -0.05
+    // Giường đôi Tầng 1: Cho phép 2 người ngủ cùng lúc trên 1 giường!
+    // Khoa nằm bên trái (-3.08), Bạn Gái nằm bên phải (-2.12), gối đầu ngay ngắn trên gối, nằm ngửa tự nhiên
+    const bedX = char === 'boy' ? -3.08 : -2.12
+    pos = [bedX, 0.73, -3.58]
+    rotX = -Math.PI / 2
+    rotY = char === 'boy' ? 0.05 : -0.05
+    // Tư thế chân thả lỏng tự nhiên, đầu gối chùng nhẹ
+    lHipX = 0.06
+    rHipX = 0.06
+    rHipZ = -0.06
+    lKneeX = 0.12
+    rKneeX = 0.15
+    // Hai tay đặt nhẹ nhàng lên bụng/ngực, phập phồng theo nhịp thở
+    lArmX = -0.36 + Math.sin(t * 1.8) * 0.015
+    rArmX = -0.36 + Math.sin(t * 1.8) * 0.015
+    lArmZ = char === 'boy' ? 0.32 : 0.22
+    rArmZ = char === 'boy' ? -0.22 : -0.32
+    // Đầu ngửa nhẹ tựa lên gối và nghiêng về phía người kia
+    headX = 0.12
+    headY = (bothHere ? (char === 'boy' ? 0.22 : -0.22) : (char === 'boy' ? 0.08 : -0.08)) + Math.sin(t * 1.2) * 0.03
   } else if (act === 'wardrobe') {
     const spinning = t < spinUntil
     const spinProgress = spinning ? 1 - (spinUntil - t) / 0.95 : 0
@@ -899,22 +922,26 @@ export function computeCharActivityPose(
     lArmX = -0.25
     headX = 0.32
   } else if (act === 'girl_sleep') {
-    // Giường đôi Tầng 2: Nếu cả 2 cùng ngủ thì Khoa bên trái -5.48, Bạn Gái bên phải -4.52; nếu 1 người thì nằm giữa -5.0
-    const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
-    pos = [bedX, Y2 + (isGirl ? 0.74 : 0.75), -3.45]
-    rotX = Math.PI / 2
-    rotY = 0
-    lHipX = 0
-    rHipX = 0
-    rHipZ = 0
-    lKneeX = 0
-    rKneeX = 0
-    lArmX = 0
-    lArmZ = 0.08
-    rArmX = 0
-    rArmZ = -0.08
-    headX = -0.05
-    headY = 0
+    // Giường đôi Tầng 2: Cho phép 2 người ngủ cùng lúc trên 1 giường!
+    // Khoa nằm bên trái (-5.60), Bạn Gái nằm bên phải (-4.40), gối đầu tự nhiên trên gối
+    const bedX = char === 'boy' ? -5.60 : -4.40
+    pos = [bedX, Y2 + 0.71, -3.42]
+    rotX = -Math.PI / 2
+    rotY = char === 'boy' ? 0.05 : -0.05
+    // Tư thế chân thả lỏng tự nhiên, đầu gối chùng nhẹ
+    lHipX = 0.06
+    rHipX = 0.06
+    rHipZ = -0.06
+    lKneeX = 0.12
+    rKneeX = 0.15
+    // Hai tay đặt nhẹ nhàng lên bụng/ngực, phập phồng theo nhịp thở
+    lArmX = -0.36 + Math.sin(t * 1.8) * 0.015
+    rArmX = -0.36 + Math.sin(t * 1.8) * 0.015
+    lArmZ = char === 'boy' ? 0.32 : 0.22
+    rArmZ = char === 'boy' ? -0.22 : -0.32
+    // Đầu ngửa nhẹ tựa lên gối và nghiêng về phía người kia
+    headX = 0.12
+    headY = (bothHere ? (char === 'boy' ? 0.22 : -0.22) : (char === 'boy' ? 0.08 : -0.08)) + Math.sin(t * 1.2) * 0.03
   } else if (act === 'girl_pc') {
     pos = [2.25 + sideOffset, Y2 - 0.24 + sitOffset, -4.64]
     rotY = Math.PI
@@ -1085,10 +1112,13 @@ export const AUTO_DURATION: Record<Exclude<Activity, 'idle'>, number> = {
 export function CharacterRoleIndicator({
   isControlled,
   y = 1.82,
+  visible = true,
 }: {
   isControlled: boolean
   y?: number
+  visible?: boolean
 }) {
+  if (!visible) return null
   return (
     <mesh position={[0, y, 0]}>
       <sphereGeometry args={[0.024, 16, 16]} />
@@ -1119,6 +1149,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const bookRef = useRef<THREE.Group>(null)
 
   const boyActivity = useStore((s) => s.boyActivity)
+  const boyPhase = useStore((s) => s.boyPhase)
   const outfitId = useStore((s) => s.outfitId)
   const outfitSpinTick = useStore((s) => s.outfitSpinTick)
   const readBookPage = useStore((s) => s.readBookPage)
@@ -1136,6 +1167,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const autoSeqIdx = useRef(0)
   const lastSpinTick = useRef(outfitSpinTick)
   const spinUntil = useRef(0)
+  const lastPosBroadcast = useRef(0)
 
   const outfit = useMemo(() => OUTFITS.find((o) => o.id === outfitId) || OUTFITS[0], [outfitId])
   const bookTex = useMemo(() => openBookPages(readBookPage), [readBookPage])
@@ -1422,8 +1454,8 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     const isBoySleeping =
       (st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active'
     if (isBoySleeping) {
-      root.current.rotation.x = Math.PI / 2
-      root.current.rotation.y = 0
+      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.y = 0.05
       root.current.rotation.z = 0
     } else {
       root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, targetRotX, k)
@@ -1438,6 +1470,38 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     LIVE_ACTORS.khoaFloorY = walkFloorY.current
     LIVE_ACTORS.khoaYaw = root.current.rotation.y
     LIVE_ACTORS.khoaWorldPos = [root.current.position.x, root.current.position.y, root.current.position.z]
+
+    // Đồng bộ tọa độ thời gian thực giữa 2 máy:
+    if (st.userRole === 'boy') {
+      const now = performance.now()
+      const interval = st.boyPhase === 'walking' ? 320 : 850
+      if (now - lastPosBroadcast.current > interval) {
+        lastPosBroadcast.current = now
+        broadcastPosSync(
+          'boy',
+          LIVE_ACTORS.khoaWorldPos,
+          LIVE_ACTORS.khoaYaw,
+          st.boyActivity,
+          st.boyPhase,
+          st.outfitId,
+        )
+      }
+    } else if (st.roleOccupancy?.boy) {
+      // Đối phương đang điều khiển Khoa từ xa: lerp mượt mà để cả 2 máy luôn cùng thời điểm
+      const remote = REMOTE_ACTORS.boy
+      if (remote && remote.lastSeen > 0) {
+        const dx = remote.pos[0] - walkPos.current[0]
+        const dz = remote.pos[2] - walkPos.current[1]
+        const dist = Math.hypot(dx, dz)
+        if (dist > 0.35) {
+          const lerpK = Math.min(1, delta * 5.0)
+          walkPos.current[0] += dx * lerpK
+          walkPos.current[1] += dz * lerpK
+          walkFloorY.current = THREE.MathUtils.lerp(walkFloorY.current, remote.pos[1], lerpK)
+          walkYaw.current = remote.yaw
+        }
+      }
+    }
 
     if (torso.current) {
       const isBoySleeping = st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep'
@@ -1492,9 +1556,12 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const userRole = useStore((s) => s.userRole)
   const roleOccupancy = useStore((s) => s.roleOccupancy)
   const isBoyClaimed = userRole === 'boy' || Boolean(roleOccupancy?.boy)
-  const isControllingBoy = (userRole || useStore.getState().activeChar) === 'boy'
   const canControlBoy = !userRole || userRole === 'boy'
-  const hideInFp = useStore((s) => s.mode === 'fp') && isControllingBoy
+  // Nhân vật Khoa chỉ ẩn thân xác khi chính người chơi này đang vào vai Khoa và ở góc nhìn thứ nhất (FP)
+  const hideInFp = useStore((s) => s.mode === 'fp') && userRole === 'boy'
+
+  const isBoySleepingNow =
+    (boyActivity === 'sleep' || boyActivity === 'girl_sleep') && boyPhase === 'active'
 
   return (
     <group
@@ -1526,8 +1593,8 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           : undefined
       }
     >
-      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
-      <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} />
+      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
+      <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} visible={!isBoySleepingNow} />
 
       <group ref={zzzRef} position={[0, 1.65, 0.2]} visible={false}>
         {[0, 1, 2].map((i) => (

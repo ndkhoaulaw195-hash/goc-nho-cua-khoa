@@ -21,6 +21,7 @@ import {
   windowSky,
 } from './textures'
 import { useStore, type Activity } from '../store'
+import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import {
   GIRL_OUTFITS,
   LIVE_ACTORS,
@@ -1904,7 +1905,7 @@ function SleepingCat({ p }: { p: V3 }) {
 /* ============================================================================
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
-function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
+function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?: boolean } = {}) {
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const leftArm = useRef<THREE.Group>(null)
@@ -1940,6 +1941,7 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
   const autoSeqIdx = useRef(0)
   const lastSpinTick = useRef(girlOutfitSpinTick)
   const spinUntil = useRef(0)
+  const lastPosBroadcast = useRef(0)
 
   const outfit = useMemo(
     () => GIRL_OUTFITS.find((o) => o.id === girlOutfitId) || GIRL_OUTFITS[0],
@@ -2239,8 +2241,8 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, pos[2], k)
     const isGirlSleeping = (st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active'
     if (isGirlSleeping) {
-      root.current.rotation.x = Math.PI / 2
-      root.current.rotation.y = 0
+      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.y = -0.05
       root.current.rotation.z = 0
     } else {
       root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, rotX, k)
@@ -2262,6 +2264,38 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
       root.current.position.y,
       root.current.position.z,
     ]
+
+    // Đồng bộ tọa độ thời gian thực của Bạn Gái:
+    if (st.userRole === 'girl') {
+      const now = performance.now()
+      const interval = st.girlPhase === 'walking' ? 320 : 850
+      if (now - lastPosBroadcast.current > interval) {
+        lastPosBroadcast.current = now
+        broadcastPosSync(
+          'girl',
+          LIVE_ACTORS.girlWorldPos,
+          LIVE_ACTORS.girlYaw,
+          st.girlActivity,
+          st.girlPhase,
+          st.girlOutfitId,
+        )
+      }
+    } else if (st.roleOccupancy?.girl) {
+      // Đối phương đang điều khiển Bạn Gái từ xa: lerp mượt mà để cả 2 máy luôn cùng thời điểm
+      const remote = REMOTE_ACTORS.girl
+      if (remote && remote.lastSeen > 0) {
+        const dx = remote.pos[0] - walkPos.current[0]
+        const dz = remote.pos[2] - walkPos.current[1]
+        const dist = Math.hypot(dx, dz)
+        if (dist > 0.35) {
+          const lerpK = Math.min(1, delta * 5.0)
+          walkPos.current[0] += dx * lerpK
+          walkPos.current[1] += dz * lerpK
+          walkFloorY.current = THREE.MathUtils.lerp(walkFloorY.current, remote.pos[1], lerpK)
+          walkYaw.current = remote.yaw
+        }
+      }
+    }
 
     if (head.current) {
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
@@ -2307,17 +2341,18 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
   const userRole = useStore((s) => s.userRole)
   const roleOccupancy = useStore((s) => s.roleOccupancy)
   const isGirlClaimed = userRole === 'girl' || Boolean(roleOccupancy?.girl)
-  const isHiddenByFloor1 = Boolean(hideIfUpstairs && walkFloorY.current > 2.0)
-  const isControllingGirl = (userRole || useStore.getState().activeChar) === 'girl'
   const canControlGirl = !userRole || userRole === 'girl'
-  const hideInFp = useStore((s) => s.mode === 'fp') && isControllingGirl
+  // Bạn Gái chỉ ẩn thân xác khi chính người chơi này đang vào vai Bạn Gái và ở góc nhìn thứ nhất (FP)
+  const hideInFp = useStore((s) => s.mode === 'fp') && userRole === 'girl'
+  const girlPhase = useStore((s) => s.girlPhase)
   const sleeping = girlActivity === 'sleep' || girlActivity === 'girl_sleep'
+  const isGirlSleepingNow = sleeping && girlPhase === 'active'
 
   return (
     <group
       ref={root}
       position={[-3.9, Y, -0.35]}
-      visible={!isHiddenByFloor1 && !hideInFp}
+      visible={!hideInFp}
       onClick={
         canControlGirl
           ? (e) => {
@@ -2342,8 +2377,8 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
           : undefined
       }
     >
-      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
-      <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} />
+      {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
+      <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} visible={!isGirlSleepingNow} />
 
       {/* Bong bóng ngủ Zzz */}
       <group ref={zzzRef} position={[0, 1.55, 0.2]} visible={false}>
