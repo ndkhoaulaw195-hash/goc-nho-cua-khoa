@@ -457,20 +457,29 @@ export const useStore = create<State>()(
           ...(preset ? { viewPreset: preset } : {}),
         })),
       returnOverview: () =>
-        set((s) => ({
-          boyActivity: s.activeChar === 'boy' ? 'idle' : s.boyActivity,
-          boyPhase: s.activeChar === 'boy' ? 'active' : s.boyPhase,
-          girlActivity: s.activeChar === 'girl' ? 'idle' : s.girlActivity,
-          girlPhase: s.activeChar === 'girl' ? 'active' : s.girlPhase,
-          activity: 'idle',
-          activityPhase: 'active',
-          isUserInitiated: false,
-          wardrobeOpen: false,
-          girlWardrobeOpen: false,
-          activePhoto: null,
-          viewPreset: 'overview',
-          focus: s.mode === 'orbit' ? HOME_VIEW : null,
-        })),
+        set((s) => {
+          const char = s.userRole || s.activeChar || 'boy'
+          return {
+            boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
+            boyPhase: char === 'boy' ? 'active' : s.boyPhase,
+            girlActivity: char === 'girl' ? 'idle' : s.girlActivity,
+            girlPhase: char === 'girl' ? 'active' : s.girlPhase,
+            activity: 'idle',
+            activityPhase: 'active',
+            isUserInitiated: false,
+            wardrobeOpen: false,
+            girlWardrobeOpen: false,
+            activePhoto: null,
+            focus:
+              s.mode === 'orbit'
+                ? s.viewPreset === 'floor1'
+                  ? FLOOR1_VIEW
+                  : s.viewPreset === 'floor2'
+                    ? FLOOR2_VIEW
+                    : HOME_VIEW
+                : null,
+          }
+        }),
       cutWalls: { back: false, left: false, right: false },
       setCutWalls: (cutWalls) => set({ cutWalls }),
 

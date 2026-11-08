@@ -134,6 +134,7 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     ) {
       st.setCutWalls({ back: cutBack, left: cutLeft, right: cutRight })
     }
+    ;(window as unknown as Record<string, unknown>).__store = useStore
     ;(window as unknown as Record<string, unknown>).__camDbg = {
       pos: [
         Number(camera.position.x.toFixed(2)),
