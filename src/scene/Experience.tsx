@@ -16,6 +16,8 @@ function SetupEnvironment() {
   const darkMode = useStore((s) => s.darkMode)
 
   useEffect(() => {
+    ;(window as unknown as Record<string, unknown>).__gl = gl
+    ;(window as unknown as Record<string, unknown>).__scene = scene
     const pmremGenerator = new THREE.PMREMGenerator(gl)
     pmremGenerator.compileEquirectangularShader()
     const roomEnv = new RoomEnvironment()
@@ -41,18 +43,46 @@ export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
   const isInteracting = useStore((s) => s.isInteracting)
+  const setIsInteracting = useStore((s) => s.setIsInteracting)
   const controlsRef = useRef<OrbitControlsImpl>(null)
+  const interactTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Adaptive DPR: Khi kéo xoay chuột, tạm hạ DPR xuống để duy trì 60fps mượt mà; dừng xoay đưa lên Retina siêu nét
+  // Xử lý tối ưu phản hồi tương tác (thu phóng bánh xe, pinch cảm ứng, xoay, lia):
+  const onInteract = () => {
+    if (!useStore.getState().isInteracting) {
+      setIsInteracting(true)
+    }
+    if (interactTimerRef.current) clearTimeout(interactTimerRef.current)
+    interactTimerRef.current = setTimeout(() => {
+      setIsInteracting(false)
+    }, 180)
+  }
+
+  // Bắt sự kiện wheel toàn cục từ frame đầu tiên ngay khi người dùng lăn chuột / vuốt trackpad
+  useEffect(() => {
+    const onWheel = () => {
+      onInteract()
+      if (useStore.getState().focus) {
+        useStore.getState().setFocus(null)
+      }
+    }
+    window.addEventListener('wheel', onWheel, { passive: true })
+    return () => {
+      window.removeEventListener('wheel', onWheel)
+      if (interactTimerRef.current) clearTimeout(interactTimerRef.current)
+    }
+  }, [])
+
+  // Adaptive DPR: Khi kéo xoay chuột hoặc thu phóng (zoom bánh xe / pinch), tạm hạ DPR xuống để duy trì 60fps mượt mà; dừng di chuyển đưa lên Retina siêu nét
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
   const currentDpr =
     graphicMode === 'hd'
       ? isInteracting
-        ? 1.25
+        ? 1.15
         : Math.min(deviceDpr, 2)
       : isInteracting
-        ? 1.0
-        : 1.25
+        ? 0.85
+        : 1.15
 
   return (
     <Canvas
@@ -102,13 +132,16 @@ export function Experience() {
             ref={controlsRef}
             makeDefault
             enableDamping
-            dampingFactor={0.08}
-            minDistance={1.0}
-            maxDistance={46}
+            dampingFactor={0.095}
+            minDistance={2.6}
+            maxDistance={42}
+            zoomSpeed={0.88}
             maxPolarAngle={Math.PI / 2.02}
-            onStart={() => useStore.getState().setIsInteracting(true)}
-            onEnd={() => useStore.getState().setIsInteracting(false)}
+            onStart={() => onInteract()}
+            onEnd={() => onInteract()}
+            onChange={() => onInteract()}
           />
+          <CameraPerformanceManager />
           <CameraRig controlsRef={controlsRef} />
         </>
       ) : (
@@ -116,6 +149,30 @@ export function Experience() {
       )}
     </Canvas>
   )
+}
+
+/**
+ * Quản lý tối ưu GPU bên trong Canvas:
+ * - Tạm dừng tính toán lại Shadow Map depth pass khi đang thu phóng / di chuyển để giải phóng 113+ draw calls
+ * - Tạm ngắt tính toán Raycasting pointer events trong lúc camera chuyển động nhanh
+ */
+function CameraPerformanceManager() {
+  const gl = useThree((s) => s.gl)
+  const setEvents = useThree((s) => s.setEvents)
+  const isInteracting = useStore((s) => s.isInteracting)
+
+  useEffect(() => {
+    if (isInteracting) {
+      gl.shadowMap.autoUpdate = false
+      setEvents({ enabled: false })
+    } else {
+      gl.shadowMap.autoUpdate = true
+      gl.shadowMap.needsUpdate = true
+      setEvents({ enabled: true })
+    }
+  }, [isInteracting, gl, setEvents])
+
+  return null
 }
 
 /* ---------- Camera bay mượt tới đúng góc nhìn và quay về tổng quan chuẩn xác ---------- */
@@ -157,18 +214,13 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const onUp = () => {
       downPos.current = null
     }
-    const onWheel = () => {
-      if (useStore.getState().focus) useStore.getState().setFocus(null)
-    }
     dom.addEventListener('pointerdown', onDown)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
-    dom.addEventListener('wheel', onWheel, { passive: true })
     return () => {
       dom.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
-      dom.removeEventListener('wheel', onWheel)
     }
   }, [gl])
 
@@ -176,9 +228,6 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const controls = controlsRef.current
     const st = useStore.getState()
     const f = st.focus
-    if (st.cutWalls.back || st.cutWalls.left || st.cutWalls.right) {
-      st.setCutWalls({ back: false, left: false, right: false })
-    }
     ;(window as unknown as Record<string, unknown>).__store = useStore
     ;(window as unknown as Record<string, unknown>).__camDbg = {
       pos: [
