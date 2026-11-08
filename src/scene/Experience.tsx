@@ -43,47 +43,12 @@ function SetupEnvironment() {
 export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
-  const isInteracting = useStore((s) => s.isInteracting)
-  const setIsInteracting = useStore((s) => s.setIsInteracting)
   const controlsRef = useRef<OrbitControlsImpl>(null)
-  const interactTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Xử lý tối ưu phản hồi tương tác (thu phóng bánh xe, pinch cảm ứng, xoay, lia):
-  const onInteract = () => {
-    if (!useStore.getState().isInteracting) {
-      setIsInteracting(true)
-    }
-    if (interactTimerRef.current) clearTimeout(interactTimerRef.current)
-    interactTimerRef.current = setTimeout(() => {
-      setIsInteracting(false)
-    }, 180)
-  }
-
-  // Bắt sự kiện wheel toàn cục từ frame đầu tiên ngay khi người dùng lăn chuột / vuốt trackpad
-  useEffect(() => {
-    const onWheel = () => {
-      onInteract()
-      if (useStore.getState().focus) {
-        useStore.getState().setFocus(null)
-      }
-    }
-    window.addEventListener('wheel', onWheel, { passive: true })
-    return () => {
-      window.removeEventListener('wheel', onWheel)
-      if (interactTimerRef.current) clearTimeout(interactTimerRef.current)
-    }
-  }, [])
-
-  // Adaptive DPR: Khi kéo xoay chuột hoặc thu phóng (zoom bánh xe / pinch), tạm hạ DPR xuống để duy trì 60fps mượt mà; dừng di chuyển đưa lên Retina siêu nét
+  // DPR ổn định: Chế độ HD dùng độ nét Retina sắc mịn (1.75), Chế độ Mượt dùng 1.0 chuẩn FPS cao.
+  // Tuyệt đối không thay đổi DPR động khi di chuột để không bị giật lag và không bị drop click.
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
-  const currentDpr =
-    graphicMode === 'hd'
-      ? isInteracting
-        ? 1.15
-        : Math.min(deviceDpr, 2)
-      : isInteracting
-        ? 0.85
-        : 1.15
+  const dpr = graphicMode === 'hd' ? Math.min(deviceDpr, 1.75) : 1.0
 
   return (
     <Canvas
@@ -99,7 +64,7 @@ export function Experience() {
         toneMappingExposure: 1.08,
         outputColorSpace: THREE.SRGBColorSpace,
       }}
-      dpr={currentDpr}
+      dpr={dpr}
       camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
     >
       <SetupEnvironment />
@@ -133,16 +98,12 @@ export function Experience() {
             ref={controlsRef}
             makeDefault
             enableDamping
-            dampingFactor={0.095}
-            minDistance={2.6}
-            maxDistance={42}
-            zoomSpeed={0.88}
+            dampingFactor={0.08}
+            minDistance={2.0}
+            maxDistance={44}
+            zoomSpeed={0.85}
             maxPolarAngle={Math.PI / 2.02}
-            onStart={() => onInteract()}
-            onEnd={() => onInteract()}
-            onChange={() => onInteract()}
           />
-          <CameraPerformanceManager />
           <CameraRig controlsRef={controlsRef} />
         </>
       ) : (
@@ -150,30 +111,6 @@ export function Experience() {
       )}
     </Canvas>
   )
-}
-
-/**
- * Quản lý tối ưu GPU bên trong Canvas:
- * - Tạm dừng tính toán lại Shadow Map depth pass khi đang thu phóng / di chuyển để giải phóng 113+ draw calls
- * - Tạm ngắt tính toán Raycasting pointer events trong lúc camera chuyển động nhanh
- */
-function CameraPerformanceManager() {
-  const gl = useThree((s) => s.gl)
-  const setEvents = useThree((s) => s.setEvents)
-  const isInteracting = useStore((s) => s.isInteracting)
-
-  useEffect(() => {
-    if (isInteracting) {
-      gl.shadowMap.autoUpdate = false
-      setEvents({ enabled: false })
-    } else {
-      gl.shadowMap.autoUpdate = true
-      gl.shadowMap.needsUpdate = true
-      setEvents({ enabled: true })
-    }
-  }, [isInteracting, gl, setEvents])
-
-  return null
 }
 
 /* ---------- Camera bay mượt tới đúng góc nhìn và quay về tổng quan chuẩn xác ---------- */
@@ -215,13 +152,20 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const onUp = () => {
       downPos.current = null
     }
+    const onWheel = () => {
+      if (useStore.getState().focus) {
+        useStore.getState().setFocus(null)
+      }
+    }
     dom.addEventListener('pointerdown', onDown)
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
+    dom.addEventListener('wheel', onWheel, { passive: true })
     return () => {
       dom.removeEventListener('pointerdown', onDown)
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      dom.removeEventListener('wheel', onWheel)
     }
   }, [gl])
 

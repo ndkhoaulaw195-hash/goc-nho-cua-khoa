@@ -282,7 +282,9 @@ export const useStore = create<State>()(
         set((s) => {
           // Khi đã chọn vai (userRole), tuyệt đối không cho phép chuyển sang điều khiển nhân vật còn lại
           if (s.userRole && s.userRole !== activeChar) {
-            return {}
+            return {
+              toastMessage: `🔒 Bạn đang vào vai ${s.userRole === 'boy' ? 'Khoa' : 'Bạn Gái'}. Bấm nút "Đổi vai" ở góc trên nếu muốn đổi.`
+            }
           }
           const curAct = activeChar === 'boy' ? s.boyActivity : s.girlActivity
           const curPhase = activeChar === 'boy' ? s.boyPhase : s.girlPhase
@@ -345,17 +347,38 @@ export const useStore = create<State>()(
         set((s) => {
           // Bảo vệ quyền riêng tư trang phục: Khoa không dùng tủ đồ Bạn Gái, Bạn Gái không dùng tủ đồ Khoa
           if (fromUser) {
-            if (s.userRole === 'boy' && act === 'girl_wardrobe') return {}
-            if (s.userRole === 'girl' && act === 'wardrobe') return {}
+            if (s.userRole === 'boy' && act === 'girl_wardrobe') {
+              return { toastMessage: '🔒 Tủ đồ này dành riêng cho Bạn Gái' }
+            }
+            if (s.userRole === 'girl' && act === 'wardrobe') {
+              return { toastMessage: '🔒 Tủ đồ này dành riêng cho Khoa' }
+            }
           }
 
-          // Tủ đồ tầng 1 dành riêng cho Khoa, Tủ đồ tầng 2 dành riêng cho Bạn Gái
-          const char =
-            act === 'wardrobe'
-              ? 'boy'
-              : act === 'girl_wardrobe'
-                ? 'girl'
-                : (forChar ?? (s.userRole || s.activeChar || 'boy'))
+          // Xác định nhân vật thực hiện hành động:
+          let char: ActiveChar = 'boy'
+          if (forChar) {
+            char = forChar
+          } else if (s.userRole) {
+            char = s.userRole
+          } else {
+            // Khi chưa đăng nhập (chế độ tự do):
+            if (
+              act === 'girl_wardrobe' ||
+              act === 'girl_sleep' ||
+              act === 'girl_pc' ||
+              act === 'girl_vanity' ||
+              act === 'girl_lounge' ||
+              act === 'girl_nook'
+            ) {
+              char = 'girl'
+            } else if (act === 'wardrobe') {
+              char = 'boy'
+            } else {
+              char = s.activeChar || 'boy'
+            }
+          }
+
           const curCharAct = char === 'boy' ? s.boyActivity : s.girlActivity
 
           if (act === 'idle') {
@@ -406,14 +429,17 @@ export const useStore = create<State>()(
           const nextBoyAct = char === 'boy' ? act : s.boyActivity
           const nextGirlAct = char === 'girl' ? act : s.girlActivity
 
+          // Chỉ cập nhật ngữ cảnh người chơi (activeChar, activity, dock) khi người dùng chủ động click hoặc Auto-Life của nhân vật đang điều khiển
+          const shouldUpdateUserContext = fromUser || (!s.userRole && char === s.activeChar)
+
           return {
             boyActivity: nextBoyAct,
             boyPhase: char === 'boy' ? 'walking' : s.boyPhase,
             girlActivity: nextGirlAct,
             girlPhase: char === 'girl' ? 'walking' : s.girlPhase,
-            activeChar: char,
-            activity: act,
-            activityPhase: 'walking',
+            activeChar: shouldUpdateUserContext ? char : s.activeChar,
+            activity: shouldUpdateUserContext ? act : s.activity,
+            activityPhase: shouldUpdateUserContext ? 'walking' : s.activityPhase,
             isUserInitiated: fromUser ? true : s.isUserInitiated,
             boyAutoLife: fromUser && char === 'boy' ? false : s.boyAutoLife,
             girlAutoLife: fromUser && char === 'girl' ? false : s.girlAutoLife,
@@ -434,7 +460,7 @@ export const useStore = create<State>()(
             outfitSpinTick:
               !fromUser && act === 'wardrobe' ? s.outfitSpinTick + 1 : s.outfitSpinTick,
             focus: s.focus,
-            toastMessage: fromUser ? station?.label : s.toastMessage,
+            toastMessage: fromUser ? (station?.label || '🚶 Đang di chuyển...') : s.toastMessage,
           }
         }),
 
