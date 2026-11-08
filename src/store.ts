@@ -222,6 +222,8 @@ export const useStore = create<State>()(
           boyAutoLife: role === 'girl' ? true : false,
           girlAutoLife: role === 'boy' ? true : false,
           roleOccupancy: { ...s.roleOccupancy, [role]: true },
+          wardrobeOpen: false,
+          girlWardrobeOpen: false,
           toastMessage: role === 'boy' ? '👦 Chào mừng Khoa về nhà!' : '👧 Chào mừng Bạn Gái về nhà!',
         }))
         return true
@@ -235,6 +237,8 @@ export const useStore = create<State>()(
           boyAutoLife: true, // Khi không vào vai, nhân vật tự hoạt động
           girlAutoLife: true, // Khi không vào vai, nhân vật tự hoạt động
           roleOccupancy: { boy: false, girl: false },
+          wardrobeOpen: false,
+          girlWardrobeOpen: false,
           toastMessage: '👋 Đã rời vai nhân vật',
         }))
       },
@@ -276,6 +280,10 @@ export const useStore = create<State>()(
 
       setActiveChar: (activeChar) =>
         set((s) => {
+          // Khi đã chọn vai (userRole), tuyệt đối không cho phép chuyển sang điều khiển nhân vật còn lại
+          if (s.userRole && s.userRole !== activeChar) {
+            return {}
+          }
           const curAct = activeChar === 'boy' ? s.boyActivity : s.girlActivity
           const curPhase = activeChar === 'boy' ? s.boyPhase : s.girlPhase
           return {
@@ -359,8 +367,8 @@ export const useStore = create<State>()(
               ...(s.activeChar === char
                 ? { activity: 'idle', activityPhase: 'active', isUserInitiated: false }
                 : {}),
-              wardrobeOpen: char === 'boy' ? false : s.wardrobeOpen,
-              girlWardrobeOpen: char === 'girl' ? false : s.girlWardrobeOpen,
+              wardrobeOpen: false,
+              girlWardrobeOpen: false,
               activePhoto: null,
               focus: null,
             }
@@ -386,8 +394,8 @@ export const useStore = create<State>()(
               activity: 'idle',
               activityPhase: 'active',
               isUserInitiated: false,
-              wardrobeOpen: char === 'boy' ? false : s.wardrobeOpen,
-              girlWardrobeOpen: char === 'girl' ? false : s.girlWardrobeOpen,
+              wardrobeOpen: false,
+              girlWardrobeOpen: false,
               activePhoto: null,
               focus: s.focus,
               toastMessage: '🚶 Đã đứng dậy',

@@ -902,10 +902,56 @@ function GirlRoomFurniture() {
       </mesh>
 
       {/* 2. Giá treo quần áo chữ A bằng gỗ/đồng (A-Frame Garment Rack) treo 4 bộ váy màu Pastel + Túi xách & Hộp giày */}
-      <Interact
-        hint={canUseGirlWardrobe ? '👗 Giá treo váy Pastel' : undefined}
-        onClick={canUseGirlWardrobe ? () => useStore.getState().startActivity('girl_wardrobe', true) : undefined}
-      >
+      {canUseGirlWardrobe ? (
+        <Interact
+          hint="👗 Giá treo váy Pastel"
+          onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+        >
+          <G p={[-1.12, Y, -5.32]}>
+            {/* Khung chữ A hai bên bằng gỗ sồi ấm */}
+            {[-0.56, 0.56].map((rx, side) => (
+              <group key={side} position={[rx, 0, 0]}>
+                <Cyl p={[0, 0.82, -0.14]} r={[0.17, 0, 0]} rt={0.02} rb={0.024} h={1.66} c="#b8895a" />
+                <Cyl p={[0, 0.82, 0.14]} r={[-0.17, 0, 0]} rt={0.02} rb={0.024} h={1.66} c="#b8895a" />
+                <B p={[0, 0.16, 0]} s={[0.035, 0.03, 0.52]} c="#b8895a" />
+              </group>
+            ))}
+            {/* Thanh suốt treo đồ bằng đồng ánh kim (Brass Rail) */}
+            <Cyl p={[0, 1.58, 0]} r={[0, 0, Math.PI / 2]} rt={0.016} h={1.24} c="#d4af37" metal={0.85} rough={0.2} />
+            {/* Kệ gỗ dưới đáy để túi xách & hộp giày */}
+            <BB p={[0, 0.14, 0]} s={[1.1, 0.03, 0.46]} c="#d4a373" rough={0.55} />
+
+            {/* 4 Bộ váy màu Pastel (Hồng phấn, Kem, Xanh bơ, Tím Lavender) treo trên móc đồng */}
+            {[
+              { x: -0.36, c: '#f9a8d4', skirt: '#fbcfe8', h: 0.96 }, // Hồng phấn
+              { x: -0.12, c: '#fdf8f0', skirt: '#f5ebe0', h: 1.04 }, // Kem sữa
+              { x: 0.12, c: '#a7c4a0', skirt: '#bbf7d0', h: 0.98 }, // Xanh bơ (Sage/Avocado)
+              { x: 0.36, c: '#ddd6fe', skirt: '#ede9fe', h: 0.92 }, // Tím Pastel
+            ].map((dr, idx) => (
+              <group key={idx} position={[dr.x, 1.56, 0]}>
+                {/* Móc áo đồng */}
+                <Cyl p={[0, -0.04, 0]} rt={0.006} h={0.08} c="#d4af37" metal={0.85} />
+                {/* Thân váy trên & tà váy xòe mềm mại */}
+                <BB p={[0, -0.32, 0]} s={[0.14, 0.42, 0.28]} c={dr.c} rough={0.82} />
+                <Cyl p={[0, -0.68, 0]} rt={0.08} rb={0.16} h={dr.h - 0.35} c={dr.skirt} rough={0.85} />
+              </group>
+            ))}
+
+            {/* 2 Túi xách thời trang & 2 Hộp giày đặt trên kệ dưới */}
+            {/* Túi xách hồng phấn */}
+            <BB p={[-0.34, 0.17, 0.04]} s={[0.2, 0.19, 0.12]} c="#f472b6" rough={0.45} />
+            <Cyl p={[-0.34, 0.38, 0.04]} r={[Math.PI / 2, 0, 0]} rt={0.055} h={0.015} c="#d4af37" metal={0.8} />
+            {/* Túi xách da kem/camel */}
+            <BB p={[-0.08, 0.17, -0.02]} s={[0.22, 0.21, 0.13]} c="#d4a373" rough={0.45} />
+            <Cyl p={[-0.08, 0.4, -0.02]} r={[Math.PI / 2, 0, 0]} rt={0.06} h={0.015} c="#d4af37" metal={0.8} />
+            {/* 2 Hộp giày xếp chồng */}
+            <BB p={[0.28, 0.17, 0]} s={[0.32, 0.13, 0.26]} c="#f5ebe0" rough={0.7} />
+            <BB p={[0.28, 0.29, 0]} s={[0.33, 0.025, 0.27]} c="#e5d5c3" />
+            <BB p={[0.28, 0.315, 0.01]} s={[0.28, 0.11, 0.23]} c="#fbcfe8" rough={0.7} />
+            <BB p={[0.28, 0.415, 0.01]} s={[0.29, 0.022, 0.24]} c="#f9a8d4" />
+          </G>
+        </Interact>
+      ) : (
         <G p={[-1.12, Y, -5.32]}>
           {/* Khung chữ A hai bên bằng gỗ sồi ấm */}
           {[-0.56, 0.56].map((rx, side) => (
@@ -949,7 +995,7 @@ function GirlRoomFurniture() {
           <BB p={[0.28, 0.315, 0.01]} s={[0.28, 0.11, 0.23]} c="#fbcfe8" rough={0.7} />
           <BB p={[0.28, 0.415, 0.01]} s={[0.29, 0.022, 0.24]} c="#f9a8d4" />
         </G>
-      </Interact>
+      )}
 
       {/* 3. CHẬU CÂY CẢNH LỚN TÁN LÁ XÒE RỘNG XANH MƯỚT (CHẬU GỐM NÂU XÁM) NGĂN CÁCH KHÔNG GIAN */}
       <G p={[0.12, Y, -5.05]}>
@@ -1463,10 +1509,103 @@ function GirlRoomFurniture() {
       {/* =====================================================================
        * F. TỦ QUẦN ÁO GỖ NÂU TRẦM (DARK WALNUT) CHẠM SÀN, 2 CÁNH KÍNH TRONG SUỐT & ĐÈN LED ẤM
        * ===================================================================== */}
-      <Interact
-        hint={canUseGirlWardrobe ? '👗 Tủ quần áo Bạn Gái' : undefined}
-        onClick={canUseGirlWardrobe ? () => useStore.getState().startActivity('girl_wardrobe', true) : undefined}
-      >
+      {canUseGirlWardrobe ? (
+        <Interact
+          hint="👗 Tủ quần áo Bạn Gái"
+          onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+        >
+          <G p={[7.65, Y, -5.25]}>
+            {/* Khung vỏ tủ gỗ nâu trầm (Dark Walnut) chạm đúng mặt sàn tầng 2 (BB p[1] = 0) */}
+            <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#3b2314" rough={0.62} shadow />
+            <RBB p={[-0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} radius={0.02} shadow />
+            <RBB p={[0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#3b2314" rough={0.62} radius={0.02} shadow />
+            <BB p={[0, 0, 0]} s={[2.05, 0.12, 1.08]} c="#2e1a0e" rough={0.6} />
+            <BB p={[0, 3.32, 0]} s={[2.06, 0.1, 1.1]} c="#3b2314" rough={0.6} shadow />
+            <RBB p={[0, 3.42, 0.02]} s={[2.16, 0.1, 1.16]} c="#2a170c" rough={0.55} radius={0.025} shadow />
+            <BB p={[0, 0.12, -0.04]} s={[0.045, 3.2, 0.96]} c="#4a2c1a" rough={0.65} />
+            <BB p={[0, 0.12, -0.48]} s={[1.9, 3.2, 0.02]} c="#7c4f30" rough={0.75} />
+
+            <BB p={[0, 2.68, -0.02]} s={[1.92, 0.045, 0.96]} c="#5c3822" />
+            <BB p={[0, 0.96, -0.02]} s={[1.92, 0.045, 0.96]} c="#5c3822" />
+            <BB p={[0, 0.52, -0.02]} s={[1.92, 0.04, 0.96]} c="#5c3822" />
+
+            <BB p={[-0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#e8dfd3" rough={0.85} />
+            <BB p={[0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#d9cfc3" rough={0.85} />
+
+            <Cyl p={[-0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.85} rough={0.18} />
+            <Cyl p={[0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#d4af37" metal={0.85} rough={0.18} />
+            {[
+              { x: -0.72, h: 1.15, c: '#b84d27' },
+              { x: -0.5, h: 1.25, c: '#eae4da' },
+              { x: -0.28, h: 1.05, c: '#7d977d' },
+              { x: 0.28, h: 1.2, c: '#f3eee6' },
+              { x: 0.5, h: 1.1, c: '#d4a373' },
+              { x: 0.72, h: 1.22, c: '#e5d5c3' },
+            ].map((cl, idx) => (
+              <BB
+                key={idx}
+                p={[cl.x, 2.48 - cl.h, 0.02]}
+                s={[0.16, cl.h, 0.46]}
+                c={cl.c}
+                rough={0.82}
+              />
+            ))}
+
+            <BB p={[-0.48, 0.56, 0]} s={[0.52, 0.22, 0.55]} c="#d6c5b3" />
+            <BB p={[0.48, 0.56, 0]} s={[0.52, 0.22, 0.55]} c="#c2ab94" />
+            <BB p={[-0.48, 0.14, 0]} s={[0.54, 0.26, 0.55]} c="#8c6d53" />
+            <BB p={[0.48, 0.14, 0]} s={[0.54, 0.26, 0.55]} c="#a38367" />
+
+            {[-0.48, 0.48].map((lx, idx) => (
+              <group key={idx}>
+                <B
+                  p={[lx, 3.26, 0.22]}
+                  s={[0.82, 0.025, 0.04]}
+                  c="#fffbeb"
+                  emissive="#ffaa28"
+                  ei={3.5}
+                  shadow={false}
+                />
+                <B
+                  p={[lx, 2.64, 0.22]}
+                  s={[0.82, 0.025, 0.04]}
+                  c="#fffbeb"
+                  emissive="#ffaa28"
+                  ei={3.5}
+                  shadow={false}
+                />
+                <B
+                  p={[lx, 0.93, 0.22]}
+                  s={[0.82, 0.02, 0.04]}
+                  c="#fffbeb"
+                  emissive="#ffaa28"
+                  ei={3.0}
+                  shadow={false}
+                />
+              </group>
+            ))}
+
+            {[-0.48, 0.48].map((dx, side) => (
+              <group key={side} position={[dx, 0.12, 0.52]}>
+                <BB p={[-0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#3b2314" />
+                <BB p={[0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#3b2314" />
+                <BB p={[0, 0, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
+                <BB p={[0, 3.12, 0]} s={[0.95, 0.08, 0.04]} c="#3b2314" />
+                <mesh position={[0, 1.6, 0]} material={glassMat}>
+                  <boxGeometry args={[0.82, 3.04, 0.018]} />
+                </mesh>
+                <BB
+                  p={[side === 0 ? 0.38 : -0.38, 1.35, 0.03]}
+                  s={[0.022, 0.48, 0.025]}
+                  c="#d4af37"
+                  metal={0.85}
+                  rough={0.18}
+                />
+              </group>
+            ))}
+          </G>
+        </Interact>
+      ) : (
         <G p={[7.65, Y, -5.25]}>
           {/* Khung vỏ tủ gỗ nâu trầm (Dark Walnut) chạm đúng mặt sàn tầng 2 (BB p[1] = 0) */}
           <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#3b2314" rough={0.62} shadow />
@@ -1557,7 +1696,7 @@ function GirlRoomFurniture() {
             </group>
           ))}
         </G>
-      </Interact>
+      )}
 
       {/* =====================================================================
        * G. GÓC ĐỌC SÁCH SÁT LAN CAN KÍNH BÊN PHẢI (THẢM NÂU, GHẾ DA, BỘ ẤM TRÀ & BÁNH NGỌT, KỆ TẠP CHÍ & MÈO NHỎ NẰM NGỦ)
@@ -2088,7 +2227,7 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, pos[2], k)
     const isGirlSleeping = (st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active'
     if (isGirlSleeping) {
-      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.x = Math.PI / 2
       root.current.rotation.y = 0
       root.current.rotation.z = 0
     } else {
@@ -2158,6 +2297,7 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
   const isGirlClaimed = userRole === 'girl' || Boolean(roleOccupancy?.girl)
   const isHiddenByFloor1 = Boolean(hideIfUpstairs && walkFloorY.current > 2.0)
   const isControllingGirl = (userRole || useStore.getState().activeChar) === 'girl'
+  const canControlGirl = !userRole || userRole === 'girl'
   const hideInFp = useStore((s) => s.mode === 'fp') && isControllingGirl
   const sleeping = girlActivity === 'sleep' || girlActivity === 'girl_sleep'
 
@@ -2166,10 +2306,29 @@ function GirlfriendAvatar({ hideIfUpstairs }: { hideIfUpstairs?: boolean }) {
       ref={root}
       position={[-3.9, Y, -0.35]}
       visible={!isHiddenByFloor1 && !hideInFp}
-      onClick={(e) => {
-        e.stopPropagation()
-        useStore.getState().setActiveChar('girl')
-      }}
+      onClick={
+        canControlGirl
+          ? (e) => {
+              e.stopPropagation()
+              useStore.getState().setActiveChar('girl')
+            }
+          : undefined
+      }
+      onPointerOver={
+        canControlGirl
+          ? (e) => {
+              e.stopPropagation()
+              document.body.style.cursor = 'pointer'
+            }
+          : undefined
+      }
+      onPointerOut={
+        canControlGirl
+          ? () => {
+              document.body.style.cursor = 'auto'
+            }
+          : undefined
+      }
     >
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
       <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} />

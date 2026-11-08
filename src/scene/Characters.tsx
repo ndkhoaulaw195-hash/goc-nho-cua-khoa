@@ -589,9 +589,9 @@ export function computeCharActivityPose(
         THREE.MathUtils.lerp(0, targetY, pNorm),
         THREE.MathUtils.lerp(-3.55, targetZ, pNorm),
       ]
-      rotX = (-Math.PI / 2) * pNorm
+      rotX = (Math.PI / 2) * pNorm
       rotY = 0
-      headX = 0.15 * pNorm
+      headX = -0.05 * pNorm
     } else if (act === 'wardrobe') {
       pos = [-7.1, 0, -4.15]
       rotY = Math.PI
@@ -673,9 +673,9 @@ export function computeCharActivityPose(
         THREE.MathUtils.lerp(Y2, targetY, pNorm),
         THREE.MathUtils.lerp(-1.8, targetZ, pNorm),
       ]
-      rotX = (-Math.PI / 2) * pNorm
+      rotX = (Math.PI / 2) * pNorm
       rotY = 0
-      headX = 0.15 * pNorm
+      headX = -0.05 * pNorm
     } else if (act === 'piano') {
       pos = [
         0.47,
@@ -797,7 +797,7 @@ export function computeCharActivityPose(
     // Giường đôi Tầng 1: Khoa nằm bên trái (-3.05), Bạn Gái bên phải (-2.15); nếu 1 người thì nằm giữa -2.60
     const bedX = bothHere ? (char === 'boy' ? -3.05 : -2.15) : -2.60
     pos = [bedX, isGirl ? 0.82 : 0.83, -3.45]
-    rotX = -Math.PI / 2
+    rotX = Math.PI / 2
     rotY = 0
     lHipX = 0
     rHipX = 0
@@ -809,7 +809,7 @@ export function computeCharActivityPose(
     rArmX = 0
     rArmZ = -0.08
     headY = 0
-    headX = 0.15
+    headX = -0.05
   } else if (act === 'wardrobe') {
     const spinning = t < spinUntil
     const spinProgress = spinning ? 1 - (spinUntil - t) / 0.95 : 0
@@ -902,7 +902,7 @@ export function computeCharActivityPose(
     // Giường đôi Tầng 2: Nếu cả 2 cùng ngủ thì Khoa bên trái -5.48, Bạn Gái bên phải -4.52; nếu 1 người thì nằm giữa -5.0
     const bedX = bothHere ? (char === 'boy' ? -5.48 : -4.52) : -5.0
     pos = [bedX, Y2 + (isGirl ? 0.74 : 0.75), -3.45]
-    rotX = -Math.PI / 2
+    rotX = Math.PI / 2
     rotY = 0
     lHipX = 0
     rHipX = 0
@@ -913,7 +913,7 @@ export function computeCharActivityPose(
     lArmZ = 0.08
     rArmX = 0
     rArmZ = -0.08
-    headX = 0.15
+    headX = -0.05
     headY = 0
   } else if (act === 'girl_pc') {
     pos = [2.25 + sideOffset, Y2 - 0.24 + sitOffset, -4.64]
@@ -1422,7 +1422,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     const isBoySleeping =
       (st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active'
     if (isBoySleeping) {
-      root.current.rotation.x = -Math.PI / 2
+      root.current.rotation.x = Math.PI / 2
       root.current.rotation.y = 0
       root.current.rotation.z = 0
     } else {
@@ -1493,6 +1493,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const roleOccupancy = useStore((s) => s.roleOccupancy)
   const isBoyClaimed = userRole === 'boy' || Boolean(roleOccupancy?.boy)
   const isControllingBoy = (userRole || useStore.getState().activeChar) === 'boy'
+  const canControlBoy = !userRole || userRole === 'boy'
   const hideInFp = useStore((s) => s.mode === 'fp') && isControllingBoy
 
   return (
@@ -1501,10 +1502,29 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       position={p}
       rotation={[0, ry, 0]}
       visible={!hideInFp}
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation()
-        useStore.getState().setActiveChar('boy')
-      }}
+      onClick={
+        canControlBoy
+          ? (e: ThreeEvent<MouseEvent>) => {
+              e.stopPropagation()
+              useStore.getState().setActiveChar('boy')
+            }
+          : undefined
+      }
+      onPointerOver={
+        canControlBoy
+          ? (e: ThreeEvent<PointerEvent>) => {
+              e.stopPropagation()
+              document.body.style.cursor = 'pointer'
+            }
+          : undefined
+      }
+      onPointerOut={
+        canControlBoy
+          ? () => {
+              document.body.style.cursor = 'auto'
+            }
+          : undefined
+      }
     >
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto */}
       <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} />
