@@ -31,8 +31,9 @@ export function Room() {
 
   const handleFloorClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (e.delta > 6) return
     const st = useStore.getState()
-    if (st.mode !== 'orbit') return
+    if (st.mode !== 'orbit' && st.mode !== 'fp') return
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -14.8, 9.1)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 5.2)
@@ -41,8 +42,9 @@ export function Room() {
 
   const handleYardClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
+    if (e.delta > 6) return
     const st = useStore.getState()
-    if (st.mode !== 'orbit') return
+    if (st.mode !== 'orbit' && st.mode !== 'fp') return
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -21.0, 16.0)
     const z = THREE.MathUtils.clamp(p.z, -9.0, 14.8)
@@ -220,35 +222,37 @@ export function Lights() {
   const pcState = useStore((s) => s.pcState)
   const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
 
-  // Ánh sáng studio ban ngày & giảm nhẹ AmbientLight ban đêm để nổi bật đèn nội thất, hồ bơi, firepit & uplights
+  // Ánh sáng studio ban ngày rõ nét sân vườn khi nhìn từ trong ra & giảm nhẹ AmbientLight ban đêm để nổi bật đèn vàng ấm nội thất qua kính phản quang
   const hemiSky = darkMode
     ? '#6E829B'
     : weather === 'rain'
       ? '#DCE0E4'
-      : '#EFECE6'
+      : '#F2EFE9'
   const hemiGround = darkMode
     ? '#413932'
-    : '#9C968D'
-  const hemiIntensity = darkMode ? 0.32 : weather === 'rain' ? 0.52 : 0.6
+    : '#A49E94'
+  const hemiIntensity = darkMode ? 0.34 : weather === 'rain' ? 0.56 : 0.66
 
   const sunColor = darkMode
     ? '#AFC4DE'
-    : '#FFFDF8'
-  const sunIntensity = darkMode
-    ? 0.38
     : weather === 'sunset'
-      ? 1.42
+      ? '#FFE7C8'
+      : '#FFFDF8'
+  const sunIntensity = darkMode
+    ? 0.4
+    : weather === 'sunset'
+      ? 1.48
       : weather === 'rain'
-        ? 0.96
-        : 1.38
+        ? 1.02
+        : 1.44
   const sunPos: [number, number, number] = weather === 'sunset' ? [15.5, 17.5, 14.5] : [13.5, 20.5, 13.5]
 
   const ambientColor = darkMode
     ? '#3D4452'
-    : '#EFECE6'
+    : '#F2EFE9'
   const ambientIntensity = darkMode
-    ? 0.14
-    : 0.28
+    ? 0.16
+    : 0.32
 
   return (
     <>
@@ -276,45 +280,59 @@ export function Lights() {
       {/* Ánh sáng viền (Rim Light) tách khối kiến trúc & giữ đường nét góc trái ở cả Night & Day Mode */}
       <directionalLight
         position={[-16, 13, -12]}
-        intensity={darkMode ? 0.42 : 0.46}
+        intensity={darkMode ? 0.42 : 0.48}
         color={darkMode ? '#9BB0C8' : '#EFECE6'}
       />
 
-      {/* PointLight Showroom fill lights phân vùng kiến trúc (castShadow = false để tối ưu hiệu năng) */}
+      {/* Hệ đèn nội thất vàng ấm (tạo hiệu ứng hắt ấm qua rèm & kính phản quang cả ngày lẫn đêm, sáng rõ khi Vào nhà) */}
       <pointLight
-        position={[-1.2, 3.3, -0.5]}
-        intensity={darkMode ? 0.92 : 1.15}
-        distance={16}
-        decay={2}
-        color={darkMode ? '#FFE0B8' : '#FFF4E6'}
+        position={[3.8, 3.55, 2.2]}
+        intensity={darkMode ? 2.15 : 1.5}
+        distance={15}
+        decay={1.8}
+        color={darkMode ? '#FFD59E' : '#FFF0D8'}
         castShadow={false}
       />
       <pointLight
-        position={[0.2, 7.6, -1.0]}
-        intensity={darkMode ? 0.95 : 1.16}
-        distance={16}
-        decay={2}
-        color={darkMode ? '#FFE0B8' : '#FFF4E6'}
+        position={[-3.2, 3.45, -1.2]}
+        intensity={darkMode ? 1.85 : 1.4}
+        distance={14}
+        decay={1.8}
+        color={darkMode ? '#FFD8A6' : '#FFF1DC'}
         castShadow={false}
       />
       <pointLight
-        position={[-12.8, 3.3, -0.5]}
-        intensity={darkMode ? 0.88 : 1.12}
+        position={[-4.5, 7.6, 1.4]}
+        intensity={darkMode ? 2.05 : 1.45}
+        distance={15}
+        decay={1.8}
+        color={darkMode ? '#FFD59E' : '#FFF0D8'}
+        castShadow={false}
+      />
+      <pointLight
+        position={[3.4, 7.6, -0.4]}
+        intensity={darkMode ? 1.9 : 1.4}
+        distance={15}
+        decay={1.8}
+        color={darkMode ? '#FFD8A6' : '#FFF1DC'}
+        castShadow={false}
+      />
+      <pointLight
+        position={[-12.8, 3.4, -0.5]}
+        intensity={darkMode ? 1.45 : 1.28}
         distance={12}
-        decay={2}
-        color={darkMode ? '#FFE2BF' : '#FAF8F4'}
+        decay={1.8}
+        color={darkMode ? '#FFE0B8' : '#FAF6EE'}
         castShadow={false}
       />
-      {darkMode && (
-        <pointLight
-          position={[-8.85, 2.75, 2.5]}
-          intensity={0.78}
-          distance={10.5}
-          decay={2}
-          color="#FFE0B8"
-          castShadow={false}
-        />
-      )}
+      <pointLight
+        position={[-8.85, 2.85, 2.5]}
+        intensity={darkMode ? 1.15 : 0.92}
+        distance={10.5}
+        decay={1.8}
+        color={darkMode ? '#FFE0B8' : '#FFF2DE'}
+        castShadow={false}
+      />
 
       {/* Đèn trang trí vàng ấm 3000K (#FFD7A3) đồng bộ cho cả Tầng 1 */}
       {darkMode && lampOn && (

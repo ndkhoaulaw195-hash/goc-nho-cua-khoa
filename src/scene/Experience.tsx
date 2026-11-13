@@ -7,7 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
 import { Avatar, CORGI, Dog, PUG } from './Characters'
-import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
+import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS, type V3 } from '../data/config'
 import { useStore, type Activity } from '../store'
 
 /** Hiệu ứng hạt mưa rơi lãng mạn bên ngoài cửa sổ (Lofi Rain Effect) */
@@ -126,9 +126,8 @@ function BackgroundOptimizer({ isWindowFocused }: { isWindowFocused: boolean }) 
 export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
-  const roofVisible = useStore((s) => s.roofVisible)
   const controlsRef = useRef<OrbitControlsImpl>(null)
-  const allowFull360 = roofVisible
+  const allowFull360 = true
 
   // Quản lý trạng thái tab và focus để ngừng/giảm tải khi người dùng dùng các ứng dụng khác
   const [isPageVisible, setIsPageVisible] = useState(() =>
@@ -242,6 +241,8 @@ export function Experience() {
   )
 }
 
+const HOUSE_FOCUS_CENTER = new THREE.Vector3(-2.5, 2.2, 0)
+
 /* ---------- Camera bay mượt tới đúng góc nhìn và quay về tổng quan chuẩn xác ---------- */
 function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl | null> }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
@@ -303,6 +304,18 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
     const controls = controlsRef.current
     const st = useStore.getState()
     const f = st.focus
+
+    // Tự động mở Cutaway khi zoom sát ngôi nhà ở Toàn cảnh (kèm hysteresis tránh nhấp nháy)
+    if (st.mode === 'orbit' && st.viewPreset === 'overview') {
+      const dist = camera.position.distanceTo(HOUSE_FOCUS_CENTER)
+      if (dist < 19.5 && !st.nearInteriorOpen) {
+        st.setNearInteriorOpen(true)
+      } else if (dist > 22.8 && st.nearInteriorOpen) {
+        st.setNearInteriorOpen(false)
+      }
+    } else if (st.nearInteriorOpen) {
+      st.setNearInteriorOpen(false)
+    }
 
     const now = performance.now()
     if (now - lastDbgUpdate.current > 800) {
@@ -370,29 +383,87 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
   return null
 }
 
-/* ---------- Góc nhìn thứ nhất: Luôn đi theo nhân vật thời gian thực (cả tự hoạt động và điều khiển) ---------- */
+function computeThirdPersonCameraPos(charPos: V3, camYaw: number, camPitch: number): V3 {
+  const [cx, cy, cz] = charPos
+  const bx = Math.sin(camYaw)
+  const bz = Math.cos(camYaw)
+  const desiredDist = 2.2
+
+  const inFloor1House = cy < 3.5 && cx > -15.6 && cx < 10.0 && cz > -6.0 && cz < 6.0
+  const inFloor2House = cy >= 3.5 && cx > -10.0 && cx < 10.0 && cz > -6.0 && cz < 6.0
+
+  let armDist = desiredDist
+  if (inFloor1House || inFloor2House) {
+    for (let i = 1; i <= 10; i++) {
+      const d = (desiredDist * i) / 10
+      const px = cx + bx * d
+      const pz = cz + bz * d
+      const hitBack = pz <= -5.75
+      const hitRight = px >= 9.75
+      const hitFront = pz >= 5.75 && !(cy < 3.5 && px >= -2.15 && px <= -0.75)
+      const hitBathLeft = cy < 3.5 && px <= -15.35
+      const hitBathPartition =
+        cy < 3.5 &&
+        pz > -3.55 &&
+        ((cx < -10.0 && px >= -10.25) || (cx > -10.0 && px <= -9.75))
+      const hitTerraceWall = cy >= 3.5 && px <= -9.75 && (pz < 2.15 || pz > 4.05)
+
+      if (hitBack || hitRight || hitFront || hitBathLeft || hitBathPartition || hitTerraceWall) {
+        armDist = Math.max(0.55, (desiredDist * (i - 1)) / 10)
+        break
+      }
+    }
+  }
+
+  const maxCamY = inFloor1House ? 3.85 : inFloor2House ? 8.2 : cy + 3.2
+  const camY = THREE.MathUtils.clamp(cy + 1.55 - Math.sin(camPitch) * 0.7, cy + 0.55, maxCamY)
+
+  return [cx + bx * armDist, camY, cz + bz * armDist]
+}
+
+/* ---------- Chế độ Vào nhà (Walkthrough): Hỗ trợ 2 góc nhìn 'eye' (tầm mắt) & 'third' (sau lưng) ---------- */
 function FirstPerson() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const gl = useThree((s) => s.gl)
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(LIVE_ACTORS.fpYaw || 0.15)
-  const pitch = useRef(-0.05)
+  const pitch = useRef(-0.06)
   const dragging = useRef(false)
   const lastMouse = useRef<[number, number]>([0, 0])
+  const lastSpawnTick = useRef(0)
 
   useEffect(() => {
-    camera.fov = 68
+    const st = useStore.getState()
+    const isThird = st.fpPerspective === 'third'
+    camera.fov = isThird ? 58 : 68
     camera.rotation.order = 'YXZ'
     camera.updateProjectionMatrix()
 
-    const st = useStore.getState()
     const char = st.userRole || st.activeChar || 'boy'
     const isGirl = char === 'girl'
-    const charPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
-    const charYaw = isGirl ? LIVE_ACTORS.girlYaw : LIVE_ACTORS.khoaYaw
-    yaw.current = charYaw
-    pitch.current = -0.05
-    camera.position.set(charPos[0] - Math.sin(charYaw) * 0.12, charPos[1] + 1.48, charPos[2] - Math.cos(charYaw) * 0.12)
+    let spawnPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+    let initYaw = (isGirl ? LIVE_ACTORS.girlYaw : LIVE_ACTORS.khoaYaw) + Math.PI
+
+    if (st.walkthroughSpawn && st.walkthroughSpawn.tick !== lastSpawnTick.current) {
+      lastSpawnTick.current = st.walkthroughSpawn.tick
+      spawnPos = st.walkthroughSpawn.pos
+      initYaw = st.walkthroughSpawn.yaw
+    }
+
+    yaw.current = initYaw
+    pitch.current = isThird ? -0.07 : -0.04
+    LIVE_ACTORS.fpYaw = yaw.current
+
+    if (isThird) {
+      const [cx, cy, cz] = computeThirdPersonCameraPos(spawnPos, yaw.current, pitch.current)
+      camera.position.set(cx, cy, cz)
+    } else {
+      camera.position.set(
+        spawnPos[0] - Math.sin(yaw.current) * 0.08,
+        spawnPos[1] + 1.48,
+        spawnPos[2] - Math.cos(yaw.current) * 0.08,
+      )
+    }
     camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ')
 
     const down = (e: KeyboardEvent) => {
@@ -415,14 +486,15 @@ function FirstPerson() {
           cur.startActivity('idle', true, curChar)
           return
         }
+        const curPos = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
         // Kiểm tra xem có đứng gần Mochi hoặc Bơ không
         const dMochi = Math.hypot(
-          LIVE_ACTORS.dogs.mochi.pos[0] - camera.position.x,
-          LIVE_ACTORS.dogs.mochi.pos[2] - camera.position.z,
+          LIVE_ACTORS.dogs.mochi.pos[0] - curPos[0],
+          LIVE_ACTORS.dogs.mochi.pos[2] - curPos[2],
         )
         const dBo = Math.hypot(
-          LIVE_ACTORS.dogs.bo.pos[0] - camera.position.x,
-          LIVE_ACTORS.dogs.bo.pos[2] - camera.position.z,
+          LIVE_ACTORS.dogs.bo.pos[0] - curPos[0],
+          LIVE_ACTORS.dogs.bo.pos[2] - curPos[2],
         )
         if (Math.min(dMochi, dBo) < 2.4) {
           cur.petDog(dMochi <= dBo ? 'mochi' : 'bo', true, curChar)
@@ -436,7 +508,7 @@ function FirstPerson() {
           if (item === 'wardrobe' && curChar !== 'boy') return
           if (item === 'girl_wardrobe' && curChar !== 'girl') return
           const ep = STATIONS[item].entryPos
-          const d = Math.hypot(ep[0] - camera.position.x, ep[1] - camera.position.z)
+          const d = Math.hypot(ep[0] - curPos[0], ep[1] - curPos[2])
           if (d < bestDist) {
             bestDist = d
             nearest = item
@@ -461,7 +533,7 @@ function FirstPerson() {
       const dy = e.clientY - lastMouse.current[1]
       lastMouse.current = [e.clientX, e.clientY]
       yaw.current -= dx * 0.0042
-      pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0042, -1.2, 1.2)
+      pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0042, -1.05, 1.05)
     }
     const onPointerUp = () => {
       dragging.current = false
@@ -488,19 +560,37 @@ function FirstPerson() {
     const k = keys.current
     const delta = Math.min(dt, 0.05)
     const t = clock.elapsedTime
+    const isThird = st.fpPerspective === 'third'
+
+    const targetFov = isThird ? 58 : 68
+    if (Math.abs(camera.fov - targetFov) > 0.05) {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 1 - Math.exp(-delta * 10))
+      camera.updateProjectionMatrix()
+    }
 
     if (k.KeyQ) yaw.current += 1.8 * delta
-    LIVE_ACTORS.fpYaw = yaw.current
 
     const char = st.userRole || st.activeChar || 'boy'
     const isGirl = char === 'girl'
-    const charPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+    let charPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
     const charYaw = isGirl ? LIVE_ACTORS.girlYaw : LIVE_ACTORS.khoaYaw
     const currentAct = isGirl ? st.girlActivity : st.boyActivity
     const currentPhase = isGirl ? st.girlPhase : st.boyPhase
 
+    // Đồng bộ ngay yaw & vị trí camera khi người dùng nhảy tới một không gian qua Thanh Điều hướng Phòng
+    let snapped = false
+    if (st.walkthroughSpawn && st.walkthroughSpawn.tick !== lastSpawnTick.current) {
+      lastSpawnTick.current = st.walkthroughSpawn.tick
+      yaw.current = st.walkthroughSpawn.yaw
+      pitch.current = isThird ? -0.07 : -0.04
+      charPos = st.walkthroughSpawn.pos
+      snapped = true
+    }
+
+    LIVE_ACTORS.fpYaw = yaw.current
+
     let eyeH = 1.48
-    let eyeForward = 0.12
+    let eyeForward = 0.08
     if (currentAct === 'sleep' || currentAct === 'girl_sleep') {
       eyeH = currentPhase === 'active' ? 0.38 : 1.48
       eyeForward = 0.05
@@ -517,23 +607,42 @@ function FirstPerson() {
       currentAct === 'read'
     ) {
       eyeH = currentPhase === 'active' ? 1.12 : 1.48
-      eyeForward = 0.12
+      eyeForward = 0.08
     }
 
     const isWalking = currentPhase === 'walking'
     const bob = isWalking ? Math.abs(Math.sin(t * 10)) * 0.035 : 0
 
-    const targetEyeX = charPos[0] - Math.sin(charYaw) * eyeForward
-    const targetEyeY = charPos[1] + eyeH + bob
-    const targetEyeZ = charPos[2] - Math.cos(charYaw) * eyeForward
+    let targetCamX: number
+    let targetCamY: number
+    let targetCamZ: number
 
-    const lerpK = 1 - Math.exp(-delta * 22)
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetEyeX, lerpK)
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetEyeY, lerpK)
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetEyeZ, lerpK)
+    if (isThird) {
+      const [tx, ty, tz] = computeThirdPersonCameraPos(charPos, yaw.current, pitch.current)
+      targetCamX = tx
+      targetCamY = ty + bob * 0.4
+      targetCamZ = tz
+    } else {
+      targetCamX = charPos[0] - Math.sin(yaw.current) * eyeForward
+      targetCamY = charPos[1] + eyeH + bob
+      targetCamZ = charPos[2] - Math.cos(yaw.current) * eyeForward
+    }
 
-    // Khi người chơi không rê chuột xoay hướng, camera tự động hướng theo nhân vật khi đi bộ hoặc hướng vào đồ vật khi tương tác
-    if (!dragging.current) {
+    if (snapped) {
+      camera.position.set(targetCamX, targetCamY, targetCamZ)
+    } else {
+      const lerpK = 1 - Math.exp(-delta * (isThird ? 16 : 22))
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, lerpK)
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, lerpK)
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, lerpK)
+    }
+
+    const isManualKeyMove = Boolean(
+      k.KeyW || k.KeyA || k.KeyS || k.KeyD || k.ArrowUp || k.ArrowDown || k.ArrowLeft || k.ArrowRight,
+    )
+
+    // Khi không kéo chuột xoay & không điều khiển WASD thủ công, hướng nhẹ theo đồ vật hoặc hướng đi click-to-walk
+    if (!dragging.current && !snapped && !isManualKeyMove) {
       if (currentAct !== 'idle' && currentPhase === 'active') {
         const station = STATIONS[currentAct]
         if (station) {
@@ -543,9 +652,10 @@ function FirstPerson() {
           const diff = Math.atan2(Math.sin(targetYaw - yaw.current), Math.cos(targetYaw - yaw.current))
           yaw.current += diff * Math.min(1, delta * 3.5)
         }
-      } else if (isWalking) {
-        const diff = Math.atan2(Math.sin(charYaw - yaw.current), Math.cos(charYaw - yaw.current))
-        yaw.current += diff * Math.min(1, delta * 4.0)
+      } else if (isWalking || st.avatarTarget) {
+        const desiredCamYaw = charYaw + Math.PI
+        const diff = Math.atan2(Math.sin(desiredCamYaw - yaw.current), Math.cos(desiredCamYaw - yaw.current))
+        yaw.current += diff * Math.min(1, delta * 3.5)
       }
     }
 
