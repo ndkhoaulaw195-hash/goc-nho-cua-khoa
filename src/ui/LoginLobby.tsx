@@ -10,6 +10,9 @@ import {
 export function LoginLobby() {
   const userRole = useStore((s) => s.userRole)
   const setUserRole = useStore((s) => s.setUserRole)
+  const darkMode = useStore((s) => s.darkMode)
+  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+
   const [presence, setPresence] = useState<PresenceState>(getPresenceSnapshot())
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -40,401 +43,122 @@ export function LoginLobby() {
   const girlOccupied = presence.girl.occupied && !presence.girl.isSelf
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'radial-gradient(circle at center, rgba(15, 23, 42, 0.78) 0%, rgba(2, 6, 23, 0.94) 100%)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        padding: '20px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          maxWidth: '680px',
-          background: 'rgba(255, 255, 255, 0.96)',
-          border: '1px solid rgba(255, 255, 255, 0.8)',
-          borderRadius: '32px',
-          padding: '40px 36px 32px',
-          boxShadow: '0 30px 70px -15px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.5) inset',
-          textAlign: 'center',
-          color: '#0f172a',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Header Badge */}
-        <div style={{ marginBottom: '10px' }}>
-          <span
-            style={{
-              display: 'inline-block',
-              fontSize: '11px',
-              fontWeight: 800,
-              letterSpacing: '0.14em',
-              color: '#d97706',
-              background: '#fef3c7',
-              padding: '5px 16px',
-              borderRadius: '999px',
-              textTransform: 'uppercase',
-            }}
-          >
-            Chào mừng về nhà ✨
-          </span>
-        </div>
+    <div className="login-lobby-backdrop" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+      <div className="login-lobby-card">
+        <button
+          type="button"
+          className="lobby-theme-toggle"
+          onClick={toggleDarkMode}
+          title={darkMode ? 'Chuyển sang giao diện Ban ngày' : 'Chuyển sang giao diện Ban đêm'}
+          aria-label="Đổi giao diện Sáng/Tối"
+        >
+          {darkMode ? '☀️' : '🌙'}
+        </button>
 
-        <h1
-          style={{
-            fontSize: '28px',
-            fontWeight: 800,
-            letterSpacing: '-0.025em',
-            margin: '6px 0 6px',
-            color: '#0f172a',
-          }}
-        >
-          Sảnh Chọn Nhân Vật
+        <div className="login-badge">Chào mừng về nhà ✨</div>
+        <h1 id="lobby-title" className="login-title">
+          Góc Nhỏ Của Khoa
         </h1>
-        <p
-          style={{
-            fontSize: '14.5px',
-            color: '#64748b',
-            margin: '0 0 28px',
-            fontWeight: 500,
-          }}
-        >
-          Mỗi người chọn một nhân vật riêng để cùng trải nghiệm căn biệt thự 3D
+        <p className="login-subtitle">
+          Chọn nhân vật của riêng bạn để cùng bước vào không gian 3D ấm cúng và đồng bộ thời gian thực
         </p>
 
-        {errorMsg && (
-          <div
-            style={{
-              fontSize: '13.5px',
-              color: '#dc2626',
-              background: '#fee2e2',
-              border: '1px solid #fca5a5',
-              padding: '11px 16px',
-              borderRadius: '14px',
-              marginBottom: '20px',
-              fontWeight: 600,
-            }}
-          >
-            {errorMsg}
-          </div>
-        )}
+        {errorMsg && <div className="login-error-banner">{errorMsg}</div>}
 
-        {/* 2 Character Cards Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            gap: '20px',
-            marginBottom: '24px',
-          }}
-        >
-          {/* Card 1: Khoa (Nam) */}
+        <div className="role-cards-grid">
+          {/* Card 1: Khoa */}
           <div
+            role="button"
+            tabIndex={boyOccupied ? -1 : 0}
+            aria-disabled={boyOccupied}
             onClick={() => !boyOccupied && handleSelectRole('boy')}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              padding: '28px 22px 24px',
-              borderRadius: '24px',
-              background: boyOccupied
-                ? '#f8fafc'
-                : 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)',
-              border: boyOccupied ? '2px dashed #cbd5e1' : '2px solid #86efac',
-              cursor: boyOccupied ? 'not-allowed' : 'pointer',
-              opacity: boyOccupied ? 0.6 : 1,
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-              boxShadow: boyOccupied
-                ? 'none'
-                : '0 12px 28px -6px rgba(34, 197, 94, 0.22)',
+            onKeyDown={(e) => {
+              if (!boyOccupied && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                handleSelectRole('boy')
+              }
             }}
+            className={`role-select-box boy-box ${boyOccupied ? 'is-occupied' : 'is-available'}`}
           >
-            {/* Avatar circle */}
-            <div
-              style={{
-                width: '76px',
-                height: '76px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '44px',
-                background: boyOccupied
-                  ? '#e2e8f0'
-                  : 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
-                boxShadow: boyOccupied
-                  ? 'none'
-                  : '0 8px 18px rgba(34, 197, 94, 0.25)',
-                marginBottom: '14px',
-                border: '3px solid #ffffff',
-              }}
-            >
-              👦
+            <div className="role-avatar-circle boy-avatar">👦</div>
+            <div className="role-main-title">Khoa</div>
+            <div className="role-sub-title">Vai Nam · Tầng 1</div>
+
+            <div className="role-feature-tags">
+              <span className="role-feature-tag">🖥️ PC & Game</span>
+              <span className="role-feature-tag">🛋️ Phòng khách</span>
+              <span className="role-feature-tag">🐶 Cún cưng</span>
             </div>
 
-            <div
-              style={{
-                fontSize: '21px',
-                fontWeight: 800,
-                color: '#0f172a',
-                marginBottom: '3px',
-              }}
-            >
-              Khoa
-            </div>
-            <div
-              style={{
-                fontSize: '13px',
-                color: '#64748b',
-                fontWeight: 600,
-                marginBottom: '16px',
-              }}
-            >
-              Vai Nam · Tầng 1 (Làm việc & Khách)
-            </div>
+            {boyOccupied ? (
+              <span className="status-pill occupied">
+                <span className="status-dot red" />
+                Đã có người vào vai
+              </span>
+            ) : (
+              <span className="status-pill free-boy">
+                <span className="status-dot green" />
+                Sẵn sàng · Có thể chọn
+              </span>
+            )}
 
-            {/* Status Pill */}
-            <div style={{ marginBottom: '18px' }}>
-              {boyOccupied ? (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    color: '#b91c1c',
-                    background: '#fee2e2',
-                    border: '1px solid #fca5a5',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#ef4444',
-                    }}
-                  />
-                  Đã có người vào vai
-                </span>
-              ) : (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    color: '#15803d',
-                    background: '#dcfce7',
-                    border: '1px solid #86efac',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#22c55e',
-                      boxShadow: '0 0 8px #22c55e',
-                    }}
-                  />
-                  Đang trống · Có thể chọn
-                </span>
-              )}
-            </div>
-
-            {/* Enter Button */}
             <button
               type="button"
               disabled={boyOccupied}
-              style={{
-                width: '100%',
-                padding: '13px 20px',
-                borderRadius: '16px',
-                fontSize: '15px',
-                fontWeight: 700,
-                color: '#ffffff',
-                border: 'none',
-                cursor: boyOccupied ? 'not-allowed' : 'pointer',
-                background: boyOccupied
-                  ? '#94a3b8'
-                  : 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-                boxShadow: boyOccupied
-                  ? 'none'
-                  : '0 8px 20px rgba(22, 163, 74, 0.38)',
-                transition: 'all 0.18s ease',
-              }}
+              className="role-enter-btn boy-enter-btn"
             >
               {boyOccupied ? '🚫 Đã có người vào vai' : 'Vào vai Khoa →'}
             </button>
           </div>
 
-          {/* Card 2: Bạn Gái (Nữ) */}
+          {/* Card 2: Bạn Gái */}
           <div
+            role="button"
+            tabIndex={girlOccupied ? -1 : 0}
+            aria-disabled={girlOccupied}
             onClick={() => !girlOccupied && handleSelectRole('girl')}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              padding: '28px 22px 24px',
-              borderRadius: '24px',
-              background: girlOccupied
-                ? '#f8fafc'
-                : 'linear-gradient(180deg, #fff1f2 0%, #ffffff 100%)',
-              border: girlOccupied ? '2px dashed #cbd5e1' : '2px solid #fca5a5',
-              cursor: girlOccupied ? 'not-allowed' : 'pointer',
-              opacity: girlOccupied ? 0.6 : 1,
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
-              boxShadow: girlOccupied
-                ? 'none'
-                : '0 12px 28px -6px rgba(244, 63, 94, 0.22)',
+            onKeyDown={(e) => {
+              if (!girlOccupied && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                handleSelectRole('girl')
+              }
             }}
+            className={`role-select-box girl-box ${girlOccupied ? 'is-occupied' : 'is-available'}`}
           >
-            {/* Avatar circle */}
-            <div
-              style={{
-                width: '76px',
-                height: '76px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '44px',
-                background: girlOccupied
-                  ? '#e2e8f0'
-                  : 'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)',
-                boxShadow: girlOccupied
-                  ? 'none'
-                  : '0 8px 18px rgba(244, 63, 94, 0.25)',
-                marginBottom: '14px',
-                border: '3px solid #ffffff',
-              }}
-            >
-              👧
+            <div className="role-avatar-circle girl-avatar">👧</div>
+            <div className="role-main-title">Bạn Gái</div>
+            <div className="role-sub-title">Vai Nữ · Tầng 2</div>
+
+            <div className="role-feature-tags">
+              <span className="role-feature-tag">🎹 Đàn Piano</span>
+              <span className="role-feature-tag">💄 Bàn trang điểm</span>
+              <span className="role-feature-tag">🎨 Góc nghệ thuật</span>
             </div>
 
-            <div
-              style={{
-                fontSize: '21px',
-                fontWeight: 800,
-                color: '#0f172a',
-                marginBottom: '3px',
-              }}
-            >
-              Bạn Gái
-            </div>
-            <div
-              style={{
-                fontSize: '13px',
-                color: '#64748b',
-                fontWeight: 600,
-                marginBottom: '16px',
-              }}
-            >
-              Vai Nữ · Tầng 2 (Nghệ thuật & Ngủ)
-            </div>
+            {girlOccupied ? (
+              <span className="status-pill occupied">
+                <span className="status-dot red" />
+                Đã có người vào vai
+              </span>
+            ) : (
+              <span className="status-pill free-girl">
+                <span className="status-dot pink" />
+                Sẵn sàng · Có thể chọn
+              </span>
+            )}
 
-            {/* Status Pill */}
-            <div style={{ marginBottom: '18px' }}>
-              {girlOccupied ? (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    color: '#b91c1c',
-                    background: '#fee2e2',
-                    border: '1px solid #fca5a5',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#ef4444',
-                    }}
-                  />
-                  Đã có người vào vai
-                </span>
-              ) : (
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    padding: '5px 14px',
-                    borderRadius: '999px',
-                    color: '#e11d48',
-                    background: '#ffe4e6',
-                    border: '1px solid #fca5a5',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '8px',
-                      height: '8px',
-                      borderRadius: '50%',
-                      background: '#f43f5e',
-                      boxShadow: '0 0 8px #f43f5e',
-                    }}
-                  />
-                  Đang trống · Có thể chọn
-                </span>
-              )}
-            </div>
-
-            {/* Enter Button */}
             <button
               type="button"
               disabled={girlOccupied}
-              style={{
-                width: '100%',
-                padding: '13px 20px',
-                borderRadius: '16px',
-                fontSize: '15px',
-                fontWeight: 700,
-                color: '#ffffff',
-                border: 'none',
-                cursor: girlOccupied ? 'not-allowed' : 'pointer',
-                background: girlOccupied
-                  ? '#94a3b8'
-                  : 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
-                boxShadow: girlOccupied
-                  ? 'none'
-                  : '0 8px 20px rgba(225, 29, 72, 0.38)',
-                transition: 'all 0.18s ease',
-              }}
+              className="role-enter-btn girl-enter-btn"
             >
               {girlOccupied ? '🚫 Đã có người vào vai' : 'Vào vai Bạn Gái →'}
             </button>
           </div>
         </div>
 
-        {/* Footer info note */}
-        <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500, letterSpacing: '-0.01em' }}>
-          💡 Mỗi người điều khiển 1 nhân vật riêng biệt · Bấm nút "Đổi vai" ở thanh trên bất kỳ lúc nào để chuyển vai
+        <div className="lobby-footer-note">
+          💡 Mỗi người điều khiển 1 nhân vật riêng biệt · Bấm <strong>"Đổi vai"</strong> ở góc trên bất kỳ lúc nào để chuyển đổi
         </div>
       </div>
     </div>

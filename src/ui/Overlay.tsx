@@ -63,6 +63,7 @@ const I = {
 export function Overlay() {
   const darkMode = useStore((s) => s.darkMode)
   const toastMessage = useStore((s) => s.toastMessage)
+  const hoverHint = useStore((s) => s.hoverHint)
   const mode = useStore((s) => s.mode)
   const boyAutoLife = useStore((s) => s.boyAutoLife)
   const girlAutoLife = useStore((s) => s.girlAutoLife)
@@ -77,16 +78,36 @@ export function Overlay() {
     return () => clearTimeout(t)
   }, [toastMessage])
 
+  // Hỗ trợ nhấn ESC để đóng nhanh modal đang mở
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const st = useStore.getState()
+      if (st.pianoModalOpen) return st.setPianoModalOpen(false)
+      if (st.questModalOpen) return st.setQuestModalOpen(false)
+      if (st.refrigeratorOpen) return st.toggleRefrigerator()
+      if (st.dartsModalOpen) return st.setDartsModalOpen(false)
+      if (st.pcGameModalOpen) return st.setPcGameModalOpen(false)
+      if (st.memoryModalItem) return st.setMemoryModalItem(null)
+      if (st.wardrobeOpen) {
+        return useStore.setState({ wardrobeOpen: false, boyActivity: 'idle', boyPhase: 'active', isUserInitiated: false })
+      }
+      if (st.girlWardrobeOpen) {
+        return useStore.setState({ girlWardrobeOpen: false, girlActivity: 'idle', girlPhase: 'active', isUserInitiated: false })
+      }
+      if (st.activePhoto !== null) return st.returnOverview()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   return (
     <div className={`overlay ${darkMode ? 'is-dark' : ''}`}>
-      <div className="top-left">
-        <div className="card title-card">
-          <div className="eyebrow">{SITE.eyebrow}</div>
-          <h1>{SITE.title}</h1>
-        </div>
+      <div className="hud-top-bar">
+        <TopLeft boyAutoLife={boyAutoLife} girlAutoLife={girlAutoLife} />
+        <TopRight />
       </div>
 
-      <TopRight boyAutoLife={boyAutoLife} girlAutoLife={girlAutoLife} />
       <ContextualDock />
       <WardrobeModal />
       <GirlWardrobeModal />
@@ -99,8 +120,74 @@ export function Overlay() {
       <PianoModal />
       <LoginLobby />
 
-      {mode === 'fp' && <div className="fp-crosshair" />}
+      {mode === 'fp' && (
+        <>
+          <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} />
+          <div className="fp-hud">WASD di chuyển · Chuột xoay góc nhìn · ESC thoát</div>
+        </>
+      )}
+      {hoverHint && <div className="hover-hint">{hoverHint}</div>}
       {toastMessage && <div className="toast">{toastMessage}</div>}
+    </div>
+  )
+}
+
+/* ---------- Cụm Trái Trên: Tiêu đề + Trạng thái Vai & Tim Hạnh Phúc ---------- */
+function TopLeft({
+  boyAutoLife,
+  girlAutoLife,
+}: {
+  boyAutoLife: boolean
+  girlAutoLife: boolean
+}) {
+  const userRole = useStore((s) => s.userRole)
+  const logout = useStore((s) => s.logout)
+  const lovePoints = useStore((s) => s.lovePoints)
+  const isAuto = userRole === 'boy' ? boyAutoLife : girlAutoLife
+
+  return (
+    <div className="hud-top-left">
+      <div className="card title-card">
+        <div className="eyebrow">{SITE.eyebrow}</div>
+        <h1>{SITE.title}</h1>
+      </div>
+
+      {userRole && (
+        <div className="card role-status-strip">
+          <span className="role-current-tag">
+            {userRole === 'boy' ? '👦 Khoa' : '👧 Bạn Gái'}
+          </span>
+
+          <button
+            className={`auto-toggle-chip ${isAuto ? 'on' : ''}`}
+            onClick={() =>
+              userRole === 'boy'
+                ? useStore.getState().toggleBoyAutoLife()
+                : useStore.getState().toggleGirlAutoLife()
+            }
+            title={isAuto ? 'Tự động sinh hoạt đang bật' : 'Bật tự động sinh hoạt cho nhân vật'}
+          >
+            <span className={`pulse-dot ${isAuto ? 'on' : ''}`} />
+            <span>Auto</span>
+          </button>
+
+          <button
+            className="love-chip-btn"
+            onClick={() => useStore.getState().setQuestModalOpen(true)}
+            title="Điểm Tim Hạnh Phúc — Bấm để xem Sổ nhiệm vụ"
+          >
+            ❤️ {lovePoints}
+          </button>
+
+          <button
+            className="role-logout-btn"
+            onClick={logout}
+            title="Quay lại sảnh để chọn nhân vật khác"
+          >
+            Đổi vai
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -315,14 +402,8 @@ function ContextualDock() {
   )
 }
 
-/* ---------- Thanh Glassmorphism Dock hiện đại: Nhân vật + Auto, Nhạc, Dark Mode, Camera, Góc nhìn 1 ---------- */
-function TopRight({
-  boyAutoLife,
-  girlAutoLife,
-}: {
-  boyAutoLife: boolean
-  girlAutoLife: boolean
-}) {
+/* ---------- Cụm Phải Trên: 2 Thanh Glassmorphism Gọn Gàng (Điều hướng Góc nhìn & Tiện ích) ---------- */
+function TopRight() {
   const mode = useStore((s) => s.mode)
   const setMode = useStore((s) => s.setMode)
   const weather = useStore((s) => s.weather)
@@ -330,14 +411,11 @@ function TopRight({
   const candlesLit = useStore((s) => s.candlesLit)
   const toggleCandles = useStore((s) => s.toggleCandles)
   const quests = useStore((s) => s.quests)
-  const lovePoints = useStore((s) => s.lovePoints)
   const pendingQuests = quests.filter((q) => !q.completed).length
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
   const activity = useStore((s) => s.activity)
-  const userRole = useStore((s) => s.userRole)
-  const logout = useStore((s) => s.logout)
 
   const isFloor1 = mode === 'orbit' && viewPreset === 'floor1' && activity === 'idle'
   const isFloor2 = mode === 'orbit' && viewPreset === 'floor2' && activity === 'idle'
@@ -345,6 +423,12 @@ function TopRight({
 
   const [playing, setPlaying] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    return () => {
+      audio.current?.pause()
+    }
+  }, [])
 
   const toggleMusic = () => {
     const notify = useStore.getState().notify
@@ -370,126 +454,26 @@ function TopRight({
     }
   }
 
+  const weatherMeta =
+    weather === 'clear'
+      ? { icon: '☀️', label: 'Nắng ấm' }
+      : weather === 'sunset'
+        ? { icon: '🌇', label: 'Hoàng hôn' }
+        : weather === 'rain'
+          ? { icon: '🌧️', label: 'Mưa Lofi' }
+          : { icon: '🌙', label: 'Đêm ấm' }
+
   return (
-    <div className="top-right">
+    <div className="hud-top-right">
+      {/* Hàng 1: Điều hướng góc nhìn 3D */}
       <div className="glass-dock">
-        {/* Vai nhân vật của người chơi (Mỗi người chỉ vào vai 1 người, có nút Đổi vai) */}
-        {userRole ? (
-          <div className="user-role-badge">
-            <span className="role-current-tag">
-              {userRole === 'boy' ? '👦 Khoa' : '👧 Bạn Gái'}
-            </span>
-            <button
-              className={`auto-toggle-chip ${(userRole === 'boy' ? boyAutoLife : girlAutoLife) ? 'on' : ''}`}
-              onClick={() =>
-                userRole === 'boy'
-                  ? useStore.getState().toggleBoyAutoLife()
-                  : useStore.getState().toggleGirlAutoLife()
-              }
-            >
-              <span className={`pulse-dot ${(userRole === 'boy' ? boyAutoLife : girlAutoLife) ? 'on' : ''}`} />
-              <span>Auto</span>
-            </button>
-            <button
-              className="role-logout-btn"
-              onClick={logout}
-            >
-              Đổi vai
-            </button>
-          </div>
-        ) : null}
-
-        <span className="dock-sep" />
-
-        <button
-          className={`dock-icon-btn ${playing ? 'active' : ''}`}
-          onClick={toggleMusic}
-        >
-          {playing ? I.music : I.mute}
-          {playing && (
-            <span className="eq">
-              <i />
-              <i />
-              <i />
-            </span>
-          )}
-        </button>
-
-        {/* Nút Đổi Thời tiết & Bầu không khí (Nắng ấm / Hoàng hôn / Mưa Lofi / Đêm) */}
-        <button
-          className="dock-icon-btn"
-          onClick={cycleWeather}
-          title={`Thời tiết: ${weather === 'clear' ? 'Nắng ấm' : weather === 'sunset' ? 'Hoàng hôn' : weather === 'rain' ? 'Mưa Lofi' : 'Đêm ấm'} (Bấm để chuyển)`}
-          style={{ fontSize: 16 }}
-        >
-          {weather === 'clear' ? '☀️' : weather === 'sunset' ? '🌇' : weather === 'rain' ? '🌧️' : '🌙'}
-        </button>
-
-        {/* Nút Bảng Nhiệm Vụ Hàng Ngày */}
-        <button
-          className="dock-pill-btn"
-          onClick={() => useStore.getState().setQuestModalOpen(true)}
-          title="Sổ nhiệm vụ hàng ngày & Tim Hạnh Phúc"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 700 }}
-        >
-          📋 Nhiệm vụ
-          {pendingQuests > 0 ? (
-            <span
-              style={{
-                background: '#ef4444',
-                color: '#ffffff',
-                fontSize: 10,
-                fontWeight: 800,
-                padding: '0 5px',
-                borderRadius: 999,
-                lineHeight: '14px',
-              }}
-            >
-              {pendingQuests}
-            </span>
-          ) : (
-            <span style={{ color: '#e11d48', fontSize: 11 }}>❤️ {lovePoints}</span>
-          )}
-        </button>
-
-        {/* Nút Bảng Tin Nhắn Tủ Lạnh */}
-        <button
-          className="dock-pill-btn"
-          onClick={() => useStore.getState().toggleRefrigerator()}
-          title="Xem & Dán giấy nhắn tình yêu lên Tủ lạnh"
-          style={{ fontSize: 12, fontWeight: 600 }}
-        >
-          🧊 Tủ lạnh
-        </button>
-
-        {/* Nút Thắp Nến Thơm Tinh Dầu Lãng Mạn */}
-        <button
-          className={`dock-icon-btn ${candlesLit ? 'active' : ''}`}
-          onClick={toggleCandles}
-          title={candlesLit ? 'Nến thơm tinh dầu: Đang thắp lung linh (Bấm để thổi tắt)' : 'Nến thơm tinh dầu: Đang tắt (Bấm để thắp nến)'}
-          style={{ fontSize: 16 }}
-        >
-          🕯️
-        </button>
-
-        <button
-          className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
-          onClick={toggleGraphicMode}
-          title={graphicMode === 'hd' ? 'Đồ họa Retina HD + Shadow 2K (Bấm để đổi sang Mượt)' : 'Đồ họa Mượt mà (Bấm để đổi sang HD)'}
-          style={{ padding: '0 8px', fontSize: 11.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}
-        >
-          {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
-        </button>
-
-        <span className="dock-sep" />
-
         {mode === 'orbit' && (
           <div className="view-switcher">
             <button
               className={`dock-pill-btn ${isOverview ? 'active' : ''}`}
               onClick={() => useStore.getState().returnOverview()}
             >
-              🏠 Toàn cảnh
+              🏠 <span className="hide-on-mobile">Toàn cảnh</span>
             </button>
             <button
               className={`dock-pill-btn ${isFloor1 ? 'active' : ''}`}
@@ -513,10 +497,75 @@ function TopRight({
         )}
 
         <button
-          className={`dock-pill-btn fp-toggle ${mode === 'fp' ? 'active' : ''}`}
+          className={`dock-pill-btn ${mode === 'fp' ? 'active' : ''}`}
           onClick={() => setMode(mode === 'fp' ? 'orbit' : 'fp')}
+          title="Chuyển sang góc nhìn thứ nhất (WASD để đi bộ trong nhà)"
         >
-          {I.eye} {mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn thứ nhất'}
+          {I.eye} <span>{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
+        </button>
+      </div>
+
+      {/* Hàng 2: Không gian & Tiện ích ấm cúng */}
+      <div className="glass-dock">
+        <button
+          className={`dock-icon-btn ${playing ? 'active' : ''}`}
+          onClick={toggleMusic}
+          title={playing ? 'Tắt nhạc nền Kiss The Rain' : 'Phát nhạc nền Kiss The Rain'}
+          aria-label="Phát hoặc tắt nhạc nền"
+        >
+          {playing ? I.music : I.mute}
+          {playing && (
+            <span className="eq">
+              <i />
+              <i />
+              <i />
+            </span>
+          )}
+        </button>
+
+        <button
+          className="dock-pill-btn"
+          onClick={cycleWeather}
+          title={`Thời tiết: ${weatherMeta.label} (Bấm để chuyển)`}
+        >
+          <span>{weatherMeta.icon}</span>
+          <span className="hide-on-mobile">{weatherMeta.label}</span>
+        </button>
+
+        <button
+          className={`dock-icon-btn ${candlesLit ? 'active' : ''}`}
+          onClick={toggleCandles}
+          title={candlesLit ? 'Nến thơm: Đang thắp (Bấm để tắt)' : 'Nến thơm: Đang tắt (Bấm để thắp)'}
+          aria-label="Bật/tắt nến thơm"
+        >
+          🕯️
+        </button>
+
+        <span className="dock-sep" />
+
+        <button
+          className="dock-pill-btn"
+          onClick={() => useStore.getState().setQuestModalOpen(true)}
+          title="Sổ nhiệm vụ hàng ngày & Tim Hạnh Phúc"
+        >
+          📋 <span className="hide-on-mobile">Nhiệm vụ</span>
+          {pendingQuests > 0 && <span className="quest-count-badge">{pendingQuests}</span>}
+        </button>
+
+        <button
+          className="dock-pill-btn"
+          onClick={() => useStore.getState().toggleRefrigerator()}
+          title="Xem & Dán giấy nhắn tình yêu lên Tủ lạnh"
+        >
+          🧊 <span className="hide-on-mobile">Tủ lạnh</span>
+        </button>
+
+        <button
+          className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
+          onClick={toggleGraphicMode}
+          title={graphicMode === 'hd' ? 'Đồ họa Retina HD + Shadow 2K' : 'Đồ họa Mượt mà'}
+        >
+          {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
         </button>
       </div>
     </div>
