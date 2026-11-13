@@ -13,6 +13,8 @@ export interface InteractionGateState {
   nearInteriorOpen: boolean
 }
 
+const ALL_OCCLUDER_KINDS = new Set<OccluderKind>(['wall', 'slab', 'roof', 'glass'])
+const GHOST_ORBIT_OCCLUDER_KINDS = new Set<OccluderKind>(['slab'])
 const SPRING_ARM_KINDS = new Set<OccluderKind>(['wall', 'slab', 'roof'])
 
 let pointerDownX = 0
@@ -100,7 +102,7 @@ function applyInteractZoneMetadata(
 function collectOccluderMeshes(
   node: THREE.Object3D,
   inheritedKind: OccluderKind,
-  springArmOnly: boolean,
+  allowedKinds: Set<OccluderKind>,
   out: Set<THREE.Object3D>,
 ): void {
   if (!node.visible) return
@@ -115,14 +117,14 @@ function collectOccluderMeshes(
       node.userData.isOccluder = true
       node.userData.occluderKind = effectiveKind
     }
-    if (!springArmOnly || SPRING_ARM_KINDS.has(effectiveKind)) {
+    if (allowedKinds.has(effectiveKind)) {
       out.add(node)
     }
   }
 
   const children = node.children
   for (let i = 0; i < children.length; i++) {
-    collectOccluderMeshes(children[i], effectiveKind, springArmOnly, out)
+    collectOccluderMeshes(children[i], effectiveKind, allowedKinds, out)
   }
 }
 
@@ -253,27 +255,29 @@ export function registerInteractableGroup(obj: THREE.Object3D, zone: InteractZon
   }
 }
 
-function queryVisibleOccluders(springArmOnly: boolean): THREE.Object3D[] {
+function queryVisibleOccluders(allowedKinds: Set<OccluderKind>): THREE.Object3D[] {
   if (occluderEntries.size === 0) return []
   const out = new Set<THREE.Object3D>()
 
   for (const [root, kind] of occluderEntries) {
     if (hasOccluderAncestor(root)) continue
     if (!isHierarchyVisible(root)) continue
-    collectOccluderMeshes(root, kind, springArmOnly, out)
+    collectOccluderMeshes(root, kind, allowedKinds, out)
   }
 
   return Array.from(out)
 }
 
-/** Trả về danh sách Mesh vật cản kiến trúc đang hiển thị (visible === true suốt chuỗi ancestor) */
+/** Trả về danh sách Mesh vật cản kiến trúc đang hiển thị (bỏ qua tường/kính/mái ở chế độ orbit + ghost để tương tác xuyên tường mờ) */
 export function getVisibleOccluderMeshes(): THREE.Object3D[] {
-  return queryVisibleOccluders(false)
+  const state = useStore.getState()
+  const isGhostOrbit = state.mode === 'orbit' && state.wallMode === 'ghost'
+  return queryVisibleOccluders(isGhostOrbit ? GHOST_ORBIT_OCCLUDER_KINDS : ALL_OCCLUDER_KINDS)
 }
 
 /** Trả về danh sách Mesh vật cản vững chắc (wall/slab/roof) cho GTA Spring Arm camera */
 export function getSpringArmOccluders(): THREE.Object3D[] {
-  return queryVisibleOccluders(true)
+  return queryVisibleOccluders(SPRING_ARM_KINDS)
 }
 
 /** Trả về danh sách Mesh tương tác thuộc vùng đang mở khóa và đang hiển thị */

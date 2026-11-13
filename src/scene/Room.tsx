@@ -63,7 +63,11 @@ export function Room() {
     if (st.mode !== 'orbit' && st.mode !== 'fp') return
     if (!isZoneInteractive('interior_f1', st)) return
     const first = e.intersections?.[0]
-    if (first && first.object !== e.object && isOccluderHit(first.object)) return
+    const isGhostThrough =
+      st.mode === 'orbit' &&
+      st.wallMode === 'ghost' &&
+      first?.object.userData?.occluderKind !== 'slab'
+    if (first && first.object !== e.object && isOccluderHit(first.object) && !isGhostThrough) return
     e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -14.8, 9.1)
@@ -76,7 +80,11 @@ export function Room() {
     const st = useStore.getState()
     if (st.mode !== 'orbit' && st.mode !== 'fp') return
     const first = e.intersections?.[0]
-    if (first && first.object !== e.object && isOccluderHit(first.object)) return
+    const isGhostThrough =
+      st.mode === 'orbit' &&
+      st.wallMode === 'ghost' &&
+      first?.object.userData?.occluderKind !== 'slab'
+    if (first && first.object !== e.object && isOccluderHit(first.object) && !isGhostThrough) return
     e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -21.0, 16.0)

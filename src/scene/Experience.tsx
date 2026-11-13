@@ -159,12 +159,20 @@ function maybeNotifyClosedOverviewClick(e: MouseEvent, rootState: RootState) {
   }
 
   const p = firstOcc.point
+  const occKind = firstOcc.object.userData?.occluderKind as string | undefined
+  const isShellKind = !occKind || occKind === 'wall' || occKind === 'glass' || occKind === 'roof' || p.y >= 2.8
   const onClosedHouseShell =
-    p.x >= -15.7 && p.x <= 10.1 && p.z >= -6.1 && p.z <= 6.1 && p.y >= 0.05
+    isShellKind &&
+    p.x >= -16.35 &&
+    p.x <= 11.15 &&
+    p.z >= -6.65 &&
+    p.z <= 8.0 &&
+    p.y >= 0.02 &&
+    p.y <= 10.2
   if (onClosedHouseShell) {
     useStore
       .getState()
-      .notify('💡 Bấm "Vào nhà" hoặc "Tầng 1 / Tầng 2" để khám phá bên trong')
+      .notify('💡 Bấm "Tầm mắt" hoặc "Tầng 1 / Tầng 2" để khám phá bên trong')
   }
 }
 
@@ -230,25 +238,14 @@ function createVillaPointerEvents(store: RootStore): EventManager<HTMLElement> {
       if (isHouseClosedOverview(st) && !zone) {
         const p = item.point
         const insideClosedHouse =
-          p.x >= -15.65 && p.x <= 10.05 && p.z >= -6.05 && p.z <= 6.05 && p.y > -0.25
+          p.x >= -16.1 && p.x <= 10.6 && p.z >= -6.3 && p.z <= 6.3 && p.y > -0.25
         if (insideClosedHouse || isOccluderHit(item.object)) {
           continue
         }
       }
 
-      if (st.mode === 'fp' && zone !== null) {
-        if (st.fpPerspective === 'eye') {
-          if (item.distance > MAX_FP_INTERACT_DIST) continue
-        } else {
-          const char = st.userRole || st.activeChar || 'boy'
-          const charPos = char === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
-          const charDist = Math.hypot(
-            item.point.x - charPos[0],
-            item.point.y - (charPos[1] + 1.0),
-            item.point.z - charPos[2],
-          )
-          if (charDist > MAX_FP_INTERACT_DIST) continue
-        }
+      if (zone !== null && !isWithinFpInteractRange(st, item.point, item.distance)) {
+        continue
       }
 
       filtered.push(item)
@@ -304,7 +301,7 @@ function createVillaPointerEvents(store: RootStore): EventManager<HTMLElement> {
           _occluderRaycaster.near = rootState.raycaster.near
           _occluderRaycaster.far = 150
           const actHits = _occluderRaycaster.intersectObjects(actMeshes, false)
-          if (actHits.length > 0) {
+          if (actHits.length > 0 && isWithinFpInteractRange(useStore.getState(), actHits[0].point, actHits[0].distance)) {
             const occluders = getVisibleOccluderMeshes()
             const occHits =
               occluders.length > 0 ? _occluderRaycaster.intersectObjects(occluders, false) : []
@@ -696,9 +693,28 @@ function findInteractUserData(obj: THREE.Object3D): { interactHint?: string; onI
   return null
 }
 
-function raycastCenterInteract(
+function isWithinFpInteractRange(
+  st: ReturnType<typeof useStore.getState>,
+  hitPoint: THREE.Vector3,
+  rayDistance: number,
+): boolean {
+  if (st.mode !== 'fp') return true
+  if (st.fpPerspective === 'eye') {
+    return rayDistance <= MAX_FP_INTERACT_DIST
+  }
+  const char = st.userRole || st.activeChar || 'boy'
+  const charPos = char === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+  const charDist = Math.hypot(
+    hitPoint.x - charPos[0],
+    hitPoint.y - (charPos[1] + 1.0),
+    hitPoint.z - charPos[2],
+  )
+  return charDist <= MAX_FP_INTERACT_DIST
+}
+
+function raycastInteractFromRay(
   raycaster: THREE.Raycaster,
-  camera: THREE.PerspectiveCamera,
+  maxFar: number,
 ): { interactHint?: string; onInteractClick?: () => void } | null {
   const st = useStore.getState()
   if (st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null) return null
@@ -716,12 +732,15 @@ function raycastCenterInteract(
   for (const m of occluderMeshes) targetSet.add(m)
   const targets = Array.from(targetSet)
 
-  raycaster.setFromCamera(CENTER_NDC, camera)
-  raycaster.far = isThird ? st.fpDistance + MAX_FP_INTERACT_DIST + 1.5 : MAX_FP_INTERACT_DIST
+  raycaster.near = 0.05
+  raycaster.far = maxFar
   const hits = raycaster.intersectObjects(targets, false)
 
   for (const hit of hits) {
     const obj = hit.object
+    if (obj instanceof THREE.Points || obj instanceof THREE.Line || obj instanceof THREE.LineSegments) {
+      continue
+    }
     if (!isEffectivelyVisible(obj)) continue
 
     // Bỏ qua chính cơ thể nhân vật đang điều khiển ở góc nhìn thứ 3
@@ -746,21 +765,25 @@ function raycastCenterInteract(
       return null
     }
 
-    if (interactData && (interactData.onInteractClick || interactData.interactHint)) {
-      const distFromActor = isThird
-        ? Math.hypot(
-            hit.point.x - charPos[0],
-            hit.point.y - (charPos[1] + 1.0),
-            hit.point.z - charPos[2],
-          )
-        : hit.distance
-      if (distFromActor > MAX_FP_INTERACT_DIST) {
+    if (interactData && (typeof interactData.onInteractClick === 'function' || typeof interactData.interactHint === 'string')) {
+      if (!isWithinFpInteractRange(st, hit.point, hit.distance)) {
         return null
       }
       return interactData
     }
   }
   return null
+}
+
+function raycastCenterInteract(
+  raycaster: THREE.Raycaster,
+  camera: THREE.PerspectiveCamera,
+): { interactHint?: string; onInteractClick?: () => void } | null {
+  const st = useStore.getState()
+  const isThird = st.fpPerspective === 'third'
+  raycaster.setFromCamera(CENTER_NDC, camera)
+  const maxFar = isThird ? st.fpDistance + MAX_FP_INTERACT_DIST + 1.5 : MAX_FP_INTERACT_DIST
+  return raycastInteractFromRay(raycaster, maxFar)
 }
 
 function FirstPerson() {
@@ -782,6 +805,7 @@ function FirstPerson() {
   const isLockedRef = useRef(false)
   const lastUnlockAtRef = useRef(0)
   const raycasterRef = useRef(new THREE.Raycaster())
+  const clickNdcRef = useRef(new THREE.Vector2())
   const springRaycasterRef = useRef(new THREE.Raycaster())
   const springDirRef = useRef(new THREE.Vector3())
   const targetPivotVec = useRef(new THREE.Vector3())
@@ -807,7 +831,7 @@ function FirstPerson() {
     if (st.walkthroughSpawn && st.walkthroughSpawn.tick !== lastSpawnTick.current) {
       lastSpawnTick.current = st.walkthroughSpawn.tick
       spawnPos = st.walkthroughSpawn.pos
-      initYaw = st.walkthroughSpawn.yaw
+      initYaw = st.walkthroughSpawn.yaw + Math.PI
     }
 
     yaw.current = initYaw
@@ -1068,8 +1092,25 @@ function FirstPerson() {
 
     const onCanvasClick = (e: MouseEvent) => {
       if (document.pointerLockElement === dom) return
+      const cur = useStore.getState()
+      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
       if (!isValidClick(e.clientX, e.clientY, 5, 250)) return
       if (performance.now() - lastInteractClickAt < 100) return
+
+      const rect = dom.getBoundingClientRect()
+      if (rect.width > 0 && rect.height > 0) {
+        clickNdcRef.current.set(
+          ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          -((e.clientY - rect.top) / rect.height) * 2 + 1,
+        )
+        raycasterRef.current.setFromCamera(clickNdcRef.current, camera)
+        const hit = raycastInteractFromRay(raycasterRef.current, 150)
+        if (hit && (typeof hit.onInteractClick === 'function' || typeof hit.interactHint === 'string')) {
+          lastInteractClickAt = performance.now()
+          return
+        }
+      }
+
       requestGtaLock()
     }
 
@@ -1171,7 +1212,7 @@ function FirstPerson() {
     let snapped = false
     if (st.walkthroughSpawn && st.walkthroughSpawn.tick !== lastSpawnTick.current) {
       lastSpawnTick.current = st.walkthroughSpawn.tick
-      yaw.current = st.walkthroughSpawn.yaw
+      yaw.current = st.walkthroughSpawn.yaw + Math.PI
       pitch.current = isThird ? DEFAULT_THIRD_PITCH : DEFAULT_EYE_PITCH
       charPos = st.walkthroughSpawn.pos
       snapped = true

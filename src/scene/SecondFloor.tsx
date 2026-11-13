@@ -73,6 +73,10 @@ export function SecondFloor() {
     if (!floor2Ref.current) return
     floor2Ref.current.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
+        if (obj.userData?.noRaycast) {
+          ;(obj as THREE.Mesh).raycast = NOOP_RAYCAST
+          return
+        }
         const isInst = Boolean((obj as THREE.InstancedMesh).isInstancedMesh)
         ;(obj as THREE.Mesh).raycast = showFloor2
           ? isInst
@@ -440,46 +444,46 @@ function Floor2AmbientOcclusion({ darkMode }: { darkMode: boolean }) {
   return (
     <group>
       {/* Góc tường sau Tầng 2 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.005, -5.75]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y + 0.005, -5.75]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[20.0, 0.55]} />
         <meshBasicMaterial map={linearTex} transparent opacity={cornerOpacity} depthWrite={false} />
       </mesh>
       {/* Góc tường trái Tầng 2 */}
-      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[-9.75, Y + 0.005, -0.6]}>
+      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[-9.75, Y + 0.005, -0.6]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[10.8, 0.5]} />
         <meshBasicMaterial map={linearTex} transparent opacity={cornerOpacity} depthWrite={false} />
       </mesh>
       {/* Góc tường phải Tầng 2 */}
-      <mesh rotation={[-Math.PI / 2, 0, -Math.PI / 2]} position={[9.75, Y + 0.005, -2.9]}>
+      <mesh rotation={[-Math.PI / 2, 0, -Math.PI / 2]} position={[9.75, Y + 0.005, -2.9]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[6.2, 0.5]} />
         <meshBasicMaterial map={linearTex} transparent opacity={cornerOpacity} depthWrite={false} />
       </mesh>
       {/* AO dưới gầm giường Tầng 2 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-5.0, Y + 0.036, -3.95]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-5.0, Y + 0.036, -3.95]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[3.15, 3.65]} />
         <meshBasicMaterial map={contactTex} transparent opacity={underOpacity} depthWrite={false} />
       </mesh>
       {/* AO dưới bàn học & bàn trang điểm */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2.25, Y + 0.036, -5.15]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[2.25, Y + 0.036, -5.15]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[2.0, 1.1]} />
         <meshBasicMaterial map={contactTex} transparent opacity={0.38} depthWrite={false} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[4.95, Y + 0.012, -5.1]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[4.95, Y + 0.012, -5.1]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[1.95, 1.15]} />
         <meshBasicMaterial map={contactTex} transparent opacity={0.38} depthWrite={false} />
       </mesh>
       {/* AO dưới tủ quần áo Tầng 2 */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[7.65, Y + 0.009, -5.1]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[7.65, Y + 0.009, -5.1]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[2.45, 1.45]} />
         <meshBasicMaterial map={contactTex} transparent opacity={underOpacity} depthWrite={false} />
       </mesh>
       {/* AO dưới cụm đọc sách & ghế bành góc phải */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[7.7, Y + 0.036, -1.35]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[7.7, Y + 0.036, -1.35]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[1.25, 1.2]} />
         <meshBasicMaterial map={contactTex} transparent opacity={0.4} depthWrite={false} />
       </mesh>
       {/* AO dưới ghế Bouclé giữa phòng */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.1, Y + 0.036, 1.15]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-3.1, Y + 0.036, 1.15]} raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <planeGeometry args={[1.35, 1.35]} />
         <meshBasicMaterial map={contactTex} transparent opacity={0.38} depthWrite={false} />
       </mesh>
@@ -767,6 +771,7 @@ function WoodSlatsWall({ H2, showFloor2 }: { H2: number; showFloor2: boolean }) 
  * ============================================================================ */
 function IndoorStaircase() {
   const darkMode = useStore((s) => s.darkMode)
+  const isOrbitMode = useStore((s) => s.mode === 'orbit')
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const steps = 14
   const startZ = 4.7
@@ -859,7 +864,7 @@ function IndoorStaircase() {
         ref.current.computeBoundingSphere()
       }
     }
-  }, [steps, totalH, startZ, endZ, stringerY0, stringerDy, railY0, railDy])
+  }, [isOrbitMode, steps, totalH, startZ, endZ, stringerY0, stringerDy, railY0, railDy])
 
   const handleStairClick = () => {
     const st = useStore.getState()
@@ -877,13 +882,8 @@ function IndoorStaircase() {
     }
   }
 
-  return (
-    <Interact
-      zone="interior_f2"
-      hint="🪜 Cầu thang"
-      onClick={handleStairClick}
-    >
-      <G p={[-8.85, 0, 0]}>
+  const stairContent = (
+    <G p={[-8.85, 0, 0]}>
         {/* 2 dầm đỡ chéo (stringer) thép Matte Charcoal ốp gỗ sồi nối khít từ sàn Tầng 1 (y=0) lên mép dầm sàn Tầng 2 (y=FLOOR2_Y-0.15) */}
         {[-0.56, 0.56].map((sx, sIdx) => (
           <group key={sIdx}>
@@ -955,6 +955,17 @@ function IndoorStaircase() {
           </group>
         ))}
       </G>
+  )
+
+  if (!isOrbitMode) return stairContent
+
+  return (
+    <Interact
+      zone="interior_f2"
+      hint="🪜 Cầu thang"
+      onClick={handleStairClick}
+    >
+      {stairContent}
     </Interact>
   )
 }
