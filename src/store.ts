@@ -129,8 +129,7 @@ interface State {
   focus: CamFocus | null
   viewPreset: 'overview' | 'floor1' | 'floor2'
   roofVisible: boolean
-  toggleRoof: () => void
-  wallMode: 'cutaway' | 'ghost' | 'full'
+  wallMode: 'full' | 'ghost'
   cycleWallMode: () => void
   randomViewIdx: number
   setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
@@ -679,33 +678,14 @@ export const useStore = create<State>()(
 
       focus: null,
       viewPreset: 'overview',
-      roofVisible: false,
-      toggleRoof: () =>
-        set((s) => {
-          const next = !s.roofVisible
-          broadcastWorldChange('roofVisible', next)
-          const needsOverview = next && s.viewPreset !== 'overview'
-          return {
-            roofVisible: next,
-            ...(needsOverview
-              ? {
-                  mode: 'orbit' as const,
-                  viewPreset: 'overview' as const,
-                  focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
-                }
-              : {}),
-            toastMessage: next ? '🏠 Hiện mái nhà & ngoại thất' : '✨ Ẩn mái nhà',
-          }
-        }),
-      wallMode: 'cutaway',
+      roofVisible: true,
+      wallMode: 'full',
       cycleWallMode: () =>
         set((s) => {
-          const order: Array<'cutaway' | 'ghost' | 'full'> = ['cutaway', 'ghost', 'full']
-          const next = order[(order.indexOf(s.wallMode) + 1) % order.length]
+          const next: 'full' | 'ghost' = s.wallMode === 'full' ? 'ghost' : 'full'
           const labels = {
-            cutaway: '🧱 Tường lửng (tự động hạ tường chắn)',
-            ghost: '🪟 Tường kính mờ (giữ khung 4 mặt)',
-            full: '🏛️ Đủ 4 tường (ngoại thất kín)',
+            full: '🏛️ Đủ tường (Kiến trúc hoàn chỉnh)',
+            ghost: '🪟 Tường mờ (Xem xuyên nội thất)',
           }
           return {
             wallMode: next,
@@ -717,7 +697,11 @@ export const useStore = create<State>()(
         set(() => ({
           focus,
           ...(preset ? { viewPreset: preset } : {}),
-          ...(preset === 'floor1' || preset === 'floor2' ? { roofVisible: false } : {}),
+          ...(preset === 'floor1' || preset === 'floor2'
+            ? { roofVisible: false }
+            : preset === 'overview'
+              ? { roofVisible: true }
+              : {}),
         })),
       returnOverview: () =>
         set((s) => {
@@ -734,6 +718,7 @@ export const useStore = create<State>()(
             girlWardrobeOpen: false,
             activePhoto: null,
             viewPreset: 'overview',
+            roofVisible: true,
             focus: s.mode === 'orbit' ? { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] } : null,
           }
         }),
@@ -744,6 +729,7 @@ export const useStore = create<State>()(
           wardrobeOpen: false,
           girlWardrobeOpen: false,
           viewPreset: 'overview',
+          roofVisible: true,
           focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
           toastMessage: '↺ Đã đặt lại góc nhìn mặc định',
         })),
@@ -759,7 +745,11 @@ export const useStore = create<State>()(
             activePhoto: null,
             randomViewIdx: nextIdx,
             viewPreset: picked.preset,
-            ...(picked.preset === 'floor1' || picked.preset === 'floor2' ? { roofVisible: false } : {}),
+            ...(picked.preset === 'floor1' || picked.preset === 'floor2'
+              ? { roofVisible: false }
+              : picked.preset === 'overview'
+                ? { roofVisible: true }
+                : {}),
             focus: { pos: [...picked.camera.pos], target: [...picked.camera.target] },
             toastMessage: `🎲 ${picked.label}`,
           }

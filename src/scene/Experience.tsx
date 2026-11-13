@@ -127,9 +127,8 @@ export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
   const roofVisible = useStore((s) => s.roofVisible)
-  const wallMode = useStore((s) => s.wallMode)
   const controlsRef = useRef<OrbitControlsImpl>(null)
-  const allowFull360 = roofVisible && wallMode === 'full'
+  const allowFull360 = roofVisible
 
   // Quản lý trạng thái tab và focus để ngừng/giảm tải khi người dùng dùng các ứng dụng khác
   const [isPageVisible, setIsPageVisible] = useState(() =>

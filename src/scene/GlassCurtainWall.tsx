@@ -13,20 +13,20 @@ interface GlassCurtainWallProps {
 
 const glassMatCache: { light?: THREE.MeshPhysicalMaterial; dark?: THREE.MeshPhysicalMaterial } = {}
 
-/** Vật liệu kính cường lực kiến trúc PBR dùng chung (trong trẻo, bắt sáng clearcoat, không gây nhòe đồ vật phía sau) */
+/** Vật liệu kính Low-Iron kiến trúc PBR dùng chung (siêu trong suốt, bắt sáng clearcoat, nhìn rõ nội thất) */
 export function getArchitecturalGlassMat(darkMode: boolean): THREE.MeshPhysicalMaterial {
   const key = darkMode ? 'dark' : 'light'
   if (!glassMatCache[key]) {
     glassMatCache[key] = new THREE.MeshPhysicalMaterial({
-      color: darkMode ? '#5E7487' : '#EFECE6',
+      color: darkMode ? '#5E7487' : '#E6F2F8',
       transparent: true,
-      opacity: darkMode ? 0.25 : 0.25,
-      roughness: 0.1,
-      metalness: 0.08,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.08,
+      opacity: darkMode ? 0.12 : 0.08,
+      roughness: 0.06,
+      metalness: 0.05,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.05,
       ior: 1.5,
-      reflectivity: 0.85,
+      reflectivity: 0.9,
       side: THREE.DoubleSide,
       depthWrite: false,
     })

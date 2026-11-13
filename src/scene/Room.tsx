@@ -39,10 +39,22 @@ export function Room() {
     st.setAvatarTarget([x, 0, z])
   }
 
+  const handleYardClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation()
+    const st = useStore.getState()
+    if (st.mode !== 'orbit') return
+    const p = e.point
+    const x = THREE.MathUtils.clamp(p.x, -21.0, 16.0)
+    const z = THREE.MathUtils.clamp(p.z, -9.0, 14.8)
+    // Tránh click nhầm vào lòng hồ bơi [2.8..12.2, 7.4..13.4]
+    if (x >= 2.8 && x <= 12.2 && z >= 7.4 && z <= 13.4) return
+    st.setAvatarTarget([x, p.y, z])
+  }
+
   return (
     <group>
       {/* Hệ thống Khung Kiến trúc Khối đặc (Sàn 0.3, Tường bao 0.28 + CutawayWall, Vách ngăn, Mái bằng & Sân vườn) */}
-      <ArchitectureShell onFloorClick={handleFloorClick} />
+      <ArchitectureShell onFloorClick={handleFloorClick} onYardClick={handleYardClick} />
 
       {avatarTarget && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[avatarTarget[0], avatarTarget[1] + 0.032, avatarTarget[2]]}>
@@ -268,10 +280,10 @@ export function Lights() {
         color={darkMode ? '#9BB0C8' : '#EFECE6'}
       />
 
-      {/* PointLight phân vùng kiến trúc (castShadow = false để tối ưu hiệu năng) */}
+      {/* PointLight Showroom fill lights phân vùng kiến trúc (castShadow = false để tối ưu hiệu năng) */}
       <pointLight
         position={[-1.2, 3.3, -0.5]}
-        intensity={darkMode ? 0.92 : 0.72}
+        intensity={darkMode ? 0.92 : 1.15}
         distance={16}
         decay={2}
         color={darkMode ? '#FFE0B8' : '#FFF4E6'}
@@ -279,7 +291,7 @@ export function Lights() {
       />
       <pointLight
         position={[0.2, 7.6, -1.0]}
-        intensity={darkMode ? 0.95 : 0.72}
+        intensity={darkMode ? 0.95 : 1.16}
         distance={16}
         decay={2}
         color={darkMode ? '#FFE0B8' : '#FFF4E6'}
@@ -287,7 +299,7 @@ export function Lights() {
       />
       <pointLight
         position={[-12.8, 3.3, -0.5]}
-        intensity={darkMode ? 0.88 : 0.76}
+        intensity={darkMode ? 0.88 : 1.12}
         distance={12}
         decay={2}
         color={darkMode ? '#FFE2BF' : '#FAF8F4'}
