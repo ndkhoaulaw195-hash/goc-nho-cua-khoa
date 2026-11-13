@@ -1,52 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
 import { PianoModal } from './PianoModal'
 import {
-  FLOOR1_VIEW,
-  FLOOR2_VIEW,
   GIRL_OUTFITS,
   OUTFITS,
   SITE,
   STATIONS,
   TV_CHANNELS,
-  WALKTHROUGH_SPOTS,
   WALL_PHOTOS,
-  WEATHER_MODES,
-  type WalkthroughSpaceId,
 } from '../data/config'
 
 const I = {
-  music: (
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  ),
-  mute: (
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-      <path d="M2 2l20 20" />
-    </svg>
-  ),
-  reset: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-      <path d="M3 3v5h5" />
-    </svg>
-  ),
-  shuffle: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16 3 21 3 21 8" />
-      <line x1="4" y1="20" x2="21" y2="3" />
-      <polyline points="21 16 21 21 16 21" />
-      <line x1="15" y1="15" x2="21" y2="21" />
-      <line x1="4" y1="4" x2="9" y2="9" />
-    </svg>
-  ),
   close: (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
       <path d="M18 6L6 18M6 6l12 12" />
@@ -54,17 +19,44 @@ const I = {
   ),
 }
 
+function requestCanvasPointerLock() {
+  try {
+    const canvas = document.querySelector('canvas')
+    const maybePromise = canvas?.requestPointerLock?.() as unknown as Promise<void> | undefined
+    if (maybePromise && typeof maybePromise.catch === 'function') {
+      maybePromise.catch(() => {})
+    }
+  } catch {
+    // Bỏ qua nếu trình duyệt chặn hoặc chưa hỗ trợ Pointer Lock
+  }
+}
+
+function releaseCanvasPointerLock() {
+  try {
+    if (typeof document !== 'undefined' && document.pointerLockElement) {
+      document.exitPointerLock?.()
+    }
+  } catch {
+    // Bỏ qua nếu không thể nhả Pointer Lock
+  }
+}
+
 export function Overlay() {
   const darkMode = useStore((s) => s.darkMode)
   const toastMessage = useStore((s) => s.toastMessage)
   const hoverHint = useStore((s) => s.hoverHint)
   const mode = useStore((s) => s.mode)
-  const fpPerspective = useStore((s) => s.fpPerspective)
   const userRole = useStore((s) => s.userRole)
   const activity = useStore((s) => s.activity)
   const isUserInitiated = useStore((s) => s.isUserInitiated)
   const boyAutoLife = useStore((s) => s.boyAutoLife)
   const girlAutoLife = useStore((s) => s.girlAutoLife)
+  const wardrobeOpen = useStore((s) => s.wardrobeOpen)
+  const girlWardrobeOpen = useStore((s) => s.girlWardrobeOpen)
+  const pianoModalOpen = useStore((s) => s.pianoModalOpen)
+  const activePhoto = useStore((s) => s.activePhoto)
+
+  const [isPointerLocked, setIsPointerLocked] = useState(false)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -75,6 +67,38 @@ export function Overlay() {
     const t = setTimeout(() => useStore.setState({ toastMessage: null }), 2500)
     return () => clearTimeout(t)
   }, [toastMessage])
+
+  // Lắng nghe trạng thái khóa chuột GTA (Pointer Lock)
+  useEffect(() => {
+    const syncPointerLock = () => {
+      if (typeof document === 'undefined') return
+      const canvas = document.querySelector('canvas')
+      setIsPointerLocked(
+        Boolean(document.pointerLockElement && (!canvas || document.pointerLockElement === canvas)),
+      )
+    }
+    syncPointerLock()
+    document.addEventListener('pointerlockchange', syncPointerLock)
+    document.addEventListener('pointerlockerror', syncPointerLock)
+    return () => {
+      document.removeEventListener('pointerlockchange', syncPointerLock)
+      document.removeEventListener('pointerlockerror', syncPointerLock)
+    }
+  }, [])
+
+  const hasModalOpen =
+    (wardrobeOpen && isUserInitiated && (!userRole || userRole === 'boy')) ||
+    (girlWardrobeOpen && isUserInitiated && (!userRole || userRole === 'girl')) ||
+    pianoModalOpen ||
+    activePhoto !== null ||
+    !userRole
+
+  // Tự nhả khóa chuột khi rời khỏi chế độ Tầm mắt hoặc khi có hộp thoại tương tác mở lên
+  useEffect(() => {
+    if (mode !== 'fp' || hasModalOpen) {
+      releaseCanvasPointerLock()
+    }
+  }, [mode, hasModalOpen])
 
   // Hỗ trợ nhấn ESC để đóng nhanh modal đang mở
   useEffect(() => {
@@ -105,7 +129,6 @@ export function Overlay() {
 
       <TopRight />
       <ContextualDock />
-      {mode === 'fp' && <WalkthroughDock />}
       <WardrobeModal />
       <GirlWardrobeModal />
       <PhotoModal />
@@ -114,22 +137,74 @@ export function Overlay() {
 
       {showOnboarding && <OnboardingHint />}
 
-      {mode === 'fp' && (fpPerspective === 'eye' || Boolean(hoverHint)) && (
-        <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} />
+      {mode === 'fp' && !hasModalOpen && (
+        <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} aria-hidden="true" />
       )}
-      {hoverHint && (
+
+      {hoverHint && !hasModalOpen && (
         <div
-          className={`hover-hint ${mode === 'fp' ? 'in-walkthrough' : ''} ${mode === 'fp' && hasContextDock ? 'with-context' : ''}`}
+          className={`hover-hint ${mode === 'fp' ? 'in-fp' : ''} ${hasContextDock ? 'with-context' : ''}`}
+          role="status"
+          aria-live="polite"
         >
-          {hoverHint}
+          {mode === 'fp' && <span className="hover-hint-dot" aria-hidden="true" />}
+          <span>{hoverHint}</span>
         </div>
       )}
-      {toastMessage && <div className="toast" role="status" aria-live="polite">{toastMessage}</div>}
+
+      {mode === 'fp' && !hasModalOpen && <GtaHudHint isPointerLocked={isPointerLocked} />}
+
+      {toastMessage && (
+        <div className="toast" role="status" aria-live="polite">
+          {toastMessage}
+        </div>
+      )}
     </div>
   )
 }
 
-/* ---------- Gợi ý thao tác nhỏ gọn ở cạnh dưới, tự mờ dần sau tương tác đầu tiên ---------- */
+/* ---------- Dải gợi ý GTA siêu mảnh gọn ở mép dưới khi đang ở góc nhìn Tầm mắt ---------- */
+function GtaHudHint({ isPointerLocked }: { isPointerLocked: boolean }) {
+  if (isPointerLocked) {
+    return (
+      <div className="gta-hud-hint is-locked" role="status" aria-live="polite">
+        <span className="gta-lock-dot" aria-hidden="true" />
+        <span>WASD di chuyển · Lia chuột xoay 360° · Click / E tương tác · Esc nhả chuột</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="gta-hud-hint is-unlocked" role="region" aria-label="Điều khiển góc nhìn Tầm mắt GTA">
+      <button
+        type="button"
+        className="gta-hint-lock-btn"
+        onClick={requestCanvasPointerLock}
+        title="Khóa chuột để lia xoay 360° tự do chuẩn GTA"
+      >
+        <span aria-hidden="true">🖱️</span>
+        <span>Click vào không gian để khóa chuột xoay GTA</span>
+      </button>
+      <span className="gta-hint-sep" aria-hidden="true">
+        · hoặc bấm
+      </span>
+      <button
+        type="button"
+        className="gta-hint-exit-btn"
+        onClick={() => {
+          releaseCanvasPointerLock()
+          useStore.getState().returnOverview()
+        }}
+        title="Quay lại góc nhìn Toàn cảnh"
+      >
+        <span aria-hidden="true">🏠</span>
+        <span>Toàn cảnh</span>
+      </button>
+    </div>
+  )
+}
+
+/* ---------- Gợi ý thao tác nhỏ gọn ở cạnh dưới (Toàn cảnh), tự mờ dần sau tương tác đầu tiên ---------- */
 function OnboardingHint() {
   const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
 
@@ -262,7 +337,7 @@ function ContextualDock() {
 
   return (
     <div
-      className={`context-dock card ${mode === 'fp' ? 'above-walkthrough' : ''}`}
+      className={`context-dock card ${mode === 'fp' ? 'in-fp' : ''}`}
       role="region"
       aria-label="Điều khiển hoạt động hiện tại"
     >
@@ -302,9 +377,7 @@ function ContextualDock() {
       {activity === 'sleep' && (
         <>
           <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
-            {darkMode
-              ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
-              : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
+            {darkMode ? '☀️ Nắng ấm' : '🌙 Đêm khuya'}
           </button>
           <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor1BedLamp()}>
             {floor1BedLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
@@ -384,9 +457,7 @@ function ContextualDock() {
       {activity === 'girl_sleep' && (
         <>
           <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
-            {darkMode
-              ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
-              : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
+            {darkMode ? '☀️ Nắng ấm' : '🌙 Đêm khuya'}
           </button>
           <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleGirlLamp()}>
             {girlLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
@@ -439,334 +510,67 @@ function ContextualDock() {
   )
 }
 
-const WALKTHROUGH_ORDER: WalkthroughSpaceId[] = ['living', 'bedroom', 'bathroom', 'terrace', 'pool']
-
-/* ---------- Thanh Điều hướng Phòng (Interior Walkthrough Context Dock) khi ở chế độ Vào nhà ---------- */
-function WalkthroughDock() {
-  const walkthroughSpace = useStore((s) => s.walkthroughSpace)
-  const jumpToWalkthroughSpace = useStore((s) => s.jumpToWalkthroughSpace)
-  const fpPerspective = useStore((s) => s.fpPerspective)
-  const toggleFpPerspective = useStore((s) => s.toggleFpPerspective)
+/* ---------- Cụm Phải Trên: 1 thanh Glass Dock tối giản gồm đúng 3 phần tử (Toàn cảnh | Tầm mắt + Dark Mode) ---------- */
+function TopRight() {
+  const mode = useStore((s) => s.mode)
+  const setMode = useStore((s) => s.setMode)
   const returnOverview = useStore((s) => s.returnOverview)
+  const darkMode = useStore((s) => s.darkMode)
+  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+
+  const isOrbit = mode === 'orbit'
+  const isFp = mode === 'fp'
 
   return (
-    <div className="walkthrough-dock card" role="region" aria-label="Điều hướng không gian trong nhà">
-      <div className="walkthrough-row">
-        <div className="walkthrough-spots" role="group" aria-label="Đi tới không gian nhanh">
-          {WALKTHROUGH_ORDER.map((spaceId) => {
-            const spot = WALKTHROUGH_SPOTS[spaceId]
-            const active = walkthroughSpace === spaceId
-            return (
-              <button
-                key={spaceId}
-                type="button"
-                className={`walkthrough-spot-btn ${active ? 'active' : ''}`}
-                onClick={() => jumpToWalkthroughSpace(spaceId)}
-                aria-pressed={active}
-                title={`Đi thẳng tới ${spot.label}`}
-              >
-                <span aria-hidden="true">{spot.icon}</span>
-                <span>{spot.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        <span className="dock-sep walkthrough-sep" aria-hidden="true" />
-
-        <div className="walkthrough-actions">
+    <div className="hud-top-right">
+      <div className="glass-dock" role="toolbar" aria-label="Điều khiển góc nhìn và chế độ sáng tối">
+        <div className="view-switcher" role="group" aria-label="Chọn góc nhìn">
           <button
             type="button"
-            className={`walkthrough-ctrl-btn ${fpPerspective === 'eye' ? 'is-eye' : ''}`}
-            onClick={toggleFpPerspective}
-            aria-pressed={fpPerspective === 'eye'}
-            title={
-              fpPerspective === 'third'
-                ? 'Góc nhìn Sau lưng · Bấm để chuyển sang Tầm mắt'
-                : 'Góc nhìn Tầm mắt · Bấm để chuyển về Sau lưng'
-            }
-          >
-            <span aria-hidden="true">{fpPerspective === 'third' ? '🎥' : '👁️'}</span>
-            <span>{fpPerspective === 'third' ? 'Sau lưng' : 'Tầm mắt'}</span>
-          </button>
-
-          <button
-            type="button"
-            className="walkthrough-ctrl-btn overview-exit"
-            onClick={returnOverview}
-            title="Quay lại góc nhìn Toàn cảnh bên ngoài"
+            className={`dock-pill-btn segment-btn ${isOrbit ? 'active' : ''}`}
+            onClick={() => {
+              releaseCanvasPointerLock()
+              returnOverview()
+            }}
+            aria-pressed={isOrbit}
+            data-tooltip="Góc nhìn Toàn cảnh biệt thự"
+            title="Góc nhìn Toàn cảnh biệt thự"
           >
             <span aria-hidden="true">🏠</span>
             <span>Toàn cảnh</span>
           </button>
-        </div>
-      </div>
 
-      <div className="walkthrough-hint" aria-label="Phím điều khiển trong nhà">
-        WASD / Mũi tên · Kéo xoay · Esc
-      </div>
-    </div>
-  )
-}
-
-const WALL_MODE_META: Record<'full' | 'cutaway' | 'ghost', { icon: string; label: string; tooltip: string }> = {
-  full: {
-    icon: '🏛️',
-    label: 'Đủ tường',
-    tooltip: 'Đủ tường · Bấm để chuyển sang Tường lửng (Cutaway)',
-  },
-  cutaway: {
-    icon: '🧱',
-    label: 'Tường lửng',
-    tooltip: 'Tường lửng (Cutaway) · Bấm để chuyển sang Tường mờ',
-  },
-  ghost: {
-    icon: '🪟',
-    label: 'Tường mờ',
-    tooltip: 'Tường mờ · Bấm để quay lại Đủ tường',
-  },
-}
-
-/* ---------- Cụm Phải Trên (Desktop) / Thanh Dock Dưới Đáy (Mobile): Điều hướng & Tiện ích ---------- */
-function TopRight() {
-  const mode = useStore((s) => s.mode)
-  const setMode = useStore((s) => s.setMode)
-  const weather = useStore((s) => s.weather)
-  const cycleWeather = useStore((s) => s.cycleWeather)
-  const graphicMode = useStore((s) => s.graphicMode)
-  const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
-  const viewPreset = useStore((s) => s.viewPreset)
-  const wallMode = useStore((s) => s.wallMode)
-  const cycleWallMode = useStore((s) => s.cycleWallMode)
-  const nearInteriorOpen = useStore((s) => s.nearInteriorOpen)
-  const resetCamera = useStore((s) => s.resetCamera)
-  const randomCameraView = useStore((s) => s.randomCameraView)
-
-  const isWalkthrough = mode === 'fp'
-  const isFloor1 = mode === 'orbit' && viewPreset === 'floor1'
-  const isFloor2 = mode === 'orbit' && viewPreset === 'floor2'
-  const isOverview = mode === 'orbit' && viewPreset === 'overview'
-  const autoCutawayActive = isOverview && nearInteriorOpen
-  const wallMeta = WALL_MODE_META[wallMode] ?? WALL_MODE_META.full
-  const wallActive = !isWalkthrough && (wallMode !== 'full' || autoCutawayActive)
-
-  const [playing, setPlaying] = useState(false)
-  const audio = useRef<HTMLAudioElement | null>(null)
-
-  useEffect(() => {
-    return () => {
-      audio.current?.pause()
-    }
-  }, [])
-
-  const toggleMusic = () => {
-    const notify = useStore.getState().notify
-    if (!audio.current) {
-      audio.current = new Audio(SITE.music.src)
-      audio.current.loop = true
-      audio.current.volume = 0.65
-    }
-    if (playing) {
-      audio.current.pause()
-      setPlaying(false)
-      notify('🔇 Đã tắt nhạc')
-    } else {
-      audio.current
-        .play()
-        .then(() => {
-          setPlaying(true)
-          notify(`♪ ${SITE.music.title}`)
-        })
-        .catch(() => {
-          notify('Không thể phát nhạc')
-        })
-    }
-  }
-
-  const weatherMeta = WEATHER_MODES[weather]
-
-  return (
-    <div className="hud-top-right">
-      {/* Hàng 1: Segmented Góc nhìn 3D + Chế độ tường + CTA Vào nhà & Camera */}
-      <div className="glass-dock dock-nav-row">
-        <div className="view-switcher" role="group" aria-label="Chọn góc nhìn biệt thự">
           <button
             type="button"
-            className={`dock-pill-btn segment-btn ${isOverview ? 'active' : ''}`}
-            onClick={() => useStore.getState().returnOverview()}
-            aria-pressed={isOverview}
-            data-tooltip="Đưa về toàn cảnh · Đóng kín biệt thự như thật"
-            title="Đưa về toàn cảnh · Đóng kín biệt thự như thật"
-            aria-label="Toàn cảnh"
-          >
-            <span aria-hidden="true">🏠</span>
-            <span className="pill-label">Toàn cảnh</span>
-          </button>
-          <button
-            type="button"
-            className={`dock-pill-btn segment-btn ${isFloor1 ? 'active' : ''}`}
+            className={`dock-pill-btn segment-btn ${isFp ? 'active' : ''}`}
             onClick={() => {
-              const st = useStore.getState()
-              st.setMode('orbit')
-              st.setFocus(FLOOR1_VIEW, 'floor1')
-              st.notify('👦 Tầng 1 – Mở Cutaway xem nội thất')
+              setMode('fp')
+              requestCanvasPointerLock()
             }}
-            aria-pressed={isFloor1}
-            data-tooltip="Tầng 1 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
-            title="Tầng 1 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
+            aria-pressed={isFp}
+            data-tooltip="Góc nhìn Tầm mắt GTA · Lia chuột xoay 360°"
+            title="Góc nhìn Tầm mắt GTA · Lia chuột xoay 360°"
           >
-            <span aria-hidden="true">👦</span>
-            <span>Tầng 1</span>
-          </button>
-          <button
-            type="button"
-            className={`dock-pill-btn segment-btn ${isFloor2 ? 'active' : ''}`}
-            onClick={() => {
-              const st = useStore.getState()
-              st.setMode('orbit')
-              st.setFocus(FLOOR2_VIEW, 'floor2')
-              st.notify('👧 Tầng 2 – Mở Cutaway xem nội thất')
-            }}
-            aria-pressed={isFloor2}
-            data-tooltip="Tầng 2 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
-            title="Tầng 2 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
-          >
-            <span aria-hidden="true">👧</span>
-            <span>Tầng 2</span>
+            <span aria-hidden="true">👁️</span>
+            <span>Tầm mắt</span>
           </button>
         </div>
-
-        <span className={`dock-sep ${isWalkthrough ? 'hide-on-mobile' : ''}`} aria-hidden="true" />
-
-        {/* Nút chuyển chế độ tường: Đủ tường -> Tường lửng -> Tường mờ (khoá kín 100% khi Vào nhà) */}
-        <button
-          type="button"
-          className={`dock-pill-btn wall-toggle-btn ${wallActive ? 'active' : ''} ${isWalkthrough ? 'is-locked-fp' : ''}`}
-          onClick={cycleWallMode}
-          disabled={isWalkthrough}
-          aria-pressed={wallActive}
-          data-tooltip={
-            isWalkthrough
-              ? 'Đang ở chế độ Vào nhà · Tự động đóng kín 100% tường & mái'
-              : autoCutawayActive && wallMode === 'full'
-                ? 'Đang xem gần (Tự mở Cutaway) · Bấm để đổi chế độ tường'
-                : wallMeta.tooltip
-          }
-          title={
-            isWalkthrough
-              ? 'Đang ở chế độ Vào nhà · Tự động đóng kín 100% tường & mái'
-              : autoCutawayActive && wallMode === 'full'
-                ? 'Đang xem gần (Tự mở Cutaway) · Bấm để đổi chế độ tường'
-                : wallMeta.tooltip
-          }
-          aria-label={isWalkthrough ? 'Tường đóng kín 100% trong chế độ Vào nhà' : wallMeta.label}
-        >
-          <span aria-hidden="true">{isWalkthrough ? '🏛️' : wallMeta.icon}</span>
-          <span className="pill-label">{isWalkthrough ? 'Kín 100%' : wallMeta.label}</span>
-          <span className={`wall-state-dot ${wallActive ? 'on' : ''}`} aria-hidden="true" />
-        </button>
-
-        {/* Nút CTA nổi bật Vào nhà */}
-        <button
-          type="button"
-          className={`dock-pill-btn enter-house-btn ${isWalkthrough ? 'is-inside' : ''}`}
-          onClick={() => setMode(isWalkthrough ? 'orbit' : 'fp')}
-          aria-pressed={isWalkthrough}
-          data-tooltip={
-            isWalkthrough
-              ? 'Thoát chế độ Vào nhà · Quay lại góc nhìn Toàn cảnh'
-              : 'Bước vào bên trong biệt thự · Đóng kín 100% & đi bộ tự do'
-          }
-          title={
-            isWalkthrough
-              ? 'Thoát chế độ Vào nhà · Quay lại góc nhìn Toàn cảnh'
-              : 'Bước vào bên trong biệt thự · Đóng kín 100% & đi bộ tự do'
-          }
-        >
-          <span aria-hidden="true">{isWalkthrough ? '🚪' : '🚶'}</span>
-          <span className="enter-house-label">{isWalkthrough ? 'Thoát Vào nhà' : 'Vào nhà'}</span>
-        </button>
 
         <span className="dock-sep" aria-hidden="true" />
 
         <button
           type="button"
-          className="dock-icon-btn"
-          onClick={resetCamera}
-          data-tooltip="Đặt lại góc nhìn mặc định"
-          title="Đặt lại góc nhìn mặc định"
-          aria-label="Đặt lại góc nhìn mặc định"
+          className={`dock-pill-btn theme-toggle-btn ${darkMode ? 'is-night' : 'is-day'}`}
+          onClick={toggleDarkMode}
+          aria-pressed={darkMode}
+          data-tooltip={darkMode ? 'Đang ở Đêm khuya · Bấm chuyển Nắng ấm' : 'Đang ở Nắng ấm · Bấm chuyển Đêm khuya'}
+          title={darkMode ? 'Đang ở Đêm khuya · Bấm chuyển Nắng ấm' : 'Đang ở Nắng ấm · Bấm chuyển Đêm khuya'}
+          aria-label={darkMode ? 'Đêm khuya · Bấm chuyển sang Nắng ấm' : 'Nắng ấm · Bấm chuyển sang Đêm khuya'}
         >
-          {I.reset}
-        </button>
-
-        <button
-          type="button"
-          className="dock-icon-btn"
-          onClick={randomCameraView}
-          data-tooltip="Đổi góc nhìn ngẫu nhiên"
-          title="Đổi góc nhìn ngẫu nhiên"
-          aria-label="Đổi góc nhìn ngẫu nhiên"
-        >
-          {I.shuffle}
+          <span aria-hidden="true">{darkMode ? '🌙' : '☀️'}</span>
+          <span>{darkMode ? 'Đêm khuya' : 'Nắng ấm'}</span>
         </button>
       </div>
-
-      {/* Hàng 2: Ánh sáng, Âm thanh & Chất lượng đồ họa */}
-      <div className="glass-dock dock-env-row">
-        <button
-          type="button"
-          className={`dock-icon-btn ${playing ? 'active' : ''}`}
-          onClick={toggleMusic}
-          aria-pressed={playing}
-          data-tooltip={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
-          title={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
-          aria-label={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
-        >
-          {playing ? I.music : I.mute}
-          {playing && (
-            <span className="eq" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className="dock-pill-btn"
-          onClick={cycleWeather}
-          data-tooltip={`Ánh sáng: ${weatherMeta.label} · Bấm để đổi`}
-          title={`Ánh sáng: ${weatherMeta.label} · Bấm để đổi`}
-          aria-label={`Chế độ ánh sáng: ${weatherMeta.label}`}
-        >
-          <span aria-hidden="true">{weatherMeta.icon}</span>
-          <span>{weatherMeta.label}</span>
-        </button>
-
-        <span className="dock-sep" aria-hidden="true" />
-
-        <button
-          type="button"
-          className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
-          onClick={toggleGraphicMode}
-          aria-pressed={graphicMode === 'hd'}
-          data-tooltip={graphicMode === 'hd' ? 'Chế độ HD sắc nét · Bấm chuyển Mượt' : 'Chế độ Mượt tối ưu FPS · Bấm chuyển HD'}
-          title={graphicMode === 'hd' ? 'Chế độ HD sắc nét · Bấm chuyển Mượt' : 'Chế độ Mượt tối ưu FPS · Bấm chuyển HD'}
-          aria-label={graphicMode === 'hd' ? 'Đồ họa HD' : 'Đồ họa Mượt'}
-        >
-          {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
-        </button>
-      </div>
-
-      {/* Trạng thái tinh tế khi zoom sát tự động mở Cutaway */}
-      {autoCutawayActive && (
-        <div className="glass-dock cutaway-auto-badge" role="status" aria-live="polite">
-          <span className="cutaway-auto-dot" aria-hidden="true" />
-          <span>Đang xem gần · Tự mở Cutaway</span>
-        </div>
-      )}
     </div>
   )
 }
