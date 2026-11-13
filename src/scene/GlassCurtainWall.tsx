@@ -18,16 +18,16 @@ export function getArchitecturalGlassMat(darkMode: boolean): THREE.MeshPhysicalM
   const key = darkMode ? 'dark' : 'light'
   if (!glassMatCache[key]) {
     glassMatCache[key] = new THREE.MeshPhysicalMaterial({
-      color: darkMode ? '#222E3A' : '#2E3D4B',
+      color: darkMode ? '#1E2934' : '#283644',
       transparent: true,
       opacity: 0.55,
       roughness: 0.1,
       metalness: 0.8,
-      clearcoat: 0.9,
+      clearcoat: 0.92,
       clearcoatRoughness: 0.08,
       ior: 1.5,
       reflectivity: 0.9,
-      envMapIntensity: 1.15,
+      envMapIntensity: darkMode ? 1.05 : 1.15,
       side: THREE.DoubleSide,
       depthWrite: false,
     })
@@ -37,8 +37,8 @@ export function getArchitecturalGlassMat(darkMode: boolean): THREE.MeshPhysicalM
 
 /**
  * Vách kính kiến trúc hiện đại (Modern Architectural Glass Curtain Wall)
- * Hiển thị thay thế khi các bức tường được cắt lát khi xoay camera,
- * tạo hiệu ứng vách kính phản quang sang trọng cho người ngoài nhìn vào nhà không bị trống trải.
+ * Tạo độ tương phản sắc nét giữa kính phản quang tối màu + nẹp đen mờ #1E2229 với tường Travertine #F5F2EB,
+ * đồng thời giữ độ xuyên thấu để ánh vàng nội thất hắt ấm qua kính.
  */
 export function GlassCurtainWall({
   pos,
@@ -47,7 +47,7 @@ export function GlassCurtainWall({
 }: GlassCurtainWallProps) {
   const darkMode = useStore((s) => s.darkMode)
   const [L, H] = size
-  const frameColor = darkMode ? '#1F2123' : '#2B2D2F'
+  const frameColor = '#1E2229'
 
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
 
@@ -79,14 +79,14 @@ export function GlassCurtainWall({
         />
       </mesh>
 
-      {/* 2. Khung nhôm nẹp viền mỏng bao quanh 4 mép sàn/trần/tường (không chia ô bên trong) */}
+      {/* 2. Khung nhôm đen mờ #1E2229 nẹp viền mỏng bao quanh 4 mép sàn/trần/tường */}
       {/* Nẹp trên */}
       <B
         p={[pos[0], pos[1] + H / 2 - 0.018, pos[2]]}
         s={isZ ? [L, 0.036, 0.045] : [0.045, 0.036, L]}
         c={frameColor}
-        rough={0.18}
-        metal={0.85}
+        rough={0.26}
+        metal={0.78}
         shadow={false}
       />
       {/* Nẹp dưới */}
@@ -94,8 +94,8 @@ export function GlassCurtainWall({
         p={[pos[0], pos[1] - H / 2 + 0.018, pos[2]]}
         s={isZ ? [L, 0.036, 0.045] : [0.045, 0.036, L]}
         c={frameColor}
-        rough={0.18}
-        metal={0.85}
+        rough={0.26}
+        metal={0.78}
         shadow={false}
       />
       {/* Nẹp cạnh trái */}
@@ -103,8 +103,8 @@ export function GlassCurtainWall({
         p={isZ ? [pos[0] - L / 2 + 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] - L / 2 + 0.018]}
         s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
         c={frameColor}
-        rough={0.18}
-        metal={0.85}
+        rough={0.26}
+        metal={0.78}
         shadow={false}
       />
       {/* Nẹp cạnh phải */}
@@ -112,8 +112,8 @@ export function GlassCurtainWall({
         p={isZ ? [pos[0] + L / 2 - 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] + L / 2 - 0.018]}
         s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
         c={frameColor}
-        rough={0.18}
-        metal={0.85}
+        rough={0.26}
+        metal={0.78}
         shadow={false}
       />
     </group>

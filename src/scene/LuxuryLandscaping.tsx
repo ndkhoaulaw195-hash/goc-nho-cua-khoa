@@ -1,10 +1,47 @@
 import { useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { ArchitecturalTree, HedgeRow } from './Botanicals'
-import { B, BB, Cyl, G, RBB, Sph } from './prims'
+import { ArchitecturalTree, HedgeRow, NaturalPlantCluster } from './Botanicals'
+import { B, BB, Cyl, G, RBB } from './prims'
 import { outdoorWoodDeck, travertineStone, whitePebbles } from './textures'
 import type { V3 } from '../data/config'
+
+/** Tạo texture gạch mosaic xanh ngọc tự nhiên (dùng cho đáy & thành hồ bơi / hồ cảnh) */
+function createEmeraldMosaicTexture(darkMode: boolean): THREE.CanvasTexture {
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+
+  ctx.fillStyle = darkMode ? '#0C3B38' : '#11534E'
+  ctx.fillRect(0, 0, size, size)
+
+  const palette = darkMode
+    ? ['#11544F', '#156A63', '#197D74', '#0F4945', '#1E8D82']
+    : ['#18756E', '#1D8B82', '#26A69A', '#15645E', '#30B8AC']
+
+  const cells = 16
+  const step = size / cells
+  const gap = 1.5
+  for (let row = 0; row < cells; row++) {
+    for (let col = 0; col < cells; col++) {
+      const hash = ((row * 31 + col * 17 + row * col * 7) % 97) / 97
+      const color = palette[Math.floor(hash * palette.length) % palette.length]
+      ctx.fillStyle = color
+      ctx.fillRect(col * step + gap * 0.5, row * step + gap * 0.5, step - gap, step - gap)
+      ctx.fillStyle = darkMode ? 'rgba(94, 234, 212, 0.08)' : 'rgba(167, 243, 208, 0.14)'
+      ctx.fillRect(col * step + gap * 0.5, row * step + gap * 0.5, step - gap, 2.2)
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.wrapS = THREE.RepeatWrapping
+  tex.wrapT = THREE.RepeatWrapping
+  tex.needsUpdate = true
+  return tex
+}
 
 /**
  * Quy hoạch Cảnh quan Biệt thự Nghỉ dưỡng (Resort Courtyard & Pool Landscaping)
@@ -22,7 +59,7 @@ export function LuxuryLandscaping({
   const lawnAccent = darkMode ? '#34482F' : '#5B7450'
   const patioDark = darkMode ? '#252930' : '#3A3F47'
   const stoneBorder = darkMode ? '#4B5058' : '#8D8982'
-  const plinthColor = '#1E2126'
+  const plinthColor = '#1E2229'
   const earthDeep = darkMode ? '#1A1816' : '#322C26'
   const soilColor = darkMode ? '#25201C' : '#42382F'
 
@@ -66,16 +103,34 @@ export function LuxuryLandscaping({
     return t
   }, [])
 
+  const mosaicPoolFloorMap = useMemo(() => {
+    const t = createEmeraldMosaicTexture(darkMode)
+    t.repeat.set(6, 4.5)
+    return t
+  }, [darkMode])
+
+  const mosaicPoolWallMap = useMemo(() => {
+    const t = createEmeraldMosaicTexture(darkMode)
+    t.repeat.set(8, 1)
+    return t
+  }, [darkMode])
+
+  const mosaicPondMap = useMemo(() => {
+    const t = createEmeraldMosaicTexture(darkMode)
+    t.repeat.set(2.5, 7.5)
+    return t
+  }, [darkMode])
+
   const pondWaterMat = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: darkMode ? '#1F5C6E' : '#318DA1',
-        roughness: 0.08,
-        metalness: 0.14,
-        clearcoat: 0.9,
-        clearcoatRoughness: 0.08,
+        color: '#38B2AC',
+        roughness: 0.06,
+        metalness: 0.08,
+        clearcoat: 0.95,
+        clearcoatRoughness: 0.06,
         transparent: true,
-        opacity: 0.78,
+        opacity: darkMode ? 0.72 : 0.68,
         depthWrite: false,
       }),
     [darkMode],
@@ -84,13 +139,13 @@ export function LuxuryLandscaping({
   const poolWaterMat = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: darkMode ? '#1B8DA8' : '#2AC0D4',
-        roughness: 0.1,
-        metalness: 0.12,
+        color: '#38B2AC',
+        roughness: 0.06,
+        metalness: 0.08,
         clearcoat: 0.95,
         clearcoatRoughness: 0.06,
         transparent: true,
-        opacity: 0.76,
+        opacity: darkMode ? 0.72 : 0.68,
         depthWrite: false,
       }),
     [darkMode],
@@ -165,13 +220,18 @@ export function LuxuryLandscaping({
         <B p={[0.54, -0.24, 10.92]} s={[0.82, 0.08, 9.28]} map={pebbleMap} c={darkMode ? '#9C9890' : '#FFFFFF'} rough={0.92} />
       </group>
       {/* Viền đá tối ngăn mép hồ nước */}
-      <B p={[-2.92, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c={patioDark} rough={0.7} />
-      <B p={[0.12, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c={patioDark} rough={0.7} />
-      <B p={[-1.4, -0.215, 15.52]} s={[3.12, 0.11, 0.1]} c={patioDark} rough={0.7} />
+      <B p={[-2.92, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c="#1E2229" rough={0.65} />
+      <B p={[0.12, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c="#1E2229" rough={0.65} />
+      <B p={[-1.4, -0.215, 15.52]} s={[3.12, 0.11, 0.1]} c="#1E2229" rough={0.65} />
 
-      {/* Đáy hồ đá sẫm & Mặt nước phản chiếu tĩnh lặng */}
-      <B p={[-1.4, -0.31, 10.9]} s={[2.98, 0.04, 9.2]} c="#182026" rough={0.85} />
-      <mesh position={[-1.4, -0.205, 10.9]} rotation={[-Math.PI / 2, 0, 0]} material={pondWaterMat}>
+      {/* Đáy hồ ốp gạch mosaic xanh ngọc tự nhiên & Mặt nước ngọc bích */}
+      <B p={[-1.4, -0.31, 10.9]} s={[2.98, 0.04, 9.2]} map={mosaicPondMap} c={darkMode ? '#A2E8E0' : '#FFFFFF'} rough={0.28} />
+      {/* Dải viền gạch mosaic phát sáng nhẹ quanh mép nước hồ cảnh */}
+      <B p={[-2.85, -0.205, 10.9]} s={[0.045, 0.045, 9.12]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+      <B p={[0.05, -0.205, 10.9]} s={[0.045, 0.045, 9.12]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+      <B p={[-1.4, -0.205, 15.44]} s={[2.92, 0.045, 0.045]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+      <B p={[-1.4, -0.205, 6.36]} s={[2.92, 0.045, 0.045]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+      <mesh position={[-1.4, -0.195, 10.9]} rotation={[-Math.PI / 2, 0, 0]} material={pondWaterMat}>
         <planeGeometry args={[2.96, 9.16]} />
       </mesh>
 
@@ -201,16 +261,23 @@ export function LuxuryLandscaping({
         />
       ))}
 
-      {/* Cụm cuội đá trang trí tự nhiên rải trên nền sỏi trắng cạnh bậc nước */}
+      {/* Cụm cây cảnh tự nhiên bất đối xứng xen đá tảng nhỏ dọc hai bên lối nước */}
       {[
-        [-3.32, -0.18, 8.0, 0.14],
-        [-3.42, -0.18, 10.6, 0.11],
-        [-3.28, -0.18, 13.4, 0.15],
-        [0.52, -0.18, 9.1, 0.13],
-        [0.62, -0.18, 12.1, 0.16],
-        [0.48, -0.18, 14.2, 0.12],
-      ].map(([rx, ry, rz, rad], idx) => (
-        <Sph key={`peb-${idx}`} p={[rx, ry, rz]} s={[rad, rad * 0.55, rad * 0.85]} c={darkMode ? '#7C7872' : '#E8E4DC'} rough={0.88} shadow />
+        { pos: [-3.38, -0.2, 7.8] as V3, scale: 0.72, rot: 0.3, v: 0 },
+        { pos: [-3.42, -0.2, 10.6] as V3, scale: 0.66, rot: 1.6, v: 1 },
+        { pos: [-3.34, -0.2, 13.45] as V3, scale: 0.75, rot: 2.4, v: 2 },
+        { pos: [0.58, -0.2, 7.95] as V3, scale: 0.7, rot: 1.1, v: 3 },
+        { pos: [0.62, -0.2, 10.75] as V3, scale: 0.68, rot: 2.8, v: 4 },
+        { pos: [0.56, -0.2, 13.5] as V3, scale: 0.74, rot: 0.6, v: 5 },
+      ].map((item, idx) => (
+        <NaturalPlantCluster
+          key={`pond-plant-${idx}`}
+          pos={item.pos}
+          scale={item.scale}
+          rotationY={item.rot}
+          variant={item.v}
+          darkMode={darkMode}
+        />
       ))}
 
       {/* =====================================================================
@@ -239,25 +306,34 @@ export function LuxuryLandscaping({
 
       {/* Hồ bơi vô cực mini (Mini Infinity Pool: x: +5.75..+14.85, z: +7.1..+13.95) */}
       <group>
-        {/* Đáy & 4 thành lòng hồ bơi ốp gạch mosaic xanh ngọc sẫm */}
-        <B p={[10.3, -0.78, 10.52]} s={[8.9, 0.06, 6.65]} c={darkMode ? '#0F3744' : '#1A5B70'} rough={0.35} />
+        {/* Đáy & thành lòng hồ bơi ốp gạch mosaic xanh ngọc tự nhiên */}
+        <B p={[10.3, -0.78, 10.52]} s={[8.9, 0.06, 6.65]} map={mosaicPoolFloorMap} c={darkMode ? '#A2E8E0' : '#FFFFFF'} rough={0.28} />
         {/* Thành bắc & tây cao ngang coping */}
-        <B p={[10.3, -0.42, 7.22]} s={[9.1, 0.72, 0.24]} c={darkMode ? '#144454' : '#1E6A82'} rough={0.35} />
-        <B p={[5.82, -0.42, 10.52]} s={[0.24, 0.72, 6.8]} c={darkMode ? '#144454' : '#1E6A82'} rough={0.35} />
+        <B p={[10.3, -0.42, 7.22]} s={[9.1, 0.72, 0.24]} map={mosaicPoolWallMap} c={darkMode ? '#9EDFD8' : '#FFFFFF'} rough={0.28} />
+        <B p={[5.82, -0.42, 10.52]} s={[0.24, 0.72, 6.8]} map={mosaicPoolWallMap} c={darkMode ? '#9EDFD8' : '#FFFFFF'} rough={0.28} />
         {/* Mép tràn vô cực (Infinity Weir Edge) phía Nam & phía Đông với rãnh thu nước sẫm */}
-        <B p={[10.32, -0.46, 13.72]} s={[9.0, 0.64, 0.16]} c="#22262C" rough={0.28} />
-        <B p={[14.72, -0.46, 10.48]} s={[0.16, 0.64, 6.64]} c="#22262C" rough={0.28} />
+        <B p={[10.32, -0.46, 13.72]} s={[9.0, 0.64, 0.16]} c="#1E2229" rough={0.28} />
+        <B p={[14.72, -0.46, 10.48]} s={[0.16, 0.64, 6.64]} c="#1E2229" rough={0.28} />
         <B p={[10.35, -0.32, 13.92]} s={[9.2, 0.26, 0.28]} c="#181B20" rough={0.4} />
         <B p={[14.92, -0.32, 10.55]} s={[0.28, 0.26, 6.95]} c="#181B20" rough={0.4} />
 
         {/* Viền đá Travertine sáng màu ở thành Bắc & Tây nối liền Sundeck */}
-        <B p={[10.35, -0.145, 7.15]} s={[9.25, 0.07, 0.42]} map={travertineMap} c={darkMode ? '#8D877E' : '#F4F1EA'} rough={0.5} shadow />
-        <B p={[5.76, -0.145, 10.52]} s={[0.42, 0.07, 6.88]} map={travertineMap} c={darkMode ? '#8D877E' : '#F4F1EA'} rough={0.5} shadow />
+        <B p={[10.35, -0.145, 7.15]} s={[9.25, 0.07, 0.42]} map={travertineMap} c={darkMode ? '#D8D2C7' : '#F5F2EB'} rough={0.42} shadow />
+        <B p={[5.76, -0.145, 10.52]} s={[0.42, 0.07, 6.88]} map={travertineMap} c={darkMode ? '#D8D2C7' : '#F5F2EB'} rough={0.42} shadow />
 
-        {/* Mặt nước hồ bơi xanh ngọc trong suốt có độ bóng phản chiếu (roughness: 0.1, transparent: true) */}
+        {/* Dải viền gạch mosaic phát sáng nhẹ quanh mép nước hồ bơi */}
+        <B p={[10.3, -0.185, 7.355]} s={[8.72, 0.045, 0.04]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+        <B p={[5.955, -0.185, 10.52]} s={[0.04, 0.045, 6.38]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+        <B p={[10.3, -0.185, 13.625]} s={[8.72, 0.045, 0.04]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+        <B p={[14.625, -0.185, 10.52]} s={[0.04, 0.045, 6.38]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
+
+        {/* Mặt nước hồ bơi ngọc bích (#38B2AC) trong trẻo phản chiếu */}
         <mesh position={[10.3, -0.175, 10.52]} rotation={[-Math.PI / 2, 0, 0]} material={poolWaterMat}>
           <planeGeometry args={[8.75, 6.42]} />
         </mesh>
+
+        {/* Thác nước tràn nghệ thuật tại mép Bắc hồ bơi (x: 7.4..10.2, z: 6.76..7.12, cao ~1.15m) */}
+        <WaterFeatureWall pos={[8.8, -0.2, 6.94]} darkMode={darkMode} />
 
         {/* Bậc thang inox lên xuống hồ bơi sát Sundeck */}
         <G p={[6.05, -0.14, 8.2]}>
@@ -267,22 +343,22 @@ export function LuxuryLandscaping({
           <B p={[0.04, -0.38, 0]} s={[0.08, 0.025, 0.48]} c="#D6D1C9" metal={0.8} rough={0.22} />
         </G>
 
-        {/* Đèn LED âm dưới lòng hồ bơi (3 đèn phát sáng dưới nước vào ban đêm) */}
+        {/* Đèn LED âm dưới lòng hồ bơi */}
         {[7.6, 10.3, 13.0].map((px, idx) => (
           <B
             key={`pool-led-${idx}`}
             p={[px, -0.45, 7.36]}
             s={[0.52, 0.12, 0.04]}
             c={darkMode ? '#9AEBFF' : '#DDF6FA'}
-            emissive="#7CE6FF"
-            ei={darkMode ? 2.6 : 0.2}
+            emissive="#5EEAD4"
+            ei={darkMode ? 2.6 : 0.75}
             shadow={false}
           />
         ))}
         {darkMode && (
           <>
-            <pointLight position={[8.2, -0.05, 10.2]} intensity={2.2} distance={8.5} decay={2} color="#7CE6FF" castShadow={false} />
-            <pointLight position={[12.4, -0.05, 10.8]} intensity={2.0} distance={8.5} decay={2} color="#7CE6FF" castShadow={false} />
+            <pointLight position={[8.2, -0.05, 10.2]} intensity={2.2} distance={8.5} decay={2} color="#5EEAD4" castShadow={false} />
+            <pointLight position={[12.4, -0.05, 10.8]} intensity={2.0} distance={8.5} decay={2} color="#5EEAD4" castShadow={false} />
           </>
         )}
       </group>
@@ -300,11 +376,28 @@ export function LuxuryLandscaping({
         <B p={[-5.15, -0.18, 11.2]} s={[1.15, 0.05, 1.3]} map={travertineMap} c={darkMode ? '#8D877E' : '#F4F1EA'} rough={0.62} />
       </group>
 
-      {/* Bồn cây xây dọc chân tường phía trước cánh trái (z = 6.72) */}
+      {/* Bồn cây đá Travertine viền đen mờ dọc chân tường mặt tiền cánh trái (z = 6.72) */}
       <G p={[-10.4, -0.2, 6.72]}>
-        <BB p={[0, 0, 0]} s={[10.6, 0.42, 0.84]} c={stoneBorder} rough={0.78} shadow />
-        <BB p={[0, 0.38, 0]} s={[10.2, 0.06, 0.68]} c={soilColor} rough={0.94} />
-        <HedgeRow pos={[0, 0.42, 0]} length={10.0} orientation="x" height={0.54} darkMode={darkMode} />
+        <BB p={[0, 0.02, 0]} s={[10.72, 0.06, 0.9]} c="#1E2229" rough={0.55} shadow />
+        <BB p={[0, 0.21, 0]} s={[10.6, 0.34, 0.84]} c={darkMode ? '#EBE6DC' : '#F5F2EB'} rough={0.4} shadow />
+        <BB p={[0, 0.39, 0]} s={[10.68, 0.035, 0.88]} c="#1E2229" rough={0.5} />
+        <BB p={[0, 0.4, 0]} s={[10.2, 0.04, 0.68]} c={soilColor} rough={0.94} />
+        {[
+          { x: -4.2, s: 0.92, r: 0.3, v: 0 },
+          { x: -2.25, s: 1.06, r: 1.4, v: 1 },
+          { x: -0.25, s: 0.88, r: 2.6, v: 2 },
+          { x: 1.85, s: 1.04, r: 0.8, v: 3 },
+          { x: 3.95, s: 0.95, r: 2.1, v: 4 },
+        ].map((cl, idx) => (
+          <NaturalPlantCluster
+            key={`front-planter-${idx}`}
+            pos={[cl.x, 0.42, 0]}
+            scale={cl.s}
+            rotationY={cl.r}
+            variant={cl.v}
+            darkMode={darkMode}
+          />
+        ))}
       </G>
 
       {/* Ghế băng dài chữ L (L-Shaped Outdoor Lounge) quay vào bàn Firepit */}
@@ -369,11 +462,27 @@ export function LuxuryLandscaping({
       <ArchitecturalTree pos={[-6.8, -0.2, -8.2]} scale={0.98} rotationY={3.1} darkMode={darkMode} />
       <ArchitecturalTree pos={[5.2, -0.2, -8.4]} scale={1.06} rotationY={1.3} darkMode={darkMode} />
 
-      {/* Hàng bụi cây cắt tỉa sát chân hàng rào & tường bên */}
+      {/* Hàng bụi cây sát chân hàng rào hông/sau & cụm cây cảnh tự nhiên xen đá tảng ở góc sân trước */}
       <HedgeRow pos={[-21.5, -0.2, 2.8]} length={16.5} orientation="z" height={0.58} darkMode={darkMode} />
       <HedgeRow pos={[16.3, -0.2, 2.4]} length={17.5} orientation="z" height={0.56} darkMode={darkMode} />
       <HedgeRow pos={[-2.6, -0.2, -9.35]} length={36.0} orientation="x" height={0.54} darkMode={darkMode} />
-      <HedgeRow pos={[13.9, -0.2, 14.95]} length={3.2} orientation="x" height={0.46} darkMode={darkMode} />
+      {[
+        { pos: [-18.3, -0.2, 14.3] as V3, scale: 1.08, rot: 0.5, v: 0 },
+        { pos: [-17.4, -0.2, 8.1] as V3, scale: 0.94, rot: 1.9, v: 1 },
+        { pos: [-4.45, -0.2, 14.85] as V3, scale: 0.78, rot: 2.3, v: 2 },
+        { pos: [12.85, -0.2, 14.95] as V3, scale: 0.96, rot: 0.9, v: 3 },
+        { pos: [15.35, -0.2, 14.5] as V3, scale: 1.1, rot: 2.7, v: 4 },
+        { pos: [15.7, -0.2, 9.1] as V3, scale: 0.9, rot: 1.2, v: 5 },
+      ].map((cl, idx) => (
+        <NaturalPlantCluster
+          key={`corner-plant-${idx}`}
+          pos={cl.pos}
+          scale={cl.scale}
+          rotationY={cl.rot}
+          variant={cl.v}
+          darkMode={darkMode}
+        />
+      ))}
 
       {/* =====================================================================
        * 8. ĐÈN TRỤ LỐI ĐI (BOLLARD LIGHTS) & ĐÈN HẮT NGƯỢC TƯỜNG LAM GỖ (UPLIGHTS)
@@ -392,28 +501,27 @@ export function LuxuryLandscaping({
         <BollardLight key={idx} pos={[bx, by, bz]} darkMode={darkMode} />
       ))}
 
-      {/* Đèn hắt âm sàn chiếu ngược lên mảng lam gỗ mặt tiền (Vertical Teak Uplights) */}
+      {/* Đèn hắt âm sàn chiếu ngược lên mảng lam gỗ mặt tiền (bật LED #FFAE52 cả Ban ngày) */}
       {[-2.85, -0.15, 0.55].map((ux, idx) => (
         <G key={`facade-up-${idx}`} p={[ux, -0.18, 6.52]}>
-          <Cyl rt={0.095} rb={0.105} h={0.04} c="#1C1E22" metal={0.6} rough={0.35} />
+          <Cyl rt={0.095} rb={0.105} h={0.04} c="#1E2229" metal={0.6} rough={0.35} />
           <Cyl
             p={[0, 0.024, 0]}
             rt={0.068}
             rb={0.068}
             h={0.015}
-            c={darkMode ? '#FFD7A3' : '#DCD8CF'}
-            emissive="#FFD7A3"
-            ei={darkMode ? 2.8 : 0.08}
+            c="#FFAE52"
+            emissive="#FFAE52"
+            ei={darkMode ? 2.6 : 1.75}
           />
         </G>
       ))}
+      {/* Ánh sáng hắt ấm chiếu lên lam gỗ mặt tiền hoạt động cả Ban ngày & Ban đêm */}
+      <pointLight position={[-0.15, 1.35, 6.85]} intensity={darkMode ? 2.8 : 1.45} distance={7.5} decay={1.8} color="#FFAE52" castShadow={false} />
+      <pointLight position={[-2.85, 1.35, 6.85]} intensity={darkMode ? 2.2 : 1.15} distance={6.5} decay={1.8} color="#FFAE52" castShadow={false} />
+      <pointLight position={[0.55, 1.35, 6.85]} intensity={darkMode ? 2.0 : 1.05} distance={6.5} decay={1.8} color="#FFAE52" castShadow={false} />
       {darkMode && (
-        <>
-          {/* Ánh sáng hắt ấm từ lối vào hồ nước & đèn hắt ngược mảng lam gỗ trung tâm */}
-          <pointLight position={[-1.4, 0.65, 11.4]} intensity={1.7} distance={7.5} decay={2} color="#FFD7A3" castShadow={false} />
-          <pointLight position={[-0.15, 1.35, 6.85]} intensity={2.6} distance={7.5} decay={1.8} color="#FFE0B5" castShadow={false} />
-          <pointLight position={[-2.85, 1.35, 6.85]} intensity={2.0} distance={6.5} decay={1.8} color="#FFE0B5" castShadow={false} />
-        </>
+        <pointLight position={[-1.4, 0.65, 11.4]} intensity={1.7} distance={7.5} decay={2} color="#FFAE52" castShadow={false} />
       )}
     </group>
   )
@@ -446,13 +554,13 @@ function FloatingTravertineStep({
         rough={0.58}
         shadow
       />
-      {/* Dải đèn LED vàng ấm hắt ngầm dưới viền gầm bậc đá */}
+      {/* Dải đèn LED vàng ấm #FFAE52 hắt ngầm dưới viền gầm bậc đá cả Ban ngày */}
       <B
         p={[0, -h * 0.52, 0]}
         s={[w - 0.14, 0.018, d - 0.12]}
-        c="#FFD7A3"
-        emissive="#FFD7A3"
-        ei={darkMode ? 2.2 : 0.08}
+        c="#FFAE52"
+        emissive="#FFAE52"
+        ei={darkMode ? 2.6 : 1.7}
         shadow={false}
       />
     </group>
@@ -498,19 +606,19 @@ function SlattedPerimeterFence({
   darkMode: boolean
 }) {
   const isX = orientation === 'x'
-  const wallC = darkMode ? '#2B303A' : '#353B47'
-  const postC = '#1C1E22'
-  const slatC = darkMode ? '#7D5130' : '#9E6338'
+  const wallC = darkMode ? '#EBE6DC' : '#F5F2EB'
+  const postC = '#1E2229'
+  const slatC = darkMode ? '#B87435' : '#C68642'
   const numPosts = Math.max(3, Math.round(length / 3.2) + 1)
 
   return (
     <group position={pos}>
-      {/* Bệ tường xây thấp hiện đại */}
+      {/* Bệ tường xây thấp Đá Travertine trắng kem #F5F2EB */}
       <B
         p={[0, 0.26, 0]}
         s={isX ? [length, 0.52, 0.22] : [0.22, 0.52, length]}
         c={wallC}
-        rough={0.82}
+        rough={0.4}
         shadow
       />
       <B
@@ -521,19 +629,19 @@ function SlattedPerimeterFence({
         metal={0.45}
       />
 
-      {/* Hệ thanh lam gỗ ngang Teak (4 hàng thanh mảnh) */}
+      {/* Hệ thanh lam gỗ ngang Teak ấm #C68642 */}
       {[0.68, 0.85, 1.02, 1.19].map((sy, idx) => (
         <B
           key={idx}
           p={[0, sy, 0]}
           s={isX ? [length - 0.1, 0.075, 0.055] : [0.055, 0.075, length - 0.1]}
           c={slatC}
-          rough={0.58}
+          rough={0.56}
           shadow
         />
       ))}
 
-      {/* Thanh nẹp đỉnh hàng rào Matte Black */}
+      {/* Thanh nẹp đỉnh hàng rào thép đen #1E2229 */}
       <B
         p={[0, 1.32, 0]}
         s={isX ? [length + 0.04, 0.045, 0.11] : [0.11, 0.045, length + 0.04]}
@@ -543,7 +651,7 @@ function SlattedPerimeterFence({
         shadow
       />
 
-      {/* Trụ sắt hộp dọc */}
+      {/* Trụ thép hộp dọc #1E2229 */}
       {Array.from({ length: numPosts }, (_, i) => {
         const offset = -length / 2 + (i / (numPosts - 1)) * length
         return (
@@ -565,16 +673,120 @@ function SlattedPerimeterFence({
 function BollardLight({ pos, darkMode }: { pos: V3; darkMode: boolean }) {
   return (
     <group position={pos}>
-      <B p={[0, 0.025, 0]} s={[0.16, 0.05, 0.16]} c="#1E2024" metal={0.5} rough={0.38} />
-      <B p={[0, 0.34, 0]} s={[0.11, 0.62, 0.11]} c="#1E2024" metal={0.55} rough={0.35} shadow />
+      <B p={[0, 0.025, 0]} s={[0.16, 0.05, 0.16]} c="#1E2229" metal={0.5} rough={0.38} />
+      <B p={[0, 0.34, 0]} s={[0.11, 0.62, 0.11]} c="#1E2229" metal={0.55} rough={0.35} shadow />
       <B
         p={[0, 0.58, 0]}
         s={[0.102, 0.11, 0.102]}
-        c={darkMode ? '#FFD7A3' : '#EFECE6'}
-        emissive="#FFD7A3"
-        ei={darkMode ? 2.4 : 0.12}
+        c="#FFAE52"
+        emissive="#FFAE52"
+        ei={darkMode ? 2.6 : 1.7}
       />
-      <B p={[0, 0.66, 0]} s={[0.12, 0.04, 0.12]} c="#1E2024" metal={0.55} rough={0.35} />
+      <B p={[0, 0.66, 0]} s={[0.12, 0.04, 0.12]} c="#1E2229" metal={0.55} rough={0.35} />
+    </group>
+  )
+}
+
+function WaterFeatureWall({ pos, darkMode }: { pos: V3; darkMode: boolean }) {
+  const sheetMatRef = useRef<THREE.MeshPhysicalMaterial>(null)
+  const rippleGroupRef = useRef<THREE.Group>(null)
+  const foamMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const travertine = darkMode ? '#EBE6DC' : '#F5F2EB'
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    if (sheetMatRef.current) {
+      sheetMatRef.current.emissiveIntensity = (darkMode ? 0.52 : 0.28) + Math.sin(t * 5.2) * 0.12
+      sheetMatRef.current.opacity = 0.7 + Math.sin(t * 6.5) * 0.08
+    }
+    if (rippleGroupRef.current) {
+      rippleGroupRef.current.children.forEach((child, idx) => {
+        const wave = Math.sin(t * 7.2 - idx * 0.9)
+        child.position.y = 0.45 + wave * 0.035
+        child.scale.x = 0.92 + Math.cos(t * 5.4 + idx) * 0.12
+      })
+    }
+    if (foamMatRef.current) {
+      foamMatRef.current.emissiveIntensity = (darkMode ? 1.15 : 0.65) + Math.sin(t * 8.1) * 0.22
+    }
+  })
+
+  return (
+    <group position={pos}>
+      {/* Chân đế đen mờ & thân tường đá Travertine cao ~1.15m */}
+      <B p={[0, 0.04, 0]} s={[2.82, 0.08, 0.36]} c="#1E2229" rough={0.55} shadow />
+      <B p={[0, 0.6, -0.01]} s={[2.8, 1.06, 0.3]} c={travertine} rough={0.4} shadow />
+      {/* Mảng đá sẫm trung tâm tạo tương phản sau màng nước */}
+      <B p={[0, 0.57, 0.145]} s={[2.34, 0.96, 0.04]} c="#1E2229" rough={0.75} shadow />
+      <B p={[-1.28, 0.6, 0.145]} s={[0.24, 1.06, 0.05]} c={travertine} rough={0.4} shadow />
+      <B p={[1.28, 0.6, 0.145]} s={[0.24, 1.06, 0.05]} c={travertine} rough={0.4} shadow />
+      {/* Nẹp đỉnh tường thép đen #1E2229 */}
+      <B p={[0, 1.135, -0.005]} s={[2.86, 0.04, 0.35]} c="#1E2229" rough={0.4} metal={0.45} shadow />
+
+      {/* Rãnh tràn & môi thác kim loại #1E2229 */}
+      <B p={[0, 0.88, 0.17]} s={[2.22, 0.06, 0.1]} c="#1E2229" metal={0.7} rough={0.32} />
+      <B p={[0, 0.89, 0.31]} s={[2.16, 0.025, 0.34]} c="#1E2229" metal={0.75} rough={0.28} shadow />
+      <B p={[-1.07, 0.91, 0.31]} s={[0.025, 0.035, 0.34]} c="#1E2229" metal={0.75} rough={0.28} />
+      <B p={[1.07, 0.91, 0.31]} s={[0.025, 0.035, 0.34]} c="#1E2229" metal={0.75} rough={0.28} />
+      {/* Lớp nước tràn trong máng kim loại */}
+      <mesh position={[0, 0.908, 0.31]}>
+        <boxGeometry args={[2.1, 0.014, 0.32]} />
+        <meshPhysicalMaterial color="#38B2AC" emissive="#38B2AC" emissiveIntensity={0.35} roughness={0.08} transparent opacity={0.85} />
+      </mesh>
+
+      {/* Dải LED ấm & ngọc bích hắt dưới môi thác đổ xuống mặt hồ */}
+      <B p={[0, 0.862, 0.23]} s={[2.12, 0.02, 0.035]} c="#FFAE52" emissive="#FFAE52" ei={darkMode ? 2.5 : 1.7} shadow={false} />
+      <B p={[0, 0.865, 0.38]} s={[2.1, 0.018, 0.03]} c="#7FE8E0" emissive="#38B2AC" ei={darkMode ? 2.2 : 1.2} shadow={false} />
+      <pointLight position={[0, 0.62, 0.56]} intensity={darkMode ? 2.0 : 0.9} distance={4.5} decay={2} color="#7FE8E0" castShadow={false} />
+      <pointLight position={[0, 0.74, 0.24]} intensity={darkMode ? 1.4 : 0.7} distance={3.5} decay={2} color="#FFAE52" castShadow={false} />
+
+      {/* Màng nước chảy màu ngọc bích phát sáng lấp lánh */}
+      <mesh position={[0, 0.45, 0.455]}>
+        <boxGeometry args={[2.08, 0.86, 0.024]} />
+        <meshPhysicalMaterial
+          ref={sheetMatRef}
+          color="#38B2AC"
+          emissive="#7FE8E0"
+          emissiveIntensity={darkMode ? 0.52 : 0.28}
+          roughness={0.08}
+          metalness={0.05}
+          clearcoat={0.95}
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {/* Các gợn sóng lấp lánh dọc màng thác (animated in useFrame) */}
+      <group ref={rippleGroupRef}>
+        {[-0.82, -0.48, -0.14, 0.18, 0.52, 0.84].map((rx, idx) => (
+          <mesh key={`wf-rip-${idx}`} position={[rx, 0.45, 0.47]}>
+            <boxGeometry args={[0.14, 0.74, 0.012]} />
+            <meshStandardMaterial
+              color="#7FE8E0"
+              emissive="#5EEAD4"
+              emissiveIntensity={darkMode ? 1.15 : 0.7}
+              transparent
+              opacity={0.55}
+              depthWrite={false}
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Dải bọt sóng tiếp nước trên mặt hồ bơi */}
+      <mesh position={[0, 0.034, 0.47]}>
+        <boxGeometry args={[2.16, 0.022, 0.2]} />
+        <meshStandardMaterial
+          ref={foamMatRef}
+          color="#7FE8E0"
+          emissive="#5EEAD4"
+          emissiveIntensity={darkMode ? 1.15 : 0.65}
+          transparent
+          opacity={0.62}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   )
 }

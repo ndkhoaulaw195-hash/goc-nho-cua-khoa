@@ -271,6 +271,7 @@ export function Interact({
 
   return (
     <group
+      userData={{ interactHint: hint, onInteractClick: onClick }}
       onClick={
         onClick
           ? (e: ThreeEvent<MouseEvent>) => {

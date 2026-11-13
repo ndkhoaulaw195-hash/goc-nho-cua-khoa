@@ -125,7 +125,6 @@ function BackgroundOptimizer({ isWindowFocused }: { isWindowFocused: boolean }) 
 
 export function Experience() {
   const mode = useStore((s) => s.mode)
-  const graphicMode = useStore((s) => s.graphicMode)
   const controlsRef = useRef<OrbitControlsImpl>(null)
   const allowFull360 = true
 
@@ -168,9 +167,9 @@ export function Experience() {
     }
   }, [isWindowFocused])
 
-  // DPR tối ưu cho HD: 1.35x sắc nét chuẩn Retina mà nhẹ hơn 1.75x tới 41% pixel load, 1.0x khi ở chế độ Mượt hoặc mất focus.
+  // Luôn giữ chất lượng HD sắc nét (1.35x khi focus cửa sổ, 1.0x khi mất focus để tiết kiệm GPU)
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
-  const dpr = graphicMode === 'hd' ? (isWindowFocused ? Math.min(deviceDpr, 1.35) : 1.0) : 1.0
+  const dpr = isWindowFocused ? Math.min(deviceDpr, 1.35) : 1.0
 
   return (
     <Canvas
@@ -180,7 +179,7 @@ export function Experience() {
       gl={{
         antialias: true,
         alpha: true,
-        powerPreference: graphicMode === 'hd' ? 'high-performance' : 'default',
+        powerPreference: 'high-performance',
         stencil: false,
         depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
@@ -422,17 +421,98 @@ function computeThirdPersonCameraPos(charPos: V3, camYaw: number, camPitch: numb
 }
 
 /* ---------- Chế độ Vào nhà (Walkthrough): Hỗ trợ 2 góc nhìn 'eye' (tầm mắt) & 'third' (sau lưng) ---------- */
+const CENTER_NDC = new THREE.Vector2(0, 0)
+
+function isEffectivelyVisible(obj: THREE.Object3D): boolean {
+  let cur: THREE.Object3D | null = obj
+  while (cur) {
+    if (!cur.visible) return false
+    cur = cur.parent
+  }
+  return true
+}
+
+function findInteractUserData(obj: THREE.Object3D): { interactHint?: string; onInteractClick?: () => void } | null {
+  let cur: THREE.Object3D | null = obj
+  while (cur) {
+    if (cur.userData && (typeof cur.userData.onInteractClick === 'function' || typeof cur.userData.interactHint === 'string')) {
+      return cur.userData as { interactHint?: string; onInteractClick?: () => void }
+    }
+    cur = cur.parent
+  }
+  return null
+}
+
+function raycastCenterInteract(
+  raycaster: THREE.Raycaster,
+  camera: THREE.PerspectiveCamera,
+  scene: THREE.Scene,
+): { interactHint?: string; onInteractClick?: () => void } | null {
+  const st = useStore.getState()
+  if (st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null) return null
+
+  const char = st.userRole || st.activeChar || 'boy'
+  const isGirl = char === 'girl'
+  const charPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+  const isThird = st.fpPerspective === 'third'
+
+  raycaster.setFromCamera(CENTER_NDC, camera)
+  raycaster.far = 5.5
+  const hits = raycaster.intersectObjects(scene.children, true)
+
+  for (const hit of hits) {
+    if (hit.distance > 5.5) break
+    const obj = hit.object
+    if (!isEffectivelyVisible(obj)) continue
+    if (obj instanceof THREE.Points || obj instanceof THREE.Line || obj instanceof THREE.LineSegments) continue
+
+    const interactData = findInteractUserData(obj)
+    if (interactData && (interactData.onInteractClick || interactData.interactHint)) {
+      return interactData
+    }
+
+    const mat = (obj as THREE.Mesh).material
+    const firstMat = Array.isArray(mat) ? mat[0] : mat
+    if (firstMat && 'transparent' in firstMat && firstMat.transparent && 'opacity' in firstMat && (firstMat.opacity as number) < 0.82) {
+      continue
+    }
+    if (
+      isThird &&
+      Math.hypot(hit.point.x - charPos[0], hit.point.z - charPos[2]) < 0.55 &&
+      hit.point.y >= charPos[1] - 0.1 &&
+      hit.point.y <= charPos[1] + 1.9
+    ) {
+      continue
+    }
+
+    return null
+  }
+  return null
+}
+
 function FirstPerson() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(LIVE_ACTORS.fpYaw || 0.15)
   const pitch = useRef(-0.06)
   const dragging = useRef(false)
+  const hasLastMouse = useRef(false)
   const lastMouse = useRef<[number, number]>([0, 0])
+  const dragMovedDist = useRef(0)
   const lastSpawnTick = useRef(0)
+  const isLockedRef = useRef(false)
+  const lastUnlockAtRef = useRef(0)
+  const raycasterRef = useRef(new THREE.Raycaster())
+  const lastRaycastAtRef = useRef(0)
+  const lastCenterHintRef = useRef<string | null>(null)
+  const prevActiveStateRef = useRef<string>('idle:idle')
+  const orientTimerRef = useRef(0)
+  const orientCancelledRef = useRef(false)
 
   useEffect(() => {
+    const dom = gl.domElement
     const st = useStore.getState()
     const isThird = st.fpPerspective === 'third'
     camera.fov = isThird ? 58 : 68
@@ -466,11 +546,62 @@ function FirstPerson() {
     }
     camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ')
 
+    const syncLockState = (locked: boolean) => {
+      const wasLocked = isLockedRef.current
+      isLockedRef.current = locked
+      if (wasLocked && !locked) {
+        lastUnlockAtRef.current = performance.now()
+      }
+      if (typeof window !== 'undefined') {
+        ;(window as unknown as Record<string, unknown>).__gtaLocked = locked
+        window.dispatchEvent(new CustomEvent('gta-lock-change', { detail: locked }))
+      }
+      dragging.current = false
+      hasLastMouse.current = false
+      if (!locked && lastCenterHintRef.current !== null) {
+        lastCenterHintRef.current = null
+        useStore.getState().setHoverHint(null)
+      }
+    }
+
+    const requestGtaLock = () => {
+      const cur = useStore.getState()
+      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
+      if (document.pointerLockElement === dom) return
+      try {
+        const maybePromise = dom.requestPointerLock?.() as unknown as Promise<void> | undefined
+        if (maybePromise && typeof maybePromise.catch === 'function') {
+          maybePromise.catch(() => {})
+        }
+      } catch {
+        // Trình duyệt có thể từ chối requestPointerLock khi chưa có tương tác trực tiếp
+      }
+    }
+
+    syncLockState(document.pointerLockElement === dom)
+    requestGtaLock()
+
+    const onPointerLockChange = () => {
+      syncLockState(document.pointerLockElement === dom)
+    }
+
     const down = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return
       keys.current[e.code] = true
       if (e.code === 'Escape') {
-        useStore.getState().setMode('orbit')
+        const cur = useStore.getState()
+        const modalOpen = cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null
+        if (modalOpen) return
+        if (
+          document.pointerLockElement === dom ||
+          isLockedRef.current ||
+          performance.now() - lastUnlockAtRef.current < 300
+        ) {
+          return
+        }
+        cur.setMode('orbit')
+      } else if (e.code === 'KeyV') {
+        useStore.getState().toggleFpPerspective()
       } else if (e.code === 'Space') {
         const cur = useStore.getState()
         const curChar = cur.userRole || cur.activeChar || 'boy'
@@ -486,6 +617,15 @@ function FirstPerson() {
           cur.startActivity('idle', true, curChar)
           return
         }
+
+        if (document.pointerLockElement === dom) {
+          const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+          if (hit?.onInteractClick) {
+            hit.onInteractClick()
+            return
+          }
+        }
+
         const curPos = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
         // Kiểm tra xem có đứng gần Mochi hoặc Bơ không
         const dMochi = Math.hypot(
@@ -523,37 +663,149 @@ function FirstPerson() {
       keys.current[e.code] = false
     }
 
-    const onPointerDown = (e: PointerEvent) => {
-      dragging.current = true
+    const onPointerEnter = (e: PointerEvent) => {
       lastMouse.current = [e.clientX, e.clientY]
+      hasLastMouse.current = true
     }
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragging.current) return
-      const dx = e.clientX - lastMouse.current[0]
-      const dy = e.clientY - lastMouse.current[1]
-      lastMouse.current = [e.clientX, e.clientY]
-      yaw.current -= dx * 0.0042
-      pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0042, -1.05, 1.05)
-    }
-    const onPointerUp = () => {
+
+    const onPointerLeave = () => {
+      hasLastMouse.current = false
       dragging.current = false
     }
 
-    const dom = gl.domElement
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      dragging.current = true
+      hasLastMouse.current = true
+      lastMouse.current = [e.clientX, e.clientY]
+      dragMovedDist.current = 0
+    }
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (document.pointerLockElement !== dom || e.button !== 0) return
+      const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+      if (hit?.onInteractClick) {
+        hit.onInteractClick()
+        const next = useStore.getState()
+        if (next.pianoModalOpen || next.wardrobeOpen || next.girlWardrobeOpen || next.activePhoto !== null) {
+          try {
+            document.exitPointerLock?.()
+          } catch {
+            // Bỏ qua nếu không thể thoát pointer lock
+          }
+        }
+      }
+    }
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (document.pointerLockElement === dom) {
+        const dx = THREE.MathUtils.clamp(e.movementX || 0, -180, 180)
+        const dy = THREE.MathUtils.clamp(e.movementY || 0, -180, 180)
+        yaw.current -= dx * 0.0024
+        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0022, -1.15, 1.15)
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          orientCancelledRef.current = true
+          orientTimerRef.current = 0
+        }
+        return
+      }
+
+      const cur = useStore.getState()
+      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
+
+      if (dragging.current) {
+        if (!hasLastMouse.current) {
+          lastMouse.current = [e.clientX, e.clientY]
+          hasLastMouse.current = true
+          return
+        }
+        const dx = THREE.MathUtils.clamp(e.clientX - lastMouse.current[0], -120, 120)
+        const dy = THREE.MathUtils.clamp(e.clientY - lastMouse.current[1], -120, 120)
+        lastMouse.current = [e.clientX, e.clientY]
+        dragMovedDist.current += Math.hypot(dx, dy)
+        yaw.current -= dx * 0.0042
+        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0042, -1.15, 1.15)
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          orientCancelledRef.current = true
+          orientTimerRef.current = 0
+        }
+      } else if (e.target === dom) {
+        // Fallback lia chuột nhẹ mượt khi con trỏ nằm trên canvas mà chưa khóa chuột
+        if (!hasLastMouse.current) {
+          lastMouse.current = [e.clientX, e.clientY]
+          hasLastMouse.current = true
+          return
+        }
+        const dx = THREE.MathUtils.clamp(e.clientX - lastMouse.current[0], -80, 80)
+        const dy = THREE.MathUtils.clamp(e.clientY - lastMouse.current[1], -80, 80)
+        lastMouse.current = [e.clientX, e.clientY]
+        yaw.current -= dx * 0.0018
+        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0016, -1.15, 1.15)
+        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          orientCancelledRef.current = true
+          orientTimerRef.current = 0
+        }
+      }
+    }
+
+    const onMouseUp = () => {
+      dragging.current = false
+    }
+
+    const onCanvasClick = () => {
+      if (document.pointerLockElement === dom) return
+      if (dragMovedDist.current >= 8) return
+      requestGtaLock()
+    }
+
+    // Chặn pointermove/click tọa độ đóng băng của R3F khi đang Pointer Lock để tránh click nhầm vị trí cũ
+    const suppressLockedPointerMove = (e: PointerEvent) => {
+      if (document.pointerLockElement === dom) {
+        e.stopPropagation()
+      }
+    }
+    const suppressLockedClick = (e: MouseEvent) => {
+      if (document.pointerLockElement === dom) {
+        e.stopPropagation()
+      }
+    }
+
+    document.addEventListener('pointerlockchange', onPointerLockChange)
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    dom.addEventListener('pointerenter', onPointerEnter)
+    dom.addEventListener('pointerleave', onPointerLeave)
     dom.addEventListener('pointerdown', onPointerDown)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
+    dom.addEventListener('click', onCanvasClick)
+    dom.addEventListener('pointermove', suppressLockedPointerMove, true)
+    dom.addEventListener('click', suppressLockedClick, true)
+    document.addEventListener('mousedown', onMouseDown)
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
 
     return () => {
+      document.removeEventListener('pointerlockchange', onPointerLockChange)
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      dom.removeEventListener('pointerenter', onPointerEnter)
+      dom.removeEventListener('pointerleave', onPointerLeave)
       dom.removeEventListener('pointerdown', onPointerDown)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
+      dom.removeEventListener('click', onCanvasClick)
+      dom.removeEventListener('pointermove', suppressLockedPointerMove, true)
+      dom.removeEventListener('click', suppressLockedClick, true)
+      document.removeEventListener('mousedown', onMouseDown)
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      syncLockState(false)
+      if (document.pointerLockElement === dom) {
+        try {
+          document.exitPointerLock?.()
+        } catch {
+          // Bỏ qua lỗi khi unmount
+        }
+      }
     }
-  }, [camera, gl])
+  }, [camera, gl, scene])
 
   useFrame(({ clock }, dt) => {
     const st = useStore.getState()
@@ -561,6 +813,16 @@ function FirstPerson() {
     const delta = Math.min(dt, 0.05)
     const t = clock.elapsedTime
     const isThird = st.fpPerspective === 'third'
+    const dom = gl.domElement
+
+    const modalOpen = st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null
+    if (modalOpen && document.pointerLockElement === dom) {
+      try {
+        document.exitPointerLock?.()
+      } catch {
+        // Bỏ qua nếu thoát lock không thành công
+      }
+    }
 
     const targetFov = isThird ? 58 : 68
     if (Math.abs(camera.fov - targetFov) > 0.05) {
@@ -641,18 +903,30 @@ function FirstPerson() {
       k.KeyW || k.KeyA || k.KeyS || k.KeyD || k.ArrowUp || k.ArrowDown || k.ArrowLeft || k.ArrowRight,
     )
 
-    // Khi không kéo chuột xoay & không điều khiển WASD thủ công, hướng nhẹ theo đồ vật hoặc hướng đi click-to-walk
-    if (!dragging.current && !snapped && !isManualKeyMove) {
-      if (currentAct !== 'idle' && currentPhase === 'active') {
+    // Khi mới chuyển sang ngồi/nằm/tương tác đồ vật, chỉ xoay nhẹ 1 lần trong ~0.45s đầu (tắt ngay nếu chuột di chuyển) để tự do xoay 360°
+    const activeStateKey = `${currentAct}:${currentPhase}`
+    if (currentAct !== 'idle' && currentPhase === 'active') {
+      if (prevActiveStateRef.current !== activeStateKey) {
+        prevActiveStateRef.current = activeStateKey
+        orientTimerRef.current = 0.45
+        orientCancelledRef.current = false
+      }
+      if (orientTimerRef.current > 0 && !orientCancelledRef.current && !dragging.current && !snapped && !isManualKeyMove) {
+        orientTimerRef.current = Math.max(0, orientTimerRef.current - delta)
         const station = STATIONS[currentAct]
         if (station) {
           const ldx = station.fpTarget[0] - station.fpPos[0]
           const ldz = station.fpTarget[2] - station.fpPos[2]
           const targetYaw = Math.atan2(-ldx, -ldz)
           const diff = Math.atan2(Math.sin(targetYaw - yaw.current), Math.cos(targetYaw - yaw.current))
-          yaw.current += diff * Math.min(1, delta * 3.5)
+          yaw.current += diff * Math.min(1, delta * 6.5)
         }
-      } else if (isWalking || st.avatarTarget) {
+      }
+    } else {
+      prevActiveStateRef.current = activeStateKey
+      orientTimerRef.current = 0
+      orientCancelledRef.current = false
+      if (!isLockedRef.current && !dragging.current && !snapped && !isManualKeyMove && (isWalking || st.avatarTarget)) {
         const desiredCamYaw = charYaw + Math.PI
         const diff = Math.atan2(Math.sin(desiredCamYaw - yaw.current), Math.cos(desiredCamYaw - yaw.current))
         yaw.current += diff * Math.min(1, delta * 3.5)
@@ -660,6 +934,20 @@ function FirstPerson() {
     }
 
     camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ')
+
+    // Raycast từ tâm màn hình (0, 0) mỗi ~80ms khi khóa chuột GTA để hiển thị gợi ý tương tác
+    if (document.pointerLockElement === dom) {
+      const now = performance.now()
+      if (now - lastRaycastAtRef.current >= 80) {
+        lastRaycastAtRef.current = now
+        const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+        const nextHint = hit?.interactHint ?? null
+        if (nextHint !== lastCenterHintRef.current) {
+          lastCenterHintRef.current = nextHint
+          st.setHoverHint(nextHint)
+        }
+      }
+    }
   })
 
   return null

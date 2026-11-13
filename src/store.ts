@@ -72,7 +72,7 @@ interface State {
   setMode: (m: Mode) => void
   darkMode: boolean
   toggleDarkMode: () => void
-  graphicMode: 'hd' | 'smooth'
+  graphicMode: 'hd'
   toggleGraphicMode: () => void
   isInteracting: boolean
   setIsInteracting: (isInteracting: boolean) => void
@@ -306,7 +306,7 @@ export const useStore = create<State>()(
               focus: null,
               activePhoto: null,
               walkthroughSpawn: null,
-              toastMessage: '🚶 Chế độ Vào nhà',
+              toastMessage: s.fpPerspective === 'eye' ? '👁️ Góc nhìn tầm mắt' : '🎥 Góc nhìn sau lưng',
             }
           }
           const isFloorPreset = s.viewPreset === 'floor1' || s.viewPreset === 'floor2'
@@ -343,12 +343,9 @@ export const useStore = create<State>()(
 
       graphicMode: 'hd',
       toggleGraphicMode: () =>
-        set((s) => {
-          const next = s.graphicMode === 'hd' ? 'smooth' : 'hd'
-          return {
-            graphicMode: next,
-            toastMessage: next === 'hd' ? '✨ Đồ họa: HD' : '⚡ Đồ họa: Mượt',
-          }
+        set({
+          graphicMode: 'hd',
+          toastMessage: '✨ Đồ họa: HD',
         }),
 
       isInteracting: false,
@@ -709,7 +706,7 @@ export const useStore = create<State>()(
       wallMode: 'full',
       nearInteriorOpen: false,
       setNearInteriorOpen: (nearInteriorOpen) => set({ nearInteriorOpen }),
-      fpPerspective: 'third',
+      fpPerspective: 'eye',
       toggleFpPerspective: () =>
         set((s) => {
           const next: 'eye' | 'third' = s.fpPerspective === 'third' ? 'eye' : 'third'
@@ -793,6 +790,7 @@ export const useStore = create<State>()(
             wardrobeOpen: false,
             girlWardrobeOpen: false,
             activePhoto: null,
+            walkthroughSpawn: null,
             viewPreset: 'overview',
             roofVisible: true,
             wallMode: 'full',
@@ -804,6 +802,7 @@ export const useStore = create<State>()(
         set(() => ({
           mode: 'orbit',
           activePhoto: null,
+          walkthroughSpawn: null,
           wardrobeOpen: false,
           girlWardrobeOpen: false,
           viewPreset: 'overview',
@@ -1234,10 +1233,18 @@ export const useStore = create<State>()(
       partialize: (s) => ({
         darkMode: s.darkMode,
         weather: s.weather,
-        graphicMode: s.graphicMode,
+        graphicMode: 'hd' as const,
         outfitId: s.outfitId,
         girlOutfitId: s.girlOutfitId,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState as Partial<State>) || {}
+        return {
+          ...currentState,
+          ...persisted,
+          graphicMode: 'hd',
+        }
+      },
     },
   ),
 )
@@ -1289,6 +1296,7 @@ if (typeof window !== 'undefined') {
       if (role === 'girl') s.setGirlOutfitId(msg.payload.outfitId, true)
     } else if (msg.action === 'worldToggle') {
       const { key, val } = msg.payload
+      if (key === 'graphicMode') return
       useStore.setState({ [key]: val } as any)
     }
   })
