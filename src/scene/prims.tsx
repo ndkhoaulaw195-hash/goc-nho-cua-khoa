@@ -1,9 +1,20 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import type { V3 } from '../data/config'
+import { LIVE_ACTORS, type V3 } from '../data/config'
 import { useStore } from '../store'
+import {
+  isOccluderHit,
+  isOrbitDragging,
+  isValidClick,
+  isZoneInteractive,
+  MAX_FP_INTERACT_DIST,
+  registerInteractableGroup,
+  registerOccluderMesh,
+  type InteractZone,
+  type OccluderKind,
+} from './raycastRegistry'
 
 // Bộ nhớ đệm dùng chung (Shared Geometry & Material Pool) giảm tối đa Draw Calls và cấp phát VRAM
 const boxGeomCache = new Map<string, THREE.BoxGeometry>()
@@ -257,46 +268,186 @@ export function G({ p = [0, 0, 0], r = [0, 0, 0], s = 1, children }: { p?: V3; r
   )
 }
 
-/** Component tương tác dùng chung: đổi con trỏ & hiển thị tooltip nhẹ nhàng (không vẽ khung viền quanh vật thể) */
+const _tmpFpOrigin = new THREE.Vector3()
+
+function isObjectInside(obj: THREE.Object3D | null | undefined, root: THREE.Object3D | null): boolean {
+  let cur: THREE.Object3D | null | undefined = obj
+  while (cur) {
+    if (cur === root) return true
+    cur = cur.parent
+  }
+  return false
+}
+
+function getFpInteractionDistance(
+  st: ReturnType<typeof useStore.getState>,
+  camera: THREE.Camera,
+  point: THREE.Vector3,
+): number {
+  if (st.fpPerspective === 'third') {
+    const activeChar = st.userRole || st.activeChar || 'boy'
+    const pos = activeChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+    _tmpFpOrigin.set(pos[0], pos[1] + 1.35, pos[2])
+    return _tmpFpOrigin.distanceTo(point)
+  }
+  return camera.position.distanceTo(point)
+}
+
+/** Component bọc khối kiến trúc (tường, sàn, mái, vách kính mặt tiền) để tự động đăng ký & gỡ vật cản raycast */
+export function Occluder({
+  kind,
+  visible = true,
+  children,
+}: {
+  kind: OccluderKind
+  visible?: boolean
+  children: ReactNode
+}) {
+  const groupRef = useRef<THREE.Group>(null)
+
+  useEffect(() => {
+    const el = groupRef.current
+    if (!el) return
+    return registerOccluderMesh(el, kind)
+  }, [kind])
+
+  return (
+    <group ref={groupRef} visible={visible}>
+      {children}
+    </group>
+  )
+}
+
+/** Component tương tác dùng chung: kiểm tra zone, vật cản, khoảng cách, ngưỡng kéo chuột & hiển thị tooltip */
 export function Interact({
   hint,
   onClick,
+  zone = 'interior_f1',
+  maxDistance,
   children,
 }: {
   hint?: string
   onClick?: (e: ThreeEvent<MouseEvent>) => void
+  zone?: InteractZone
+  maxDistance?: number
   children: ReactNode
 }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const hoveredRef = useRef(false)
+  const hintRef = useRef(hint)
+  hintRef.current = hint
   const interactive = Boolean(onClick)
+
+  const userData = useMemo(
+    () => ({
+      interactHint: hint,
+      interactZone: zone,
+      onInteractClick: onClick,
+      isInteractableRoot: true,
+    }),
+    [hint, zone, onClick],
+  )
+
+  useEffect(() => {
+    const el = groupRef.current
+    if (!el) return
+    return registerInteractableGroup(el, zone)
+  }, [zone])
+
+  useEffect(() => {
+    if (hoveredRef.current && hint) {
+      const st = useStore.getState()
+      if (st.hoverHint !== hint) st.setHoverHint(hint)
+    }
+  }, [hint])
+
+  useEffect(() => {
+    return () => {
+      if (hoveredRef.current) {
+        hoveredRef.current = false
+        document.body.style.cursor = 'auto'
+        const curHint = hintRef.current
+        if (curHint && useStore.getState().hoverHint === curHint) {
+          useStore.getState().setHoverHint(null)
+        }
+      }
+    }
+  }, [])
+
+  const clearHover = () => {
+    if (!hoveredRef.current) return
+    hoveredRef.current = false
+    if (document.body.style.cursor !== 'auto') {
+      document.body.style.cursor = 'auto'
+    }
+    const curHint = hintRef.current
+    if (curHint && useStore.getState().hoverHint === curHint) {
+      useStore.getState().setHoverHint(null)
+    }
+  }
+
+  const handlePointerHover = (e: ThreeEvent<PointerEvent>) => {
+    if (!interactive) return
+    if (isOrbitDragging()) {
+      clearHover()
+      return
+    }
+    const st = useStore.getState()
+    if (!isZoneInteractive(zone, st)) {
+      clearHover()
+      return
+    }
+    if (st.mode === 'fp' && e.point) {
+      const limit = maxDistance ?? MAX_FP_INTERACT_DIST
+      if (getFpInteractionDistance(st, e.camera, e.point) > limit) {
+        clearHover()
+        return
+      }
+    }
+    const first = e.intersections?.[0]
+    if (first && !isObjectInside(first.object, groupRef.current) && isOccluderHit(first.object)) {
+      clearHover()
+      if (document.body.style.cursor !== 'auto') {
+        document.body.style.cursor = 'auto'
+      }
+      return
+    }
+    e.stopPropagation()
+    hoveredRef.current = true
+    if (document.body.style.cursor !== 'pointer') {
+      document.body.style.cursor = 'pointer'
+    }
+    if (hint && st.hoverHint !== hint) {
+      st.setHoverHint(hint)
+    }
+  }
 
   return (
     <group
-      userData={{ interactHint: hint, onInteractClick: onClick }}
+      ref={groupRef}
+      userData={userData}
       onClick={
         onClick
           ? (e: ThreeEvent<MouseEvent>) => {
+              if (!isValidClick(e.clientX, e.clientY)) return
+              const st = useStore.getState()
+              if (!isZoneInteractive(zone, st)) return
+              if (st.mode === 'fp' && e.point) {
+                const limit = maxDistance ?? MAX_FP_INTERACT_DIST
+                if (getFpInteractionDistance(st, e.camera, e.point) > limit) return
+              }
+              const first = e.intersections?.[0]
+              if (first && !isObjectInside(first.object, groupRef.current) && isOccluderHit(first.object)) {
+                return
+              }
               e.stopPropagation()
               onClick(e)
             }
           : undefined
       }
-      onPointerOver={
-        interactive
-          ? (e: ThreeEvent<PointerEvent>) => {
-              e.stopPropagation()
-              document.body.style.cursor = 'pointer'
-              if (hint) useStore.getState().setHoverHint(hint)
-            }
-          : undefined
-      }
-      onPointerOut={
-        interactive
-          ? () => {
-              document.body.style.cursor = 'auto'
-              if (hint) useStore.getState().setHoverHint(null)
-            }
-          : undefined
-      }
+      onPointerOver={interactive ? handlePointerHover : undefined}
+      onPointerMove={interactive ? handlePointerHover : undefined}
+      onPointerOut={interactive ? clearHover : undefined}
     >
       {children}
     </group>

@@ -6,11 +6,13 @@ import { WallAttached } from './ArchitectureShell'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { useStore } from '../store'
 
+const SNAKE_LEAF_GEOM = new THREE.ConeGeometry(0.08, 0.85, 4)
+const SNAKE_LEAF_MAT_A = new THREE.MeshStandardMaterial({ color: '#566E4C', roughness: 0.65 })
+const SNAKE_LEAF_MAT_B = new THREE.MeshStandardMaterial({ color: '#6F8763', roughness: 0.65 })
+
 /** Khu vực Phòng tắm cao cấp & Khu giặt sấy thông minh */
 export function Bathroom() {
   const darkMode = useStore((s) => s.darkMode)
-  const bathMirrorLightOn = useStore((s) => s.bathMirrorLightOn)
-  const bathFullMirrorLightOn = useStore((s) => s.bathFullMirrorLightOn)
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
 
   return (
@@ -22,18 +24,6 @@ export function Bathroom() {
       <SmartToilet />
       <TowelWarmer />
       <MasterBathLounge />
-
-      {/* Ánh sáng phản hồi tương tác khi bật đèn gương phòng tắm (gộp 1 pointLight ban đêm để giữ 60fps; ban ngày dùng emissive) */}
-      {darkMode && (bathMirrorLightOn || bathFullMirrorLightOn) && (
-        <pointLight
-          position={[-12.8, 2.1, -3.6]}
-          intensity={2.4}
-          distance={6.5}
-          decay={2}
-          color="#f0d4a8"
-          castShadow={false}
-        />
-      )}
     </group>
   )
 }
@@ -94,6 +84,7 @@ function Bathtub() {
 
   return (
     <Interact
+      zone="interior_f1"
       hint="🛁 Bồn tắm"
       onClick={() => useStore.getState().startActivity('bath', true)}
     >
@@ -182,11 +173,11 @@ function ShowerBooth({ glassMat }: { glassMat: THREE.Material }) {
         <BB p={[0, 1.05, 0.05]} s={[0.14, 0.28, 0.06]} c="#2B2D2F" metal={0.65} rough={0.3} />
       </G>
 
-      {/* Hốc âm tường để dầu gội & sữa tắm có đèn LED 3000K (#FFD7A3) — ẩn cùng tường trái khi cắt */}
+      {/* Hốc âm tường để dầu gội & sữa tắm có đèn LED 3000K (#FFAE52) — ẩn cùng tường trái khi cắt */}
       <WallAttached normal={[-1, 0, 0]} floor={1}>
         <G p={[-1.48, 1.45, 0]}>
           <B s={[0.06, 0.55, 0.75]} c="#2B2D2F" />
-          <B p={[0.01, 0.24, 0]} s={[0.04, 0.03, 0.72]} c="#FFD7A3" emissive="#FFD7A3" ei={1.6} shadow={false} />
+          <B p={[0.01, 0.24, 0]} s={[0.04, 0.03, 0.72]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
           {/* Chai sữa tắm & dầu gội trung tính */}
           <Cyl p={[0.02, -0.12, -0.2]} rt={0.038} h={0.16} c="#4A5E6F" rough={0.28} />
           <Cyl p={[0.02, -0.12, 0.02]} rt={0.038} h={0.18} c="#B7AFA5" rough={0.28} />
@@ -223,6 +214,7 @@ function VanityAndWasher() {
     <group>
       {/* 1. Khu vực Bàn Lavabo & Gương LED cảm ứng */}
       <Interact
+        zone="interior_f1"
         hint="🪞 Bàn Lavabo"
         onClick={() => useStore.getState().startActivity('wash', true)}
       >
@@ -249,8 +241,9 @@ function VanityAndWasher() {
           {/* Khăn mặt gấp gọn bên cạnh (#EFECE6) */}
           <BB p={[0.52, 0.88, -0.12]} s={[0.18, 0.06, 0.16]} c="#EFECE6" rough={0.85} />
 
-          {/* Gương tròn đèn LED Halo cảm ứng 3000K (#FFD7A3) */}
+          {/* Gương tròn đèn LED Halo cảm ứng 3000K (#FFAE52) */}
           <Interact
+            zone="interior_f1"
             hint={bathMirrorLightOn ? '✨ Tắt đèn gương Halo' : '✨ Bật đèn gương Halo'}
             onClick={() => {
               useStore.getState().toggleBathMirrorLight()
@@ -260,15 +253,15 @@ function VanityAndWasher() {
               {bathMirrorLightOn && (
                 <mesh position={[0, 0, -0.015]}>
                   <circleGeometry args={[0.75, 36]} />
-                  <meshBasicMaterial color="#FFD7A3" transparent opacity={0.3} depthWrite={false} />
+                  <meshBasicMaterial color="#FFAE52" transparent opacity={0.32} depthWrite={false} />
                 </mesh>
               )}
               <mesh position={[0, 0, -0.008]}>
                 <ringGeometry args={[0.55, 0.64, 40]} />
                 <meshStandardMaterial
-                  color="#F5C98B"
-                  emissive="#F5C98B"
-                  emissiveIntensity={bathMirrorLightOn ? 1.35 : 0.05}
+                  color="#FFAE52"
+                  emissive="#FFAE52"
+                  emissiveIntensity={bathMirrorLightOn ? 1.5 : 0.05}
                 />
               </mesh>
               <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#2B2D2F" metal={0.75} rough={0.25} />
@@ -283,6 +276,7 @@ function VanityAndWasher() {
 
       {/* 2. Máy giặt quần áo cửa trước thông minh (Smart Front-Load Washer) */}
       <Interact
+        zone="interior_f1"
         hint="🧺 Máy giặt"
         onClick={() => {
           const st = useStore.getState()
@@ -410,8 +404,9 @@ function MasterBathLounge() {
           <Cyl p={[0.35, 2.24, 0]} rt={0.04} h={0.14} c="#2B2D2F" />
         </G>
 
-        {/* 2. Gương soi toàn thân viền Matte Charcoal (#2B2D2F) & LED 3000K (#FFD7A3) */}
+        {/* 2. Gương soi toàn thân viền Matte Charcoal (#2B2D2F) & LED 3000K (#FFAE52) */}
         <Interact
+          zone="interior_f1"
           hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
           onClick={() => useStore.getState().toggleBathFullMirrorLight()}
         >
@@ -419,9 +414,9 @@ function MasterBathLounge() {
             <B
               p={[0.01, 0, 0]}
               s={[0.02, 2.24, 0.94]}
-              c="#FFD7A3"
-              emissive="#FFD7A3"
-              ei={bathFullMirrorLightOn ? 2.4 : 0.05}
+              c="#FFAE52"
+              emissive="#FFAE52"
+              ei={bathFullMirrorLightOn ? 1.5 : 0.05}
               shadow={false}
               polyOffset
             />
@@ -440,7 +435,7 @@ function MasterBathLounge() {
             {bathFullMirrorLightOn && (
               <mesh position={[0.015, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
                 <planeGeometry args={[0.96, 2.26]} />
-                <meshBasicMaterial color="#FFD7A3" transparent opacity={0.24} depthWrite={false} />
+                <meshBasicMaterial color="#FFAE52" transparent opacity={0.26} depthWrite={false} />
               </mesh>
             )}
           </G>
@@ -460,10 +455,10 @@ function MasterBathLounge() {
               key={i}
               position={[Math.cos(ang) * 0.08, 0.52 + i * 0.06, Math.sin(ang) * 0.08]}
               rotation={[0.12, ang, 0]}
-            >
-              <coneGeometry args={[0.08, 0.85, 4]} />
-              <meshStandardMaterial color={i % 2 === 0 ? '#566E4C' : '#6F8763'} roughness={0.65} />
-            </mesh>
+              geometry={SNAKE_LEAF_GEOM}
+              material={i % 2 === 0 ? SNAKE_LEAF_MAT_A : SNAKE_LEAF_MAT_B}
+              castShadow={false}
+            />
           )
         })}
       </G>

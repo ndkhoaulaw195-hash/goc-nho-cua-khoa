@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { ArchitectureShell } from './ArchitectureShell'
-import { B, Interact } from './prims'
+import { B, Interact, Occluder } from './prims'
+import { isOccluderHit, isValidClick, isZoneInteractive, registerOccluderMesh } from './raycastRegistry'
 import {
   aoContactShadow,
   aoLinearFalloff,
@@ -13,6 +14,13 @@ import {
 import { useStore } from '../store'
 
 export const ROOM = { w: 20, d: 12, h: 4.35 }
+
+const NOOP_RAYCAST: THREE.Object3D['raycast'] = () => {}
+const TARGET_RING_GEOM = new THREE.RingGeometry(0.16, 0.24, 24)
+const TARGET_RING_MAT = new THREE.MeshBasicMaterial({ color: '#EFECE6', transparent: true, opacity: 0.85 })
+const AO_PLANE_GEOM = new THREE.PlaneGeometry(1, 1)
+const RUG_BOX_GEOM = new THREE.BoxGeometry(1, 1, 1)
+const HEADBOARD_SLAT_GEOM = new THREE.BoxGeometry(4.9, 1.44, 0.06)
 
 export function Room() {
   const darkMode = useStore((s) => s.darkMode)
@@ -27,13 +35,36 @@ export function Room() {
     return t
   }, [])
 
+  const slatMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: slatMap,
+        roughness: 0.82,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      }),
+    [slatMap],
+  )
+
+  useEffect(
+    () => () => {
+      slatMat.dispose()
+      slatMap.dispose()
+    },
+    [slatMat, slatMap],
+  )
+
   const { d } = ROOM
 
   const handleFloorClick = (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation()
-    if (e.delta > 6) return
+    if (!isValidClick(e.clientX, e.clientY)) return
     const st = useStore.getState()
     if (st.mode !== 'orbit' && st.mode !== 'fp') return
+    if (!isZoneInteractive('interior_f1', st)) return
+    const first = e.intersections?.[0]
+    if (first && first.object !== e.object && isOccluderHit(first.object)) return
+    e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -14.8, 9.1)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 5.2)
@@ -41,10 +72,12 @@ export function Room() {
   }
 
   const handleYardClick = (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation()
-    if (e.delta > 6) return
+    if (!isValidClick(e.clientX, e.clientY)) return
     const st = useStore.getState()
     if (st.mode !== 'orbit' && st.mode !== 'fp') return
+    const first = e.intersections?.[0]
+    if (first && first.object !== e.object && isOccluderHit(first.object)) return
+    e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -21.0, 16.0)
     const z = THREE.MathUtils.clamp(p.z, -9.0, 14.8)
@@ -59,36 +92,40 @@ export function Room() {
       <ArchitectureShell onFloorClick={handleFloorClick} onYardClick={handleYardClick} />
 
       {avatarTarget && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[avatarTarget[0], avatarTarget[1] + 0.032, avatarTarget[2]]}>
-          <ringGeometry args={[0.16, 0.24, 24]} />
-          <meshBasicMaterial color="#EFECE6" transparent opacity={0.85} />
-        </mesh>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[avatarTarget[0], avatarTarget[1] + 0.032, avatarTarget[2]]}
+          geometry={TARGET_RING_GEOM}
+          material={TARGET_RING_MAT}
+          castShadow={false}
+          raycast={NOOP_RAYCAST}
+        />
       )}
 
       {/* Ốp lam gỗ dọc Slate Blue (#5E7487 / #4A5E6F) đầu giường + Đèn LED vàng ấm 3000K */}
-      <mesh position={[-3.25, 0.72, -d / 2 + 0.06]} receiveShadow>
-        <boxGeometry args={[4.9, 1.44, 0.06]} />
-        <meshStandardMaterial
-          map={slatMap}
-          roughness={0.82}
-          polygonOffset
-          polygonOffsetFactor={-1}
-          polygonOffsetUnits={-1}
+      <Occluder kind="wall">
+        <mesh
+          position={[-3.25, 0.72, -d / 2 + 0.06]}
+          geometry={HEADBOARD_SLAT_GEOM}
+          material={slatMat}
+          castShadow={false}
+          receiveShadow
         />
-      </mesh>
-      <B p={[-3.25, 1.45, -d / 2 + 0.07]} s={[4.92, 0.04, 0.08]} c="#2B2D2F" rough={0.85} shadow={false} polyOffset />
+        <B p={[-3.25, 1.45, -d / 2 + 0.07]} s={[4.92, 0.04, 0.08]} c="#2B2D2F" rough={0.85} shadow={false} polyOffset />
+      </Occluder>
 
-      {/* Dải đèn LED hắt ngang đầu giường (#FFD7A3): Click trực tiếp để bật/tắt */}
+      {/* Dải đèn LED hắt ngang đầu giường (#FFAE52): Click trực tiếp để bật/tắt */}
       <Interact
+        zone="interior_f1"
         hint={floor1HeadboardLedOn ? '✨ Tắt đèn LED đầu giường' : '✨ Bật đèn LED đầu giường'}
         onClick={() => useStore.getState().toggleFloor1HeadboardLed()}
       >
         <B
           p={[-3.25, 1.48, -d / 2 + 0.06]}
           s={[4.88, 0.035, 0.04]}
-          c={floor1HeadboardLedOn ? '#F5C98B' : '#2B2D2F'}
-          emissive={floor1HeadboardLedOn ? '#F5C98B' : '#000000'}
-          ei={floor1HeadboardLedOn ? (darkMode ? 1.25 : 1.3) : 0}
+          c={floor1HeadboardLedOn ? '#FFAE52' : '#2B2D2F'}
+          emissive={floor1HeadboardLedOn ? '#FFAE52' : '#000000'}
+          ei={floor1HeadboardLedOn ? 1.5 : 0}
           shadow={false}
         />
       </Interact>
@@ -116,6 +153,46 @@ function StudioAmbientOcclusion({ darkMode }: { darkMode: boolean }) {
   const cornerOp = darkMode ? 0.42 : 0.34
   const contactOp = darkMode ? 0.56 : 0.46
 
+  const cornerMat = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        map: linearAo,
+        transparent: true,
+        opacity: cornerOp,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+      }),
+    [linearAo, cornerOp],
+  )
+
+  const contactMats = useMemo(() => {
+    const makeMat = (op: number) =>
+      new THREE.MeshBasicMaterial({
+        map: contactAo,
+        transparent: true,
+        opacity: op,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+      })
+    return {
+      full: makeMat(contactOp),
+      t72: makeMat(contactOp * 0.72),
+      t80: makeMat(contactOp * 0.8),
+    }
+  }, [contactAo, contactOp])
+
+  useEffect(
+    () => () => {
+      cornerMat.dispose()
+      contactMats.full.dispose()
+      contactMats.t72.dispose()
+      contactMats.t80.dispose()
+    },
+    [cornerMat, contactMats],
+  )
+
   const cornerStrip = (
     key: string,
     pos: [number, number, number],
@@ -126,32 +203,32 @@ function StudioAmbientOcclusion({ darkMode }: { darkMode: boolean }) {
       key={key}
       position={pos}
       rotation={[-Math.PI / 2, 0, rotY]}
+      scale={[size[0], size[1], 1]}
+      geometry={AO_PLANE_GEOM}
+      material={cornerMat}
       renderOrder={1}
-    >
-      <planeGeometry args={size} />
-      <meshBasicMaterial
-        map={linearAo}
-        transparent
-        opacity={cornerOp}
-        depthWrite={false}
-        polygonOffset
-        polygonOffsetFactor={-2}
-      />
-    </mesh>
+      castShadow={false}
+      raycast={NOOP_RAYCAST}
+    />
   )
 
-  const contactPatch = (key: string, pos: [number, number, number], size: [number, number], op = contactOp) => (
-    <mesh key={key} position={pos} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
-      <planeGeometry args={size} />
-      <meshBasicMaterial
-        map={contactAo}
-        transparent
-        opacity={op}
-        depthWrite={false}
-        polygonOffset
-        polygonOffsetFactor={-2}
-      />
-    </mesh>
+  const contactPatch = (
+    key: string,
+    pos: [number, number, number],
+    size: [number, number],
+    variant: 'full' | 't72' | 't80' = 'full',
+  ) => (
+    <mesh
+      key={key}
+      position={pos}
+      rotation={[-Math.PI / 2, 0, 0]}
+      scale={[size[0], size[1], 1]}
+      geometry={AO_PLANE_GEOM}
+      material={contactMats[variant]}
+      renderOrder={2}
+      castShadow={false}
+      raycast={NOOP_RAYCAST}
+    />
   )
 
   return (
@@ -174,9 +251,9 @@ function StudioAmbientOcclusion({ darkMode }: { darkMode: boolean }) {
       {contactPatch('ao-f1-bed', [-2.6, 0.038, -4.3], [2.75, 3.45])}
       {contactPatch('ao-f1-sofa-r', [6.35, 0.038, 2.0], [1.6, 3.25])}
       {contactPatch('ao-f1-sofa-f', [4.45, 0.038, 3.65], [3.35, 1.55])}
-      {contactPatch('ao-f1-table', [4.15, 0.038, 2.15], [1.95, 1.25], contactOp * 0.72)}
-      {contactPatch('ao-f1-tvunit', [4.45, 0.008, -0.35], [2.8, 0.85], contactOp * 0.8)}
-      {contactPatch('ao-f1-wardrobe', [-7.7, 0.008, -5.55], [3.9, 1.15], contactOp * 0.8)}
+      {contactPatch('ao-f1-table', [4.15, 0.038, 2.15], [1.95, 1.25], 't72')}
+      {contactPatch('ao-f1-tvunit', [4.45, 0.008, -0.35], [2.8, 0.85], 't80')}
+      {contactPatch('ao-f1-wardrobe', [-7.7, 0.008, -5.55], [3.9, 1.15], 't80')}
 
       {/* 3. AO chân cầu thang Tầng 1 */}
       {contactPatch('ao-f1-stair', [-8.85, 0.008, 4.55], [1.6, 1.45])}
@@ -197,29 +274,47 @@ function Rug({
   patterned?: boolean
   onDoubleClick: (e: ThreeEvent<MouseEvent>) => void
 }) {
+  const meshRef = useRef<THREE.Mesh>(null)
   const map = useMemo(() => (patterned ? persianTerracottaRug() : rugWeave(c)), [c, patterned])
+  const mat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map,
+        roughness: 0.85,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+      }),
+    [map],
+  )
+
+  useEffect(() => {
+    const el = meshRef.current
+    if (!el) return
+    return registerOccluderMesh(el, 'slab')
+  }, [])
+
+  useEffect(() => () => mat.dispose(), [mat])
+
   return (
-    <mesh position={[p[0], 0.024, p[2]]} receiveShadow onClick={onDoubleClick} onDoubleClick={onDoubleClick}>
-      <boxGeometry args={[s[0], 0.02, s[1]]} />
-      <meshStandardMaterial
-        map={map}
-        roughness={0.85}
-        polygonOffset
-        polygonOffsetFactor={-1}
-        polygonOffsetUnits={-1}
-      />
-    </mesh>
+    <mesh
+      ref={meshRef}
+      position={[p[0], 0.024, p[2]]}
+      scale={[s[0], 0.02, s[1]]}
+      geometry={RUG_BOX_GEOM}
+      material={mat}
+      castShadow={false}
+      receiveShadow
+      onClick={onDoubleClick}
+      onDoubleClick={onDoubleClick}
+    />
   )
 }
 
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
   const weather = useStore((s) => s.weather)
-  const lampOn = useStore((s) => s.lampOn)
-  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
-  const tvOn = useStore((s) => s.tvOn)
-  const pcState = useStore((s) => s.pcState)
-  const shadowResolution = 2048
+  const shadowResolution = 1024
 
   // Ánh sáng studio ban ngày rõ nét sân vườn khi nhìn từ trong ra & giảm nhẹ AmbientLight ban đêm để nổi bật đèn vàng ấm nội thất qua kính phản quang
   const hemiSky = darkMode
@@ -258,7 +353,7 @@ export function Lights() {
       <hemisphereLight args={[hemiSky, hemiGround, hemiIntensity]} />
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
-      {/* Directional Light chính luôn chạy HD 2048px, bao trọn mái đua & Pergola để đổ bóng sọc nắng sắc nét */}
+      {/* Directional Light chính duy nhất bật castShadow ở độ phân giải 1024px để giữ vững 60 FPS */}
       <directionalLight
         position={sunPos}
         intensity={sunIntensity}
@@ -283,103 +378,23 @@ export function Lights() {
         color={darkMode ? '#9BB0C8' : '#EFECE6'}
       />
 
-      {/* Hệ đèn nội thất vàng ấm (#FFD59B / #FFAE52) cường độ cao hắt lung linh qua rèm voan & kính phản quang cả ngày lẫn đêm */}
-      {/* Phòng khách Tầng 1 */}
+      {/* 2 nguồn PointLight đại diện cho không gian Tầng 1 và Tầng 2 / không gian chung (castShadow={false}) */}
       <pointLight
-        position={[3.8, 3.55, 2.2]}
-        intensity={darkMode ? 2.7 : 2.1}
-        distance={16}
-        decay={1.7}
+        position={[-1.5, 3.65, 0.2]}
+        intensity={darkMode ? 3.2 : 2.3}
+        distance={24}
+        decay={1.45}
         color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
-      {/* Phòng ngủ Tầng 1 */}
       <pointLight
-        position={[-3.2, 3.45, -1.2]}
-        intensity={darkMode ? 2.45 : 1.9}
-        distance={15}
-        decay={1.7}
+        position={[-0.8, 7.6, 0.2]}
+        intensity={darkMode ? 3.0 : 2.15}
+        distance={22}
+        decay={1.45}
         color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
-      {/* Phòng ngủ Tầng 2 */}
-      <pointLight
-        position={[-4.5, 7.6, 1.4]}
-        intensity={darkMode ? 2.65 : 2.05}
-        distance={16}
-        decay={1.7}
-        color={darkMode ? '#FFAE52' : '#FFD59B'}
-        castShadow={false}
-      />
-      {/* Thông tầng & Khu học tập Tầng 2 */}
-      <pointLight
-        position={[3.4, 7.6, -0.4]}
-        intensity={darkMode ? 2.5 : 1.95}
-        distance={16}
-        decay={1.7}
-        color={darkMode ? '#FFAE52' : '#FFD59B'}
-        castShadow={false}
-      />
-      {/* Phòng tắm Tầng 1 */}
-      <pointLight
-        position={[-12.8, 3.4, -0.5]}
-        intensity={darkMode ? 2.3 : 1.75}
-        distance={13}
-        decay={1.7}
-        color={darkMode ? '#FFAE52' : '#FFD59B'}
-        castShadow={false}
-      />
-      {/* Khu Bếp & Cầu thang Tầng 1 */}
-      <pointLight
-        position={[-8.85, 2.85, 2.5]}
-        intensity={darkMode ? 2.4 : 1.85}
-        distance={13}
-        decay={1.7}
-        color={darkMode ? '#FFAE52' : '#FFD59B'}
-        castShadow={false}
-      />
-
-      {/* Đèn trang trí vàng ấm 3000K (#FFD7A3) đồng bộ cho cả Tầng 1 */}
-      {darkMode && lampOn && (
-        <pointLight
-          position={[8.75, 1.85, 0.95]}
-          intensity={4.8}
-          distance={6.5}
-          decay={2}
-          color="#FFD7A3"
-          castShadow={false}
-        />
-      )}
-      {darkMode && floor1HeadboardLedOn && (
-        <pointLight
-          position={[-3.25, 1.75, -5.2]}
-          intensity={3.0}
-          distance={5.2}
-          decay={2}
-          color="#FFD7A3"
-          castShadow={false}
-        />
-      )}
-      {darkMode && tvOn && (
-        <pointLight
-          position={[8.9, 1.65, 2.35]}
-          intensity={1.5}
-          distance={4.2}
-          decay={2}
-          color="#D6D1C9"
-          castShadow={false}
-        />
-      )}
-      {darkMode && pcState !== 'off' && (
-        <pointLight
-          position={[2.85, 1.35, -5.1]}
-          intensity={1.4}
-          distance={3.2}
-          decay={2}
-          color="#FFD7A3"
-          castShadow={false}
-        />
-      )}
     </>
   )
 }
