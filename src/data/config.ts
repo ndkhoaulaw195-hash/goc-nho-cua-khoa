@@ -425,14 +425,14 @@ export const STATIONS: Record<
 /** Bảng màu kiến trúc đồng bộ giữa Tầng 1 và Tầng 2 (Hệ màu Trung Tính Warm Greige & Stone) */
 export function getHousePalette(darkMode: boolean) {
   return {
-    extWall: darkMode ? '#272523' : '#c9c2b8',
-    subFloor: darkMode ? '#24211e' : '#b7afa3',
-    floorTint: darkMode ? '#877d72' : '#ded6ca',
-    wallCream: darkMode ? '#35322e' : '#d5cfc5',
-    wallPartition: darkMode ? '#312e2a' : '#cdc7bc',
-    wallAccent: darkMode ? '#2b2926' : '#bdb6ab',
-    wallBath: darkMode ? '#33312d' : '#dfdad1',
-    crownMolding: darkMode ? '#403d38' : '#e4dfd6',
-    baseboard: darkMode ? '#201d1a' : '#4a433c',
+    extWall: darkMode ? '#2B2D2F' : '#D6D1C9',
+    subFloor: darkMode ? '#222426' : '#D6D1C9',
+    floorTint: darkMode ? '#9A9287' : '#FFFFFF',
+    wallCream: darkMode ? '#3A3B3D' : '#EFECE6',
+    wallPartition: darkMode ? '#343638' : '#EFECE6',
+    wallAccent: darkMode ? '#364552' : '#5E7487',
+    wallBath: darkMode ? '#38393B' : '#E5E4E0',
+    crownMolding: darkMode ? '#444648' : '#D6D1C9',
+    baseboard: darkMode ? '#1F2123' : '#2B2D2F',
   }
 }

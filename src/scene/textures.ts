@@ -44,24 +44,22 @@ export function rng(seed: number) {
 
 /** Sàn gỗ sồi trầm ấm tự nhiên đồng bộ cho cả Tầng 1 và Tầng 2 */
 export function woodFloor() {
-  return canvasTex('wood-ash-neutral-v6', 1024, 1024, (g, w, h) => {
+  return canvasTex('wood-oak-slate-v1', 1024, 1024, (g, w, h) => {
     const r = rng(23)
     const rows = 14
     const rh = h / rows
+    const oakTones = ['#D8C7B2', '#D4C2AC', '#CFC0AB', '#DECEBA', '#C4AF97']
     for (let i = 0; i < rows; i++) {
       let x = -r() * 240
       while (x < w) {
         const len = 260 + r() * 260
-        // Tone gỗ sồi xám tro trung tính hài hòa cho cả 2 tầng
-        const hue = 31 + r() * 5
-        const sat = 15 + r() * 6
-        const light = 51 + r() * 8
-        g.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`
+        // Sàn gỗ sồi sáng #D8C7B2 phối vân/tấm đậm #C4AF97
+        g.fillStyle = oakTones[Math.floor(r() * oakTones.length)]
         g.fillRect(x, i * rh, len, rh)
 
-        // Thớ vân gỗ sồi mịn trung tính
+        // Thớ vân gỗ sồi mịn #C4AF97 & highlight #EFECE6
         for (let k = 0; k < 8; k++) {
-          g.strokeStyle = k % 2 === 0 ? 'rgba(78, 70, 62, 0.10)' : 'rgba(246, 243, 238, 0.14)'
+          g.strokeStyle = k % 2 === 0 ? 'rgba(155, 134, 110, 0.22)' : 'rgba(239, 236, 230, 0.2)'
           g.lineWidth = 1 + r() * 1.2
           g.beginPath()
           const y = i * rh + 4 + r() * (rh - 8)
@@ -78,25 +76,25 @@ export function woodFloor() {
         }
 
         // Mắt gỗ nhỏ mờ tự nhiên
-        if (r() < 0.24) {
+        if (r() < 0.22) {
           const kx = x + 35 + r() * (len - 70)
           const ky = i * rh + 12 + r() * (rh - 24)
-          g.fillStyle = 'rgba(72, 65, 58, 0.13)'
+          g.fillStyle = 'rgba(140, 120, 96, 0.16)'
           g.beginPath()
           g.ellipse(kx, ky, 7 + r() * 6, 3.5 + r() * 2.5, 0, 0, Math.PI * 2)
           g.fill()
         }
 
         // Khe ghép dọc giữa các tấm ván
-        g.fillStyle = 'rgba(62, 56, 50, 0.28)'
-        g.fillRect(x, i * rh, 1.8, rh)
+        g.fillStyle = 'rgba(128, 112, 92, 0.28)'
+        g.fillRect(x, i * rh, 1.6, rh)
         x += len
       }
       // Khe ghép ngang + highlight mép ván
-      g.fillStyle = 'rgba(58, 52, 46, 0.32)'
-      g.fillRect(0, i * rh, w, 1.8)
-      g.fillStyle = 'rgba(246, 243, 238, 0.14)'
-      g.fillRect(0, i * rh + 1.8, w, 1.1)
+      g.fillStyle = 'rgba(128, 112, 92, 0.32)'
+      g.fillRect(0, i * rh, w, 1.6)
+      g.fillStyle = 'rgba(239, 236, 230, 0.2)'
+      g.fillRect(0, i * rh + 1.6, w, 1.0)
     }
   })
 }
@@ -152,39 +150,38 @@ export function herringboneOakFloor() {
 
 /** Ốp gỗ lam dọc đầu giường (Smoked Taupe Slats) */
 export function woodSlats() {
-  return canvasTex('wood-slats-neutral-v2', 512, 256, (g, w, h) => {
+  return canvasTex('wood-slats-slate-v1', 512, 256, (g, w, h) => {
     const r = rng(41)
     const slats = 36
     const sw = w / slats
     for (let i = 0; i < slats; i++) {
-      const l = 28 + r() * 6
-      g.fillStyle = `hsl(28, 14%, ${l}%)`
+      g.fillStyle = i % 2 === 0 ? '#5E7487' : r() > 0.4 ? '#556B7E' : '#4A5E6F'
       g.fillRect(i * sw, 0, sw, h)
-      g.fillStyle = 'rgba(18, 16, 14, 0.52)'
+      g.fillStyle = '#2B2D2F'
       g.fillRect(i * sw, 0, 2.2, h)
     }
   })
 }
 
-/** Gạch đá cẩm thạch trắng Carrara cao cấp lát sàn & tường phòng tắm */
+/** Gạch sàn phòng tắm chuẩn tone #E5E4E0 vân đá dịu */
 export function marbleTiles() {
-  return canvasTex('marble-tiles-v1', 1024, 1024, (g, w, h) => {
+  return canvasTex('marble-tiles-slate-v1', 1024, 1024, (g, w, h) => {
     const r = rng(77)
-    g.fillStyle = '#f8f7f5'
+    g.fillStyle = '#E5E4E0'
     g.fillRect(0, 0, w, h)
 
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 24; i++) {
       const grad = g.createRadialGradient(r() * w, r() * h, 10, r() * w, r() * h, 240 + r() * 200)
-      grad.addColorStop(0, 'rgba(225, 222, 216, 0.45)')
-      grad.addColorStop(0.5, 'rgba(238, 235, 230, 0.25)')
-      grad.addColorStop(1, 'rgba(255, 255, 255, 0)')
+      grad.addColorStop(0, 'rgba(214, 209, 201, 0.42)')
+      grad.addColorStop(0.5, 'rgba(239, 236, 230, 0.25)')
+      grad.addColorStop(1, 'rgba(229, 228, 224, 0)')
       g.fillStyle = grad
       g.fillRect(0, 0, w, h)
     }
 
-    for (let i = 0; i < 18; i++) {
-      g.strokeStyle = i % 3 === 0 ? 'rgba(150, 142, 134, 0.28)' : 'rgba(190, 185, 178, 0.2)'
-      g.lineWidth = 1 + r() * 2.5
+    for (let i = 0; i < 16; i++) {
+      g.strokeStyle = i % 3 === 0 ? 'rgba(182, 183, 181, 0.3)' : 'rgba(214, 209, 201, 0.28)'
+      g.lineWidth = 1 + r() * 2.2
       g.beginPath()
       let x = r() * w
       let y = r() * h
@@ -198,8 +195,8 @@ export function marbleTiles() {
     }
 
     const tileSize = 256
-    g.strokeStyle = 'rgba(180, 172, 162, 0.55)'
-    g.lineWidth = 2.4
+    g.strokeStyle = 'rgba(182, 183, 181, 0.55)'
+    g.lineWidth = 2.2
     for (let x = 0; x <= w; x += tileSize) {
       g.beginPath()
       g.moveTo(x, 0)
@@ -215,22 +212,22 @@ export function marbleTiles() {
   })
 }
 
-/** Gạch thẻ ốp tường phòng tắm (Fluted Vertical Tiles) */
+/** Gạch thẻ ốp tường phòng tắm tone #EFECE6 / #E5E4E0 */
 export function bathroomWallTiles() {
-  return canvasTex('bath-wall-tiles', 512, 512, (g, w, h) => {
-    g.fillStyle = '#f5f3ef'
+  return canvasTex('bath-wall-tiles-v2', 512, 512, (g, w, h) => {
+    g.fillStyle = '#EFECE6'
     g.fillRect(0, 0, w, h)
     const colW = 24
     for (let x = 0; x < w; x += colW) {
       const grad = g.createLinearGradient(x, 0, x + colW, 0)
-      grad.addColorStop(0, '#e5e1d8')
-      grad.addColorStop(0.2, '#fbfaf8')
-      grad.addColorStop(0.8, '#f5f2eb')
-      grad.addColorStop(1, '#dfdbd2')
+      grad.addColorStop(0, '#D6D1C9')
+      grad.addColorStop(0.2, '#EFECE6')
+      grad.addColorStop(0.8, '#E5E4E0')
+      grad.addColorStop(1, '#D6D1C9')
       g.fillStyle = grad
       g.fillRect(x + 1, 0, colW - 2, h)
-      g.fillStyle = 'rgba(165, 155, 145, 0.45)'
-      g.fillRect(x, 0, 1.6, h)
+      g.fillStyle = 'rgba(142, 144, 143, 0.35)'
+      g.fillRect(x, 0, 1.5, h)
     }
   })
 }
@@ -301,29 +298,29 @@ export function rugWeave(baseHex: string) {
   })
 }
 
-/** Tranh bình hoa hướng dương kiểu sơn dầu ấm áp như ảnh mẫu */
+/** Tranh hoa nghệ thuật warm camel & rust (#C4834E / #9E6338) hòa quyện nền kem #EFECE6 */
 export function sunflowerArt() {
-  return canvasTex('sunflower-neutral-v3', 512, 600, (g, w, h) => {
+  return canvasTex('sunflower-camel-v4', 512, 600, (g, w, h) => {
     const bg = g.createLinearGradient(0, 0, 0, h)
-    bg.addColorStop(0, '#f4f0e8')
-    bg.addColorStop(0.72, '#e8e2d7')
-    bg.addColorStop(0.72, '#cfc6b8')
-    bg.addColorStop(1, '#bfb5a6')
+    bg.addColorStop(0, '#EFECE6')
+    bg.addColorStop(0.72, '#E5E4E0')
+    bg.addColorStop(0.72, '#D6D1C9')
+    bg.addColorStop(1, '#B7AFA5')
     g.fillStyle = bg
     g.fillRect(0, 0, w, h)
 
-    // Bình gốm đá tối giản
-    g.fillStyle = '#8b8175'
+    // Bình gốm đất nung #9E6338 & #C4834E
+    g.fillStyle = '#9E6338'
     g.beginPath()
     g.ellipse(w / 2, h * 0.72, 92, 115, 0, 0, Math.PI * 2)
     g.fill()
-    g.fillStyle = '#b5aca0'
+    g.fillStyle = '#C4834E'
     g.beginPath()
     g.ellipse(w / 2, h * 0.62, 66, 16, 0, 0, Math.PI * 2)
     g.fill()
 
     const drawFlower = (cx: number, cy: number, R: number) => {
-      g.strokeStyle = '#566250'
+      g.strokeStyle = '#566E4C'
       g.lineWidth = 7
       g.beginPath()
       g.moveTo(cx, cy)
@@ -335,13 +332,13 @@ export function sunflowerArt() {
         g.save()
         g.translate(cx, cy)
         g.rotate(a)
-        g.fillStyle = i % 2 ? '#cbb996' : '#ddd1b6'
+        g.fillStyle = i % 2 ? '#C4834E' : '#D8C7B2'
         g.beginPath()
         g.ellipse(R * 0.85, 0, R * 0.55, R * 0.22, 0, 0, Math.PI * 2)
         g.fill()
         g.restore()
       }
-      g.fillStyle = '#5a4e42'
+      g.fillStyle = '#2B2D2F'
       g.beginPath()
       g.arc(cx, cy, R * 0.46, 0, Math.PI * 2)
       g.fill()
@@ -357,29 +354,29 @@ export function sunflowerArt() {
   })
 }
 
-/** Màn hình máy tính đôi (Núi sương mù + Cửa sổ Code / Studio tối giản) */
-export function screen(variant: number, rgbMode = false) {
-  return canvasTex(`screen-neutral-v3-${variant}-${rgbMode ? 'rgb' : 'code'}`, 512, 300, (g, w, h) => {
+/** Màn hình máy tính đôi (Slate Blue + Ánh sáng ấm 3000K #FFD7A3 đồng bộ, không RGB) */
+export function screen(variant: number, warmMode = false) {
+  return canvasTex(`screen-slate-v4-${variant}-${warmMode ? 'warm' : 'code'}`, 512, 300, (g, w, h) => {
     const r = rng(variant * 31 + 3)
     const grd = g.createLinearGradient(0, 0, w, h)
-    if (rgbMode) {
-      grd.addColorStop(0, '#222126')
-      grd.addColorStop(0.5, '#47434d')
-      grd.addColorStop(1, '#7c7378')
+    if (warmMode) {
+      grd.addColorStop(0, '#2B2D2F')
+      grd.addColorStop(0.55, '#4A5E6F')
+      grd.addColorStop(1, '#FFD7A3')
     } else if (variant === 1) {
-      grd.addColorStop(0, '#1e2024')
-      grd.addColorStop(0.55, '#3b414a')
-      grd.addColorStop(1, '#a99d8b')
+      grd.addColorStop(0, '#2B2D2F')
+      grd.addColorStop(0.55, '#4A5E6F')
+      grd.addColorStop(1, '#B7AFA5')
     } else {
-      grd.addColorStop(0, '#25292e')
-      grd.addColorStop(0.6, '#4d565e')
-      grd.addColorStop(1, '#d9d1c2')
+      grd.addColorStop(0, '#2B2D2F')
+      grd.addColorStop(0.6, '#5E7487')
+      grd.addColorStop(1, '#EFECE6')
     }
     g.fillStyle = grd
     g.fillRect(0, 0, w, h)
 
     // Dãy núi phong cảnh trên màn hình
-    g.fillStyle = 'rgba(22, 23, 26, 0.78)'
+    g.fillStyle = 'rgba(43, 45, 47, 0.78)'
     g.beginPath()
     g.moveTo(0, h)
     g.lineTo(0, h * 0.65)
@@ -392,9 +389,9 @@ export function screen(variant: number, rgbMode = false) {
     g.fill()
 
     // Cửa sổ IDE nổi trên màn hình
-    g.fillStyle = 'rgba(24, 24, 27, 0.90)'
+    g.fillStyle = 'rgba(43, 45, 47, 0.92)'
     g.fillRect(36, 26, w - 72, h - 56)
-    g.fillStyle = '#2d2d30'
+    g.fillStyle = '#363A3E'
     g.fillRect(36, 26, w - 72, 16)
     for (let i = 0; i < 16; i++) {
       const y = 52 + i * 12
@@ -402,7 +399,7 @@ export function screen(variant: number, rgbMode = false) {
       const n = 1 + Math.floor(r() * 3)
       for (let k = 0; k < n; k++) {
         const len = 24 + r() * 75
-        const cols = ['#d6d3cd', '#b3bec7', '#a8b8ab', '#cabbb0', '#ded4be']
+        const cols = ['#EFECE6', '#FFD7A3', '#B6B7B5', '#D8C7B2', '#5E7487']
         g.fillStyle = cols[Math.floor(r() * cols.length)]
         g.fillRect(x, y, len, 5)
         x += len + 8
@@ -413,37 +410,37 @@ export function screen(variant: number, rgbMode = false) {
 
 /** Khung cảnh bầu trời trung tính ngoài cửa sổ lớn bên phải */
 export function windowSky(night: boolean) {
-  return canvasTex(night ? 'sky-night-neutral-v3' : 'sky-day-neutral-v3', 512, 640, (g, w, h) => {
+  return canvasTex(night ? 'sky-night-slate-v4' : 'sky-day-studio-v4', 512, 640, (g, w, h) => {
     const grd = g.createLinearGradient(0, 0, 0, h)
     if (night) {
-      grd.addColorStop(0, '#141518')
-      grd.addColorStop(0.6, '#212328')
-      grd.addColorStop(1, '#2f3238')
+      grd.addColorStop(0, '#1B1E22')
+      grd.addColorStop(0.6, '#262A2F')
+      grd.addColorStop(1, '#333840')
       g.fillStyle = grd
       g.fillRect(0, 0, w, h)
       const r = rng(99)
       for (let i = 0; i < 90; i++) {
-        g.fillStyle = `rgba(245,243,238,${0.32 + r() * 0.55})`
+        g.fillStyle = `rgba(239,236,230,${0.3 + r() * 0.5})`
         const sz = 1 + r() * 2.2
         g.beginPath()
         g.arc(r() * w, r() * h * 0.8, sz, 0, Math.PI * 2)
         g.fill()
       }
     } else {
-      grd.addColorStop(0, '#dce0e4')
-      grd.addColorStop(0.5, '#edeae4')
-      grd.addColorStop(1, '#e7e1d6')
+      grd.addColorStop(0, '#EFECE6')
+      grd.addColorStop(0.55, '#E5E4E0')
+      grd.addColorStop(1, '#D6D1C9')
       g.fillStyle = grd
       g.fillRect(0, 0, w, h)
     }
   })
 }
 
-/** Bảng phi tiêu bảng màu cổ điển trung tính */
+/** Bảng phi tiêu đồng bộ Slate Blue & Rust/Sage */
 export function dartboard() {
-  return canvasTex('dart-neutral-v2', 256, 256, (g, w) => {
+  return canvasTex('dart-slate-v3', 256, 256, (g, w) => {
     const c = w / 2
-    g.fillStyle = '#1b1a18'
+    g.fillStyle = '#2B2D2F'
     g.beginPath()
     g.arc(c, c, c, 0, Math.PI * 2)
     g.fill()
@@ -453,7 +450,7 @@ export function dartboard() {
         const a0 = (s / 20) * Math.PI * 2
         const a1 = ((s + 1) / 20) * Math.PI * 2
         const isDouble = ri === 1 || ri === 3
-        g.fillStyle = isDouble ? (s % 2 ? '#7f4d46' : '#516052') : s % 2 ? '#e6dfd1' : '#23211e'
+        g.fillStyle = isDouble ? (s % 2 ? '#9E6338' : '#566E4C') : s % 2 ? '#EFECE6' : '#2B2D2F'
         g.beginPath()
         g.moveTo(c, c)
         g.arc(c, c, rings[ri], a0, a1)
@@ -461,25 +458,25 @@ export function dartboard() {
         g.fill()
       }
     }
-    g.fillStyle = '#516052'
+    g.fillStyle = '#566E4C'
     g.beginPath()
     g.arc(c, c, 16, 0, Math.PI * 2)
     g.fill()
-    g.fillStyle = '#7f4d46'
+    g.fillStyle = '#9E6338'
     g.beginPath()
     g.arc(c, c, 8, 0, Math.PI * 2)
     g.fill()
   })
 }
 
-/** Sàn gỗ sồi tro sáng trung tính (Neutral Ash Oak) */
+/** Sàn gỗ sồi sáng #D8C7B2 & #C4AF97 đồng bộ 2 tầng */
 export function lightOakFloor() {
-  return canvasTex('light-oak-neutral-v2', 512, 512, (g, w, h) => {
-    g.fillStyle = '#d3cbc0'
+  return canvasTex('light-oak-slate-v3', 512, 512, (g, w, h) => {
+    g.fillStyle = '#D8C7B2'
     g.fillRect(0, 0, w, h)
     const rows = 8
     const rowH = h / rows
-    const tones = ['#d7d0c5', '#cdc4b8', '#dcd5cb', '#c7beb2', '#d2cabf']
+    const tones = ['#D8C7B2', '#D3C0AA', '#DFCEBA', '#C4AF97', '#D6C4AE']
     for (let r = 0; r < rows; r++) {
       const y = r * rowH
       const offset = (r % 2) * 120
@@ -487,8 +484,8 @@ export function lightOakFloor() {
         const tone = tones[(r * 3 + Math.floor((x + offset) / 240)) % tones.length]
         g.fillStyle = tone
         g.fillRect(x + 1, y + 1, 238, rowH - 2)
-        // Vân gỗ mảnh trung tính
-        g.strokeStyle = 'rgba(84, 76, 68, 0.14)'
+        // Vân gỗ sồi mảnh #C4AF97
+        g.strokeStyle = 'rgba(155, 134, 110, 0.22)'
         g.lineWidth = 1.2
         for (let k = 0; k < 4; k++) {
           g.beginPath()
@@ -504,24 +501,25 @@ export function lightOakFloor() {
           g.stroke()
         }
       }
-      g.fillStyle = 'rgba(72, 65, 58, 0.24)'
+      g.fillStyle = 'rgba(128, 112, 92, 0.26)'
       g.fillRect(0, y, w, 1.5)
     }
   })
 }
 
-/** Thảm tròn lông xù màu kem (Fluffy Cream Round Rug) */
+/** Thảm tròn dệt xám trung tính (#B6B7B5 phối #8E908F) */
 export function fluffyCreamRug() {
-  return canvasTex('fluffy-cream-rug', 512, 512, (g, w, h) => {
-    g.fillStyle = '#f2ece1'
+  return canvasTex('fluffy-neutral-rug-v2', 512, 512, (g, w, h) => {
+    g.fillStyle = '#B6B7B5'
     g.fillRect(0, 0, w, h)
-    for (let i = 0; i < 1800; i++) {
-      const x = Math.random() * w
-      const y = Math.random() * h
-      const r = 3 + Math.random() * 7
-      g.fillStyle = i % 3 === 0 ? 'rgba(255,255,255,0.55)' : 'rgba(218,208,192,0.45)'
+    const r = rng(99)
+    for (let i = 0; i < 1600; i++) {
+      const x = r() * w
+      const y = r() * h
+      const rad = 3 + r() * 7
+      g.fillStyle = i % 3 === 0 ? 'rgba(239,236,230,0.45)' : 'rgba(142,144,143,0.48)'
       g.beginPath()
-      g.arc(x, y, r, 0, Math.PI * 2)
+      g.arc(x, y, rad, 0, Math.PI * 2)
       g.fill()
     }
   })
@@ -567,18 +565,18 @@ export function smartPanelScreen() {
 
 /** Màn hình máy tính của bạn gái (hỗ trợ 2 chế độ: 'on' = UI Design Tối giản & 'rgb' = Vẽ 3D Studio) */
 export function girlPcScreen(mode: 'on' | 'rgb' = 'on') {
-  return canvasTex(`girl-pc-ui-neutral-v2-${mode}`, 512, 300, (g, w, h) => {
+  return canvasTex(`girl-pc-ui-slate-v3-${mode}`, 512, 300, (g, w, h) => {
     if (mode === 'rgb') {
-      // Chế độ Vẽ 3D Studio (Dark Slate Viewport + Khối 3D Titanium & Stone)
+      // Chế độ Vẽ 3D Studio (Warm 3000K + Slate Blue Studio Viewport)
       const bg = g.createLinearGradient(0, 0, w, h)
-      bg.addColorStop(0, '#18191c')
-      bg.addColorStop(0.55, '#25262b')
-      bg.addColorStop(1, '#343230')
+      bg.addColorStop(0, '#2B2D2F')
+      bg.addColorStop(0.55, '#3A4652')
+      bg.addColorStop(1, '#4A5E6F')
       g.fillStyle = bg
       g.fillRect(0, 0, w, h)
 
       // Lưới phối cảnh 3D (Viewport Grid)
-      g.strokeStyle = 'rgba(180, 176, 170, 0.16)'
+      g.strokeStyle = 'rgba(239, 236, 230, 0.14)'
       g.lineWidth = 1
       for (let x = 80; x < w - 80; x += 28) {
         g.beginPath()
@@ -593,83 +591,83 @@ export function girlPcScreen(mode: 'on' | 'rgb' = 'on') {
         g.stroke()
       }
 
-      // Trục tọa độ dịu
-      g.strokeStyle = '#9c7872'
+      // Trục tọa độ trung tính
+      g.strokeStyle = '#C4834E'
       g.lineWidth = 2
       g.beginPath()
       g.moveTo(90, h * 0.62)
       g.lineTo(w - 90, h * 0.62)
       g.stroke()
 
-      g.strokeStyle = '#7b8c7c'
+      g.strokeStyle = '#6F8763'
       g.beginPath()
       g.moveTo(w * 0.5, 42)
       g.lineTo(w * 0.5, h - 28)
       g.stroke()
 
-      // Khối 3D ở trung tâm (Warm Champagne & Silver Glow)
+      // Khối 3D ở trung tâm (Warm 3000K #FFD7A3 Glow)
       const glow = g.createRadialGradient(w * 0.5, h * 0.5, 8, w * 0.5, h * 0.5, 86)
-      glow.addColorStop(0, '#dcd5c9')
-      glow.addColorStop(0.5, '#9b958e')
-      glow.addColorStop(1, 'rgba(120, 114, 108, 0)')
+      glow.addColorStop(0, 'rgba(255, 215, 163, 0.72)')
+      glow.addColorStop(0.5, 'rgba(183, 175, 165, 0.35)')
+      glow.addColorStop(1, 'rgba(43, 45, 47, 0)')
       g.fillStyle = glow
       g.beginPath()
       g.arc(w * 0.5, h * 0.5, 84, 0, Math.PI * 2)
       g.fill()
 
       const sph = g.createRadialGradient(w * 0.47, h * 0.44, 6, w * 0.5, h * 0.5, 48)
-      sph.addColorStop(0, '#ede7dd')
-      sph.addColorStop(0.6, '#9e958a')
-      sph.addColorStop(1, '#4b4742')
+      sph.addColorStop(0, '#EFECE6')
+      sph.addColorStop(0.6, '#B7AFA5')
+      sph.addColorStop(1, '#4A5E6F')
       g.fillStyle = sph
       g.beginPath()
       g.arc(w * 0.5, h * 0.5, 46, 0, Math.PI * 2)
       g.fill()
 
-      g.strokeStyle = '#cfc6b8'
-      g.lineWidth = 3.5
+      g.strokeStyle = '#FFD7A3'
+      g.lineWidth = 3.2
       g.beginPath()
       g.ellipse(w * 0.5, h * 0.52, 74, 24, -0.28, 0, Math.PI * 2)
       g.stroke()
 
       // Thanh công cụ & Inspector
-      g.fillStyle = 'rgba(20, 21, 24, 0.90)'
+      g.fillStyle = 'rgba(43, 45, 47, 0.92)'
       g.fillRect(10, 32, 62, h - 44)
       g.fillRect(w - 96, 32, 86, h - 44)
       g.fillRect(0, 0, w, 26)
 
-      const toolCols = ['#d8d1c5', '#b5aca0', '#8b968a', '#c9baa3', '#8c949c']
+      const toolCols = ['#EFECE6', '#B7AFA5', '#5E7487', '#FFD7A3', '#C4834E']
       toolCols.forEach((tc, i) => {
         g.fillStyle = tc
         g.fillRect(24, 48 + i * 36, 34, 22)
       })
 
-      g.fillStyle = '#e8e3da'
+      g.fillStyle = '#FFD7A3'
       g.font = 'bold 12px sans-serif'
-      g.fillText('3D STUDIO · RENDER', 16, 17)
-      g.fillStyle = '#cfc6b8'
+      g.fillText('STUDIO 3000K · 3D', 16, 17)
+      g.fillStyle = '#EFECE6'
       g.fillRect(w - 84, 48, 62, 10)
-      g.fillStyle = '#a39a8e'
+      g.fillStyle = '#B7AFA5'
       g.fillRect(w - 84, 70, 48, 10)
-      g.fillStyle = '#7d887c'
+      g.fillStyle = '#5E7487'
       g.fillRect(w - 84, 92, 56, 10)
       return
     }
 
     const grd = g.createLinearGradient(0, 0, w, h)
-    grd.addColorStop(0, '#e8e2d8')
-    grd.addColorStop(0.5, '#dad3c8')
-    grd.addColorStop(1, '#c9c5bd')
+    grd.addColorStop(0, '#EFECE6')
+    grd.addColorStop(0.55, '#D6D1C9')
+    grd.addColorStop(1, '#B7AFA5')
     g.fillStyle = grd
     g.fillRect(0, 0, w, h)
 
-    // Đồi cát & mặt trời tối giản trung tính
-    g.fillStyle = '#cfc2b0'
+    // Mặt trời ấm & dãy núi tối giản Slate Blue / Greige
+    g.fillStyle = '#FFD7A3'
     g.beginPath()
     g.arc(w * 0.65, h * 0.42, 42, 0, Math.PI * 2)
     g.fill()
 
-    g.fillStyle = '#7e756b'
+    g.fillStyle = '#5E7487'
     g.beginPath()
     g.moveTo(0, h)
     g.lineTo(w * 0.35, h * 0.52)
@@ -677,7 +675,7 @@ export function girlPcScreen(mode: 'on' | 'rgb' = 'on') {
     g.closePath()
     g.fill()
 
-    g.fillStyle = '#534d46'
+    g.fillStyle = '#4A5E6F'
     g.beginPath()
     g.moveTo(w * 0.3, h)
     g.lineTo(w * 0.68, h * 0.48)
@@ -686,11 +684,11 @@ export function girlPcScreen(mode: 'on' | 'rgb' = 'on') {
     g.fill()
 
     // Cửa sổ ứng dụng nhỏ
-    g.fillStyle = 'rgba(250,248,244,0.88)'
+    g.fillStyle = 'rgba(239, 236, 230, 0.92)'
     g.fillRect(36, 32, 180, 115)
-    g.fillStyle = '#8b7f71'
+    g.fillStyle = '#4A5E6F'
     g.fillRect(48, 48, 90, 8)
-    g.fillStyle = '#a8a096'
+    g.fillStyle = '#B7AFA5'
     g.fillRect(48, 66, 140, 6)
     g.fillRect(48, 80, 120, 6)
     g.fillRect(48, 94, 150, 6)
@@ -801,32 +799,32 @@ export function mountainLandscapeTv() {
   })
 }
 
-/** Thảm dệt họa tiết hình học trung tính (Neutral Stone Kilim Rug) */
+/** Thảm trải sàn họa tiết trung tính (#8E908F phối #B6B7B5) */
 export function persianTerracottaRug() {
-  return canvasTex('persian-neutral-rug-v2', 512, 340, (g, w, h) => {
-    // Nền ngoài viền kem đá
-    g.fillStyle = '#dfd9cf'
+  return canvasTex('persian-neutral-rug-v3', 512, 340, (g, w, h) => {
+    // Nền ngoài viền xám nhạt #B6B7B5
+    g.fillStyle = '#B6B7B5'
     g.fillRect(0, 0, w, h)
 
-    // Khung viền ngoài charcoal trầm
-    g.strokeStyle = '#4a453f'
-    g.lineWidth = 10
+    // Khung viền ngoài Matte Charcoal nhẹ #4A5E6F
+    g.strokeStyle = '#6B6E6E'
+    g.lineWidth = 8
     g.strokeRect(12, 12, w - 24, h - 24)
 
-    // Khung viền họa tiết taupe trung tính
-    g.fillStyle = '#8b8175'
+    // Khung viền họa tiết trung tâm #8E908F
+    g.fillStyle = '#8E908F'
     g.fillRect(24, 24, w - 48, h - 48)
 
-    g.strokeStyle = '#ebe6de'
-    g.lineWidth = 4
+    g.strokeStyle = '#D6D1C9'
+    g.lineWidth = 3
     g.strokeRect(36, 36, w - 72, h - 72)
 
-    // Nền trung tâm xám đá ấm
-    g.fillStyle = '#665f57'
+    // Nền trung tâm xám dệt phối #989A99
+    g.fillStyle = '#8E908F'
     g.fillRect(46, 46, w - 92, h - 92)
 
-    // Hoa văn chuỗi hạt quanh viền
-    g.fillStyle = '#e7e1d7'
+    // Hoa văn hình học mảnh #B6B7B5 quanh viền
+    g.fillStyle = '#B6B7B5'
     for (let x = 30; x < w - 30; x += 22) {
       g.fillRect(x, 27, 8, 6)
       g.fillRect(x, h - 33, 8, 6)
@@ -836,7 +834,7 @@ export function persianTerracottaRug() {
       g.fillRect(w - 33, y, 6, 8)
     }
 
-    // Họa tiết góc màu kem đá
+    // Họa tiết góc #B6B7B5
     const corners = [
       [46, 46, 1, 1],
       [w - 46, 46, -1, 1],
@@ -844,7 +842,7 @@ export function persianTerracottaRug() {
       [w - 46, h - 46, -1, -1],
     ]
     corners.forEach(([cx, cy, sx, sy]) => {
-      g.fillStyle = '#cfc7bc'
+      g.fillStyle = '#B6B7B5'
       g.beginPath()
       g.moveTo(cx, cy)
       g.lineTo(cx + sx * 68, cy)
@@ -853,48 +851,48 @@ export function persianTerracottaRug() {
       g.fill()
     })
 
-    // Medallion hình thoi lớn ở trung tâm
+    // Medallion hình học tối giản trung tâm
     const mx = w / 2
     const my = h / 2
-    g.fillStyle = '#d4ccc0'
+    g.fillStyle = '#B6B7B5'
     g.beginPath()
-    g.moveTo(mx, my - 78)
-    g.lineTo(mx + 125, my)
-    g.lineTo(mx, my + 78)
-    g.lineTo(mx - 125, my)
+    g.moveTo(mx, my - 76)
+    g.lineTo(mx + 122, my)
+    g.lineTo(mx, my + 76)
+    g.lineTo(mx - 122, my)
     g.closePath()
     g.fill()
 
-    g.fillStyle = '#978d81'
+    g.fillStyle = '#8E908F'
     g.beginPath()
-    g.moveTo(mx, my - 54)
-    g.lineTo(mx + 86, my)
-    g.lineTo(mx, my + 54)
-    g.lineTo(mx - 86, my)
+    g.moveTo(mx, my - 52)
+    g.lineTo(mx + 84, my)
+    g.lineTo(mx, my + 52)
+    g.lineTo(mx - 84, my)
     g.closePath()
     g.fill()
 
-    g.fillStyle = '#3f3b36'
+    g.fillStyle = '#737675'
     g.beginPath()
-    g.moveTo(mx, my - 28)
-    g.lineTo(mx + 44, my)
-    g.lineTo(mx, my + 28)
-    g.lineTo(mx - 44, my)
+    g.moveTo(mx, my - 26)
+    g.lineTo(mx + 42, my)
+    g.lineTo(mx, my + 26)
+    g.lineTo(mx - 42, my)
     g.closePath()
     g.fill()
 
-    g.fillStyle = '#efeae2'
+    g.fillStyle = '#EFECE6'
     g.beginPath()
-    g.arc(mx, my, 10, 0, Math.PI * 2)
+    g.arc(mx, my, 8, 0, Math.PI * 2)
     g.fill()
   })
 }
 
-/** Tranh nghệ thuật trừu tượng Wabi-sabi đồng bộ tone trung tính treo đầu giường Tầng 2 */
+/** Tranh nghệ thuật trừu tượng đồng bộ điểm nhấn ấm (#C4834E & #9E6338) treo đầu giường Tầng 2 */
 export function colorfulBedArt() {
-  return canvasTex('neutral-bed-art-v2', 512, 340, (g, w, h) => {
-    // Bo viền trắng kem passepartout bên ngoài
-    g.fillStyle = '#f5f2ec'
+  return canvasTex('camel-bed-art-v3', 512, 340, (g, w, h) => {
+    // Bo viền trắng kem ấm #EFECE6 bên ngoài
+    g.fillStyle = '#EFECE6'
     g.fillRect(0, 0, w, h)
 
     const pad = 22
@@ -905,24 +903,23 @@ export function colorfulBedArt() {
     g.rect(pad, pad, iw, ih)
     g.clip()
 
-    // Nền tranh gradient kem cát - đá sáng
+    // Nền tranh gradient #EFECE6 -> #D6D1C9
     const bg = g.createLinearGradient(pad, pad, pad + iw, pad + ih)
-    bg.addColorStop(0, '#ebe5dc')
-    bg.addColorStop(0.5, '#ded6ca')
-    bg.addColorStop(1, '#cfc8be')
+    bg.addColorStop(0, '#EFECE6')
+    bg.addColorStop(0.55, '#E5E4E0')
+    bg.addColorStop(1, '#D6D1C9')
     g.fillStyle = bg
     g.fillRect(pad, pad, iw, ih)
 
-    // Các mảng khối hữu cơ trung tính (Warm Taupe, Greige, Olive trầm, Charcoal Stone)
+    // Mảng khối hình học hữu cơ camel (#C4834E), nâu gỉ ấm (#9E6338), taupe (#B7AFA5) & slate (#5E7487)
     const blobs = [
-      { x: 0.22, y: 0.35, rx: 75, ry: 55, c: '#a69a8c', rot: 0.3 },
-      { x: 0.48, y: 0.28, rx: 85, ry: 60, c: '#cfc4b4', rot: -0.2 },
-      { x: 0.76, y: 0.38, rx: 70, ry: 58, c: '#727c6e', rot: 0.4 },
-      { x: 0.32, y: 0.68, rx: 80, ry: 52, c: '#787e84', rot: -0.3 },
-      { x: 0.62, y: 0.65, rx: 90, ry: 56, c: '#8f8478', rot: 0.2 },
-      { x: 0.82, y: 0.72, rx: 65, ry: 48, c: '#5c5751', rot: -0.4 },
-      { x: 0.5, y: 0.5, rx: 60, ry: 45, c: '#dfd7c8', rot: 0.1 },
-      { x: 0.18, y: 0.75, rx: 55, ry: 42, c: '#b8aa99', rot: 0.5 },
+      { x: 0.24, y: 0.36, rx: 78, ry: 58, c: '#C4834E', rot: 0.2 },
+      { x: 0.5, y: 0.3, rx: 86, ry: 62, c: '#D8C7B2', rot: -0.15 },
+      { x: 0.76, y: 0.4, rx: 72, ry: 60, c: '#9E6338', rot: 0.35 },
+      { x: 0.32, y: 0.68, rx: 82, ry: 54, c: '#B7AFA5', rot: -0.25 },
+      { x: 0.64, y: 0.68, rx: 88, ry: 54, c: '#C4834E', rot: 0.15 },
+      { x: 0.82, y: 0.74, rx: 60, ry: 46, c: '#5E7487', rot: -0.3 },
+      { x: 0.48, y: 0.52, rx: 58, ry: 44, c: '#EFECE6', rot: 0.1 },
     ]
     blobs.forEach((b) => {
       g.fillStyle = b.c
@@ -931,29 +928,18 @@ export function colorfulBedArt() {
       g.fill()
     })
 
-    // Điểm xuyết nét chấm nhẹ tone đá & kem tự nhiên
-    const colors = ['#f5f2ec', '#d8cfc2', '#646d60', '#8d8275', '#4b4742', '#bfb5a7']
-    for (let i = 0; i < 45; i++) {
-      g.fillStyle = colors[i % colors.length]
-      const bx = pad + ((i * 73) % iw)
-      const by = pad + ((i * 53) % ih)
-      g.beginPath()
-      g.arc(bx, by, 5 + (i % 8), 0, Math.PI * 2)
-      g.fill()
-    }
-
-    // Đường nét phác họa uyển chuyển tạo chiều sâu nghệ thuật
-    g.strokeStyle = 'rgba(42, 38, 34, 0.42)'
-    g.lineWidth = 2.8
+    // Đường nét phác họa trừu tượng hiện đại
+    g.strokeStyle = 'rgba(43, 45, 47, 0.38)'
+    g.lineWidth = 2.6
     g.beginPath()
-    g.moveTo(pad + 30, pad + ih * 0.6)
-    g.bezierCurveTo(pad + iw * 0.35, pad + ih * 0.2, pad + iw * 0.65, pad + ih * 0.8, pad + iw - 30, pad + ih * 0.35)
+    g.moveTo(pad + 30, pad + ih * 0.62)
+    g.bezierCurveTo(pad + iw * 0.35, pad + ih * 0.22, pad + iw * 0.65, pad + ih * 0.78, pad + iw - 30, pad + ih * 0.34)
     g.stroke()
 
     g.restore()
 
     // Viền mảnh ngăn cách passepartout
-    g.strokeStyle = '#d4ccc1'
+    g.strokeStyle = '#D6D1C9'
     g.lineWidth = 2
     g.strokeRect(pad, pad, iw, ih)
   })
@@ -961,15 +947,44 @@ export function colorfulBedArt() {
 
 /** Bóng đổ mềm (Ambient Contact Shadow) dưới đế mô hình ngôi nhà tạo chiều sâu Studio 3D */
 export function houseDropShadow() {
-  return canvasTex('house-drop-shadow-v1', 512, 512, (g, w, h) => {
+  return canvasTex('house-drop-shadow-v2', 512, 512, (g, w, h) => {
     g.clearRect(0, 0, w, h)
     g.save()
-    g.filter = 'blur(28px)'
-    g.fillStyle = 'rgba(18, 12, 8, 0.85)'
-    const mx = 68
-    const my = 68
+    g.filter = 'blur(26px)'
+    g.fillStyle = 'rgba(24, 25, 27, 0.78)'
+    const mx = 66
+    const my = 66
     g.beginPath()
-    g.roundRect(mx, my, w - mx * 2, h - my * 2, 36)
+    g.roundRect(mx, my, w - mx * 2, h - my * 2, 34)
+    g.fill()
+    g.restore()
+  })
+}
+
+/** Texture Ambient Occlusion dải thẳng dùng cho chân tường & chân cầu thang */
+export function aoLinearFalloff() {
+  return canvasTex('ao-linear-falloff-v1', 64, 128, (g, w, h) => {
+    g.clearRect(0, 0, w, h)
+    const grd = g.createLinearGradient(0, 0, 0, h)
+    grd.addColorStop(0, 'rgba(22, 24, 26, 0.56)')
+    grd.addColorStop(0.28, 'rgba(22, 24, 26, 0.26)')
+    grd.addColorStop(0.65, 'rgba(22, 24, 26, 0.08)')
+    grd.addColorStop(1, 'rgba(22, 24, 26, 0)')
+    g.fillStyle = grd
+    g.fillRect(0, 0, w, h)
+  })
+}
+
+/** Texture Ambient Occlusion mềm hình chữ nhật/oval dùng dưới gầm giường, gầm sofa, kệ tủ */
+export function aoContactShadow() {
+  return canvasTex('ao-contact-shadow-v1', 256, 256, (g, w, h) => {
+    g.clearRect(0, 0, w, h)
+    g.save()
+    g.filter = 'blur(18px)'
+    g.fillStyle = 'rgba(20, 22, 24, 0.62)'
+    const pad = 42
+    g.beginPath()
+    g.roundRect(pad, pad, w - pad * 2, h - pad * 2, 28)
     g.fill()
     g.restore()
   })

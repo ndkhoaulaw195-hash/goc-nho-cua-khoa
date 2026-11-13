@@ -846,7 +846,7 @@ export const useStore = create<State>()(
           return {
             pcState: next,
             toastMessage:
-              next === 'on' ? '💻 Chế độ Code' : next === 'rgb' ? '🌈 Gaming RGB' : '🖥️ Tắt màn hình',
+              next === 'on' ? '💻 Chế độ Code' : next === 'rgb' ? '☀️ Sáng ấm 3000K' : '🖥️ Tắt màn hình',
           }
         }),
       chairSpinTick: 0,

@@ -81,26 +81,26 @@ function CandleItem({ position, scale = 1, castLight = false }: CandleItemProps)
         <meshBasicMaterial color="#1f1e1c" />
       </mesh>
 
-      {/* Ngọn lửa nến hình giọt nước dịu nhẹ */}
+      {/* Ngọn lửa nến hình giọt nước dịu nhẹ 3000K */}
       {candlesLit && (
         <>
           <mesh ref={flameRef} position={[0, 0.085, 0]}>
             <coneGeometry args={[0.012, 0.032, 10]} />
-            <meshBasicMaterial color="#f5dfa8" />
+            <meshBasicMaterial color="#FFD7A3" />
           </mesh>
 
-          {/* Hào quang kem ấm nhẹ bên ngoài ngọn lửa */}
+          {/* Hào quang vàng ấm 3000K bên ngoài ngọn lửa */}
           <mesh position={[0, 0.082, 0]}>
             <sphereGeometry args={[0.02, 10, 10]} />
-            <meshBasicMaterial color="#e8c488" transparent opacity={0.36} />
+            <meshBasicMaterial color="#FFD7A3" transparent opacity={0.38} />
           </mesh>
 
-          {/* Nguồn sáng PointLight kem ấm dịu nhẹ ban đêm */}
+          {/* Nguồn sáng PointLight vàng ấm 3000K dịu nhẹ ban đêm */}
           {darkMode && castLight && (
             <pointLight
               ref={lightRef}
               position={[0, 0.14, 0]}
-              color="#f2d5a4"
+              color="#FFD7A3"
               intensity={1.35}
               distance={3.6}
               decay={2}

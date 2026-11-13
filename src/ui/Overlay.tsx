@@ -210,7 +210,7 @@ function ContextualDock() {
       {activity === 'pc' && (
         <>
           <button className="dock-btn" onClick={() => useStore.getState().cyclePcState()}>
-            🖥️ Màn hình: {pcState === 'on' ? 'Code' : pcState === 'rgb' ? 'RGB' : 'Tắt'}
+            🖥️ Màn hình: {pcState === 'on' ? 'Code' : pcState === 'rgb' ? 'Ấm 3000K' : 'Tắt'}
           </button>
           <button className="dock-btn" onClick={() => useStore.getState().spinChair()}>
             🔄 Xoay ghế

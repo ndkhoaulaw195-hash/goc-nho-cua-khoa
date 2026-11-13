@@ -88,8 +88,9 @@ function SetupEnvironment() {
   }, [gl, scene])
 
   useEffect(() => {
-    scene.environmentIntensity = darkMode ? 0.04 : 0.22
-    gl.toneMappingExposure = darkMode ? 0.88 : 0.96
+    scene.background = new THREE.Color(darkMode ? '#1B1D1F' : '#B9B1A6')
+    scene.environmentIntensity = darkMode ? 0.06 : 0.34
+    gl.toneMappingExposure = darkMode ? 0.9 : 1.0
   }, [gl, scene, darkMode])
 
   return null
@@ -183,7 +184,7 @@ export function Experience() {
         stencil: false,
         depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.96,
+        toneMappingExposure: 1.0,
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       dpr={dpr}
