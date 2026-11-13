@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { ArchitecturalTree, HedgeRow } from './Botanicals'
 import { B, BB, Cyl, G, RBB, Sph } from './prims'
@@ -11,7 +11,13 @@ import type { V3 } from '../data/config'
  * Gồm: Đế nền đá mở rộng, Tường rào lam gỗ bao quanh, Lối vào đá bước nổi trên hồ nước + LED hắt gầm,
  * Hồ bơi vô cực mini + Sundeck ghế tắm nắng, Khu Lounge Firepit ngoài trời + Sỏi trắng, Cây xanh đa tầng & Uplight.
  */
-export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
+export function LuxuryLandscaping({
+  darkMode,
+  onYardClick,
+}: {
+  darkMode: boolean
+  onYardClick?: (e: ThreeEvent<MouseEvent>) => void
+}) {
   const lawnColor = darkMode ? '#2C3D28' : '#4C6442'
   const lawnAccent = darkMode ? '#34482F' : '#5B7450'
   const patioDark = darkMode ? '#252930' : '#3A3F47'
@@ -100,6 +106,13 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
     })
   })
 
+  const yardClickHandler = onYardClick
+    ? (e: ThreeEvent<MouseEvent>) => {
+        e.stopPropagation()
+        onYardClick(e)
+      }
+    : undefined
+
   return (
     <group>
       {/* =====================================================================
@@ -124,29 +137,33 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
       {/* =====================================================================
        * 2. THẢM CỎ CẢNH QUAN PHÂN VÙNG RÕ RÀNG (top y = -0.20)
        * ===================================================================== */}
-      {/* Cỏ sân sau (z: -10.0..-6.28) */}
-      <B p={[-2.6, -0.245, -8.14]} s={[39.5, 0.09, 3.72]} c={lawnColor} rough={0.88} />
-      {/* Cỏ hông trái (x: -22.35..-15.88, z: -6.28..+7.1) + dải ngoài Firepit (x: -22.35..-17.3, z: +7.1..+16.0) */}
-      <B p={[-19.12, -0.245, 0.41]} s={[6.47, 0.09, 13.38]} c={lawnColor} rough={0.88} />
-      <B p={[-19.82, -0.245, 11.55]} s={[5.05, 0.09, 8.9]} c={lawnAccent} rough={0.88} />
-      {/* Dải đệm cỏ giữa khu Firepit & Lối đi hồ nước (x: -5.3..-3.75, z: +7.1..+16.0) & dải trước Firepit (z: +14.8..+16.0) */}
-      <B p={[-4.52, -0.245, 11.55]} s={[1.55, 0.09, 8.9]} c={lawnColor} rough={0.88} />
-      <B p={[-11.3, -0.245, 15.4]} s={[12.0, 0.09, 1.2]} c={lawnColor} rough={0.88} />
-      {/* Dải cỏ hông phải & viền trước hồ bơi (x: +13.4..+17.15, z: -6.28..+7.2) + dải ngoài hồ bơi + trước hồ bơi */}
-      <B p={[15.27, -0.245, 0.46]} s={[3.75, 0.09, 13.48]} c={lawnColor} rough={0.88} />
-      <B p={[16.0, -0.245, 11.6]} s={[2.3, 0.09, 8.8]} c={lawnAccent} rough={0.88} />
-      <B p={[8.0, -0.245, 15.05]} s={[14.0, 0.09, 1.9]} c={lawnColor} rough={0.88} />
-      {/* Dải thảm cỏ nhỏ sát hông nhà trước cửa sổ phòng tắm trái & lối đi */}
-      <B p={[-10.5, -0.245, 6.72]} s={[10.8, 0.09, 0.88]} c={lawnAccent} rough={0.88} />
-      <B p={[-1.4, -0.245, 15.75]} s={[4.7, 0.09, 0.5]} c={lawnColor} rough={0.88} />
+      <group onClick={yardClickHandler}>
+        {/* Cỏ sân sau (z: -10.0..-6.28) */}
+        <B p={[-2.6, -0.245, -8.14]} s={[39.5, 0.09, 3.72]} c={lawnColor} rough={0.88} />
+        {/* Cỏ hông trái (x: -22.35..-15.88, z: -6.28..+7.1) + dải ngoài Firepit (x: -22.35..-17.3, z: +7.1..+16.0) */}
+        <B p={[-19.12, -0.245, 0.41]} s={[6.47, 0.09, 13.38]} c={lawnColor} rough={0.88} />
+        <B p={[-19.82, -0.245, 11.55]} s={[5.05, 0.09, 8.9]} c={lawnAccent} rough={0.88} />
+        {/* Dải đệm cỏ giữa khu Firepit & Lối đi hồ nước (x: -5.3..-3.75, z: +7.1..+16.0) & dải trước Firepit (z: +14.8..+16.0) */}
+        <B p={[-4.52, -0.245, 11.55]} s={[1.55, 0.09, 8.9]} c={lawnColor} rough={0.88} />
+        <B p={[-11.3, -0.245, 15.4]} s={[12.0, 0.09, 1.2]} c={lawnColor} rough={0.88} />
+        {/* Dải cỏ hông phải & viền trước hồ bơi (x: +13.4..+17.15, z: -6.28..+7.2) + dải ngoài hồ bơi + trước hồ bơi */}
+        <B p={[15.27, -0.245, 0.46]} s={[3.75, 0.09, 13.48]} c={lawnColor} rough={0.88} />
+        <B p={[16.0, -0.245, 11.6]} s={[2.3, 0.09, 8.8]} c={lawnAccent} rough={0.88} />
+        <B p={[8.0, -0.245, 15.05]} s={[14.0, 0.09, 1.9]} c={lawnColor} rough={0.88} />
+        {/* Dải thảm cỏ nhỏ sát hông nhà trước cửa sổ phòng tắm trái & lối đi */}
+        <B p={[-10.5, -0.245, 6.72]} s={[10.8, 0.09, 0.88]} c={lawnAccent} rough={0.88} />
+        <B p={[-1.4, -0.245, 15.75]} s={[4.7, 0.09, 0.5]} c={lawnColor} rough={0.88} />
+      </group>
 
       {/* =====================================================================
        * 3. LỐI VÀO CHÍNH — ĐÁ BƯỚC DẠO NỔI TRÊN MẶT NƯỚC & SỎI TRẮNG
        * (x: -3.75 .. +0.95, z: +6.28 .. +15.55, thẳng trục pivot door x = -1.40)
        * ===================================================================== */}
       {/* Dải sỏi trắng hai bên hồ nước cảnh quan */}
-      <B p={[-3.34, -0.24, 10.92]} s={[0.82, 0.08, 9.28]} map={pebbleMap} c={darkMode ? '#9C9890' : '#FFFFFF'} rough={0.92} />
-      <B p={[0.54, -0.24, 10.92]} s={[0.82, 0.08, 9.28]} map={pebbleMap} c={darkMode ? '#9C9890' : '#FFFFFF'} rough={0.92} />
+      <group onClick={yardClickHandler}>
+        <B p={[-3.34, -0.24, 10.92]} s={[0.82, 0.08, 9.28]} map={pebbleMap} c={darkMode ? '#9C9890' : '#FFFFFF'} rough={0.92} />
+        <B p={[0.54, -0.24, 10.92]} s={[0.82, 0.08, 9.28]} map={pebbleMap} c={darkMode ? '#9C9890' : '#FFFFFF'} rough={0.92} />
+      </group>
       {/* Viền đá tối ngăn mép hồ nước */}
       <B p={[-2.92, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c={patioDark} rough={0.7} />
       <B p={[0.12, -0.215, 10.92]} s={[0.08, 0.11, 9.28]} c={patioDark} rough={0.7} />
@@ -164,6 +181,7 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
         size={[3.4, 0.09, 1.56]}
         tex={travertineMap}
         darkMode={darkMode}
+        onClick={yardClickHandler}
       />
       {/* 5 phiến đá bước dạo Travertine khổ rộng xếp giật cấp nổi trên mặt nước */}
       {[
@@ -179,6 +197,7 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
           size={[step.w, 0.075, step.d]}
           tex={travertineMap}
           darkMode={darkMode}
+          onClick={yardClickHandler}
         />
       ))}
 
@@ -199,11 +218,13 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
        * (Wooden Deck: x: +1.1..+5.55, z: +6.3..+14.1 | Pool: x: +5.8..+14.85, z: +7.1..+13.95)
        * ===================================================================== */}
       {/* Đường dạo gỗ sườn phải chạy dọc tường phòng khách nối ra Sundeck */}
-      <B p={[11.82, -0.21, 0.45]} s={[3.08, 0.07, 13.5]} map={sideWalkDeckMap} c={darkMode ? '#A28E7A' : '#FFFFFF'} rough={0.72} />
+      <group onClick={yardClickHandler}>
+        <B p={[11.82, -0.21, 0.45]} s={[3.08, 0.07, 13.5]} map={sideWalkDeckMap} c={darkMode ? '#A28E7A' : '#FFFFFF'} rough={0.72} />
 
-      {/* Sàn gỗ Sundeck ngoài trời cạnh hồ bơi */}
-      <B p={[3.35, -0.19, 10.22]} s={[4.5, 0.08, 7.8]} map={deckMap} c={darkMode ? '#A28E7A' : '#FFFFFF'} rough={0.68} />
-      <B p={[3.35, -0.215, 14.16]} s={[4.5, 0.05, 0.1]} c="#2B2D2F" rough={0.6} />
+        {/* Sàn gỗ Sundeck ngoài trời cạnh hồ bơi */}
+        <B p={[3.35, -0.19, 10.22]} s={[4.5, 0.08, 7.8]} map={deckMap} c={darkMode ? '#A28E7A' : '#FFFFFF'} rough={0.68} />
+        <B p={[3.35, -0.215, 14.16]} s={[4.5, 0.05, 0.1]} c="#2B2D2F" rough={0.6} />
+      </group>
 
       {/* 2 Ghế tắm nắng cao cấp + Bàn trà nhỏ trên Sundeck */}
       {[9.0, 11.45].map((lz, idx) => (
@@ -270,12 +291,14 @@ export function LuxuryLandscaping({ darkMode }: { darkMode: boolean }) {
        * 5. SÂN BÊN TRÁI — GÓC THƯ GIÃN FIREPIT NGOÀI TRỜI & SỎI TRẮNG
        * (Terace: x: -17.3..-5.3, z: +7.15..+14.8)
        * ===================================================================== */}
-      {/* Khung sỏi trắng rải bao quanh sàn đá tối màu */}
-      <B p={[-11.3, -0.23, 10.98]} s={[12.0, 0.06, 7.65]} map={pebbleWideMap} c={darkMode ? '#98948C' : '#FFFFFF'} rough={0.92} />
-      {/* Nền sân lát đá tối màu khu Lounge Firepit */}
-      <B p={[-11.3, -0.195, 11.0]} s={[10.5, 0.06, 6.2]} c={patioDark} rough={0.76} shadow />
-      {/* Đá bước dạo nối từ Firepit Lounge sang lối vào chính (z = 11.2) */}
-      <B p={[-5.15, -0.18, 11.2]} s={[1.15, 0.05, 1.3]} map={travertineMap} c={darkMode ? '#8D877E' : '#F4F1EA'} rough={0.62} />
+      <group onClick={yardClickHandler}>
+        {/* Khung sỏi trắng rải bao quanh sàn đá tối màu */}
+        <B p={[-11.3, -0.23, 10.98]} s={[12.0, 0.06, 7.65]} map={pebbleWideMap} c={darkMode ? '#98948C' : '#FFFFFF'} rough={0.92} />
+        {/* Nền sân lát đá tối màu khu Lounge Firepit */}
+        <B p={[-11.3, -0.195, 11.0]} s={[10.5, 0.06, 6.2]} c={patioDark} rough={0.76} shadow />
+        {/* Đá bước dạo nối từ Firepit Lounge sang lối vào chính (z = 11.2) */}
+        <B p={[-5.15, -0.18, 11.2]} s={[1.15, 0.05, 1.3]} map={travertineMap} c={darkMode ? '#8D877E' : '#F4F1EA'} rough={0.62} />
+      </group>
 
       {/* Bồn cây xây dọc chân tường phía trước cánh trái (z = 6.72) */}
       <G p={[-10.4, -0.2, 6.72]}>
@@ -401,15 +424,17 @@ function FloatingTravertineStep({
   size,
   tex,
   darkMode,
+  onClick,
 }: {
   pos: V3
   size: V3
   tex: THREE.Texture
   darkMode: boolean
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
 }) {
   const [w, h, d] = size
   return (
-    <group position={pos}>
+    <group position={pos} onClick={onClick}>
       {/* Bệ đỡ âm tối ẩn dưới gầm bậc đá tạo hiệu ứng phiến đá bay nổi trên mặt nước */}
       <B p={[0, -h * 0.85, 0]} s={[w - 0.36, h * 0.9, d - 0.32]} c="#1A1D22" rough={0.85} />
       {/* Phiến đá Travertine khổ rộng */}

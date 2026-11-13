@@ -179,7 +179,7 @@ function OnboardingHint() {
   )
 }
 
-/* ---------- Cụm Trái Trên: Tiêu đề + Trạng thái Vai & Tim Hạnh Phúc ---------- */
+/* ---------- Cụm Trái Trên: Tiêu đề + Trạng thái Vai ---------- */
 function TopLeft({
   boyAutoLife,
   girlAutoLife,
@@ -201,11 +201,14 @@ function TopLeft({
       {userRole && (
         <div className="card role-status-strip">
           <span className="role-current-tag">
-            {userRole === 'boy' ? '👦 Khoa' : '👧 Bạn Gái'}
+            <span aria-hidden="true">{userRole === 'boy' ? '👦' : '👧'}</span>
+            <span>{userRole === 'boy' ? 'Khoa' : 'Bạn Gái'}</span>
           </span>
 
           <button
+            type="button"
             className={`auto-toggle-chip ${isAuto ? 'on' : ''}`}
+            aria-pressed={isAuto}
             onClick={() =>
               userRole === 'boy'
                 ? useStore.getState().toggleBoyAutoLife()
@@ -213,11 +216,12 @@ function TopLeft({
             }
             title={isAuto ? 'Tự động sinh hoạt đang bật' : 'Bật tự động sinh hoạt cho nhân vật'}
           >
-            <span className={`pulse-dot ${isAuto ? 'on' : ''}`} />
+            <span className={`pulse-dot ${isAuto ? 'on' : ''}`} aria-hidden="true" />
             <span>Auto</span>
           </button>
 
           <button
+            type="button"
             className="role-logout-btn"
             onClick={logout}
             title="Quay lại sảnh để chọn nhân vật khác"
@@ -254,18 +258,21 @@ function ContextualDock() {
   if (!isUserInitiated || activity === 'idle') return null
 
   return (
-    <div className="context-dock card">
+    <div className="context-dock card" role="region" aria-label="Điều khiển hoạt động hiện tại">
       <span className="dock-status">
-        {activityPhase === 'walking' ? `🚶 Đang đi tới...` : STATIONS[activity].label}
+        <span className="dock-status-dot" aria-hidden="true" />
+        <span>{activityPhase === 'walking' ? '🚶 Đang đi tới...' : STATIONS[activity].label}</span>
       </span>
+
+      <span className="dock-sep context-sep" aria-hidden="true" />
 
       {/* --- TẦNG 1: HOẠT ĐỘNG CỦA KHOA --- */}
       {activity === 'tv' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().cycleTvChannel()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().cycleTvChannel()}>
             📺 Kênh: {TV_CHANNELS[tvChannel].name}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleTv()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleTv()}>
             {tvOn ? '🔴 Tắt TV' : '🟢 Bật TV'}
           </button>
         </>
@@ -273,13 +280,13 @@ function ContextualDock() {
 
       {activity === 'pc' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().cyclePcState()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().cyclePcState()}>
             🖥️ Màn hình: {pcState === 'on' ? 'Code' : pcState === 'rgb' ? 'Ấm 3000K' : 'Tắt'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().spinChair()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().spinChair()}>
             🔄 Xoay ghế
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1DeskLamp()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor1DeskLamp()}>
             {floor1DeskLampOn ? '💡 Tắt đèn bàn' : '💡 Bật đèn bàn'}
           </button>
         </>
@@ -287,45 +294,46 @@ function ContextualDock() {
 
       {activity === 'sleep' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
             {darkMode
               ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
               : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1BedLamp()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor1BedLamp()}>
             {floor1BedLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1HeadboardLed()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor1HeadboardLed()}>
             {floor1HeadboardLedOn ? '✨ Tắt LED đầu giường' : '✨ Bật LED đầu giường'}
           </button>
         </>
       )}
 
       {activity === 'darts' && (
-        <button className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
+        <button type="button" className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
           🎯 Phóng thêm phi tiêu
         </button>
       )}
 
       {activity === 'drink' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().setDrinkType('tea')}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().setDrinkType('tea')}>
             🌼 Pha trà hoa cúc mật ong
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().setDrinkType('coffee')}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().setDrinkType('coffee')}>
             ☕ Pha cà phê sữa nóng
           </button>
         </>
       )}
 
       {activity === 'piano' && (
-        <button className="dock-btn primary" onClick={() => useStore.getState().setPianoModalOpen(true)}>
+        <button type="button" className="dock-btn primary" onClick={() => useStore.getState().setPianoModalOpen(true)}>
           🎹 Mở bàn phím Piano
         </button>
       )}
 
       {activity === 'pet' && (
         <button
+          type="button"
           className="dock-btn"
           onClick={() => {
             const nextId = useStore.getState().petTargetId === 'mochi' ? 'bo' : 'mochi'
@@ -337,30 +345,30 @@ function ContextualDock() {
       )}
 
       {activity === 'read' && (
-        <button className="dock-btn" onClick={() => useStore.getState().nextBookPage()}>
+        <button type="button" className="dock-btn" onClick={() => useStore.getState().nextBookPage()}>
           📖 Trang {useStore.getState().readBookPage} · Lật trang tiếp
         </button>
       )}
 
       {activity === 'bath' && (
-        <button className="dock-btn" onClick={() => useStore.getState().toggleBathBubbles()}>
+        <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleBathBubbles()}>
           {useStore.getState().bathBubbles ? '🫧 Tắt bọt xà phòng' : '🫧 Bật bọt xà phòng'}
         </button>
       )}
 
       {activity === 'wash' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().triggerSinkWater()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().triggerSinkWater()}>
             💧 Xả nước bồn rửa
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleBathMirrorLight()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleBathMirrorLight()}>
             {bathMirrorLightOn ? '✨ Tắt đèn gương' : '✨ Bật đèn gương'}
           </button>
         </>
       )}
 
       {activity === 'laundry' && (
-        <button className="dock-btn" onClick={() => useStore.getState().toggleLaundry()}>
+        <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleLaundry()}>
           {useStore.getState().laundryRunning ? '🧺 Tắt máy giặt' : '🧺 Bật máy giặt'}
         </button>
       )}
@@ -368,15 +376,15 @@ function ContextualDock() {
       {/* --- TẦNG 2: HOẠT ĐỘNG CỦA BẠN GÁI --- */}
       {activity === 'girl_sleep' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
             {darkMode
               ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
               : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleGirlLamp()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleGirlLamp()}>
             {girlLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor2ArchLight()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor2ArchLight()}>
             {floor2ArchLightOn ? '✨ Tắt đèn vòm' : '✨ Bật đèn vòm'}
           </button>
         </>
@@ -384,36 +392,36 @@ function ContextualDock() {
 
       {activity === 'girl_pc' && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().cycleGirlPcState()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().cycleGirlPcState()}>
             🖥️ Màn hình: {girlPcState === 'on' ? 'UI Design' : girlPcState === 'rgb' ? 'Vẽ 3D' : 'Tắt'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().spinGirlChair()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().spinGirlChair()}>
             🔄 Xoay ghế
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleGirlShelfLed()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleGirlShelfLed()}>
             {girlShelfLedOn ? '✨ Tắt LED kệ' : '✨ Bật LED kệ'}
           </button>
         </>
       )}
 
       {activity === 'girl_vanity' && (
-        <button className="dock-btn" onClick={() => useStore.getState().toggleGirlVanityLight()}>
+        <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleGirlVanityLight()}>
           {girlVanityLightOn ? '🪞 Tắt đèn gương Halo' : '🪞 Bật đèn gương Halo'}
         </button>
       )}
 
       {(activity === 'girl_lounge' || activity === 'girl_nook') && (
         <>
-          <button className="dock-btn" onClick={() => useStore.getState().nextGirlBookPage()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().nextGirlBookPage()}>
             📖 Trang {girlBookPage} · Lật trang
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().toggleFloor2ReadingLamp()}>
+          <button type="button" className="dock-btn" onClick={() => useStore.getState().toggleFloor2ReadingLamp()}>
             {floor2ReadingLampOn ? '💡 Tắt đèn đọc sách' : '💡 Bật đèn đọc sách'}
           </button>
         </>
       )}
 
-      <button className="dock-btn primary" onClick={() => useStore.getState().returnOverview()}>
+      <button type="button" className="dock-btn primary" onClick={() => useStore.getState().returnOverview()}>
         {activity === 'sleep' || activity === 'girl_sleep'
           ? '☀️ Thức dậy'
           : activity === 'bath'
@@ -433,8 +441,6 @@ function TopRight() {
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
-  const roofVisible = useStore((s) => s.roofVisible)
-  const toggleRoof = useStore((s) => s.toggleRoof)
   const wallMode = useStore((s) => s.wallMode)
   const cycleWallMode = useStore((s) => s.cycleWallMode)
   const resetCamera = useStore((s) => s.resetCamera)
@@ -443,6 +449,7 @@ function TopRight() {
   const isFloor1 = mode === 'orbit' && viewPreset === 'floor1'
   const isFloor2 = mode === 'orbit' && viewPreset === 'floor2'
   const isOverview = mode === 'orbit' && viewPreset === 'overview'
+  const isGhostWall = wallMode === 'ghost'
 
   const [playing, setPlaying] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
@@ -481,79 +488,98 @@ function TopRight() {
 
   return (
     <div className="hud-top-right">
-      {/* Hàng 1: Điều hướng góc nhìn 3D */}
-      <div className="glass-dock">
-        <div className="view-switcher">
+      {/* Hàng 1: Segmented Góc nhìn 3D + Công cụ xuyên tường & Camera */}
+      <div className="glass-dock dock-nav-row">
+        <div className="view-switcher" role="group" aria-label="Chọn góc nhìn biệt thự">
           <button
-            className={`dock-pill-btn ${isOverview ? 'active' : ''}`}
+            type="button"
+            className={`dock-pill-btn segment-btn ${isOverview ? 'active' : ''}`}
             onClick={() => useStore.getState().returnOverview()}
-            data-tooltip="Đưa về toàn cảnh mặc định"
-            title="Đưa về toàn cảnh mặc định"
+            aria-pressed={isOverview}
+            data-tooltip="Đưa về toàn cảnh biệt thự"
+            title="Đưa về toàn cảnh biệt thự"
             aria-label="Toàn cảnh"
           >
-            🏠 <span className="pill-label">Toàn cảnh</span>
+            <span aria-hidden="true">🏠</span>
+            <span className="pill-label">Toàn cảnh</span>
           </button>
           <button
-            className={`dock-pill-btn ${isFloor1 ? 'active' : ''}`}
+            type="button"
+            className={`dock-pill-btn segment-btn ${isFloor1 ? 'active' : ''}`}
             onClick={() => {
               useStore.getState().setMode('orbit')
               useStore.getState().setFocus(FLOOR1_VIEW, 'floor1')
               useStore.getState().notify('👦 Tầng 1 – Khoa')
             }}
-            data-tooltip="Xem Tầng 1 – Khoa"
-            title="Xem Tầng 1 – Khoa"
+            aria-pressed={isFloor1}
+            data-tooltip="Xem Tầng 1 – Không gian của Khoa"
+            title="Xem Tầng 1 – Không gian của Khoa"
           >
-            👦 <span>Tầng 1</span>
+            <span aria-hidden="true">👦</span>
+            <span>Tầng 1</span>
           </button>
           <button
-            className={`dock-pill-btn ${isFloor2 ? 'active' : ''}`}
+            type="button"
+            className={`dock-pill-btn segment-btn ${isFloor2 ? 'active' : ''}`}
             onClick={() => {
               useStore.getState().setMode('orbit')
               useStore.getState().setFocus(FLOOR2_VIEW, 'floor2')
               useStore.getState().notify('👧 Tầng 2 – Bạn Gái')
             }}
-            data-tooltip="Xem Tầng 2 – Bạn Gái"
-            title="Xem Tầng 2 – Bạn Gái"
+            aria-pressed={isFloor2}
+            data-tooltip="Xem Tầng 2 – Không gian của Bạn Gái"
+            title="Xem Tầng 2 – Không gian của Bạn Gái"
           >
-            👧 <span>Tầng 2</span>
+            <span aria-hidden="true">👧</span>
+            <span>Tầng 2</span>
           </button>
         </div>
 
-        <button
-          className={`dock-pill-btn ${roofVisible && isOverview ? 'active' : ''}`}
-          onClick={toggleRoof}
-          data-tooltip={roofVisible && isOverview ? 'Ẩn mái nhà để xem nội thất' : 'Hiện mái nhà & ngoại thất'}
-          title={roofVisible && isOverview ? 'Ẩn mái nhà để xem nội thất' : 'Hiện mái nhà & ngoại thất'}
-          aria-label="Bật tắt mái nhà"
-        >
-          🏠 <span>Mái nhà</span>
-        </button>
+        <span className="dock-sep" aria-hidden="true" />
 
+        {/* Nút duy nhất chuyển chế độ xem xuyên tường: Đủ tường <-> Tường mờ */}
         <button
-          className={`dock-pill-btn ${wallMode !== 'cutaway' ? 'active' : ''}`}
+          type="button"
+          className={`dock-pill-btn wall-toggle-btn ${isGhostWall ? 'active' : ''}`}
           onClick={cycleWallMode}
-          data-tooltip="Đổi kiểu hiển thị tường: Tường lửng • Tường mờ • Đủ tường"
-          title="Đổi kiểu hiển thị tường: Tường lửng • Tường mờ • Đủ tường"
-          aria-label="Đổi kiểu hiển thị tường"
+          aria-pressed={isGhostWall}
+          data-tooltip={
+            isGhostWall
+              ? 'Tường mờ đang bật · Bấm để hiện Đủ tường'
+              : 'Đủ tường · Bấm để bật Tường mờ xem xuyên nội thất'
+          }
+          title={
+            isGhostWall
+              ? 'Tường mờ đang bật · Bấm để hiện Đủ tường'
+              : 'Đủ tường · Bấm để bật Tường mờ xem xuyên nội thất'
+          }
+          aria-label={
+            isGhostWall
+              ? 'Đang bật Tường mờ, bấm để chuyển sang Đủ tường'
+              : 'Đang bật Đủ tường, bấm để chuyển sang Tường mờ'
+          }
         >
-          <span>{wallMode === 'cutaway' ? '🧱' : wallMode === 'ghost' ? '🪟' : '🏛️'}</span>
-          <span className="pill-label">
-            {wallMode === 'cutaway' ? 'Tường lửng' : wallMode === 'ghost' ? 'Tường mờ' : 'Đủ tường'}
-          </span>
+          <span aria-hidden="true">{isGhostWall ? '🪟' : '🏛️'}</span>
+          <span className="pill-label">{isGhostWall ? 'Tường mờ' : 'Đủ tường'}</span>
+          <span className={`wall-state-dot ${isGhostWall ? 'on' : ''}`} aria-hidden="true" />
         </button>
 
         <button
+          type="button"
           className={`dock-pill-btn ${mode === 'fp' ? 'active' : ''}`}
           onClick={() => setMode(mode === 'fp' ? 'orbit' : 'fp')}
+          aria-pressed={mode === 'fp'}
           data-tooltip={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
           title={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
         >
-          {I.eye} <span className="pill-label">{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
+          {I.eye}
+          <span className="pill-label">{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
         </button>
 
-        <span className="dock-sep" />
+        <span className="dock-sep" aria-hidden="true" />
 
         <button
+          type="button"
           className="dock-icon-btn"
           onClick={resetCamera}
           data-tooltip="Đặt lại góc nhìn mặc định"
@@ -564,6 +590,7 @@ function TopRight() {
         </button>
 
         <button
+          type="button"
           className="dock-icon-btn"
           onClick={randomCameraView}
           data-tooltip="Đổi góc nhìn ngẫu nhiên"
@@ -575,17 +602,19 @@ function TopRight() {
       </div>
 
       {/* Hàng 2: Ánh sáng, Âm thanh & Chất lượng đồ họa */}
-      <div className="glass-dock">
+      <div className="glass-dock dock-env-row">
         <button
+          type="button"
           className={`dock-icon-btn ${playing ? 'active' : ''}`}
           onClick={toggleMusic}
+          aria-pressed={playing}
           data-tooltip={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
           title={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
           aria-label={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
         >
           {playing ? I.music : I.mute}
           {playing && (
-            <span className="eq">
+            <span className="eq" aria-hidden="true">
               <i />
               <i />
               <i />
@@ -594,23 +623,26 @@ function TopRight() {
         </button>
 
         <button
+          type="button"
           className="dock-pill-btn"
           onClick={cycleWeather}
-          data-tooltip={`Ánh sáng: ${weatherMeta.label} (Bấm để đổi)`}
-          title={`Ánh sáng: ${weatherMeta.label} (Bấm để đổi)`}
+          data-tooltip={`Ánh sáng: ${weatherMeta.label} · Bấm để đổi`}
+          title={`Ánh sáng: ${weatherMeta.label} · Bấm để đổi`}
           aria-label={`Chế độ ánh sáng: ${weatherMeta.label}`}
         >
-          <span>{weatherMeta.icon}</span>
+          <span aria-hidden="true">{weatherMeta.icon}</span>
           <span>{weatherMeta.label}</span>
         </button>
 
-        <span className="dock-sep" />
+        <span className="dock-sep" aria-hidden="true" />
 
         <button
+          type="button"
           className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
           onClick={toggleGraphicMode}
-          data-tooltip={graphicMode === 'hd' ? 'Chế độ HD sắc nét (Bấm chuyển Mượt)' : 'Chế độ Mượt tối ưu FPS (Bấm chuyển HD)'}
-          title={graphicMode === 'hd' ? 'Chế độ HD sắc nét (Bấm chuyển Mượt)' : 'Chế độ Mượt tối ưu FPS (Bấm chuyển HD)'}
+          aria-pressed={graphicMode === 'hd'}
+          data-tooltip={graphicMode === 'hd' ? 'Chế độ HD sắc nét · Bấm chuyển Mượt' : 'Chế độ Mượt tối ưu FPS · Bấm chuyển HD'}
+          title={graphicMode === 'hd' ? 'Chế độ HD sắc nét · Bấm chuyển Mượt' : 'Chế độ Mượt tối ưu FPS · Bấm chuyển HD'}
           aria-label={graphicMode === 'hd' ? 'Đồ họa HD' : 'Đồ họa Mượt'}
         >
           {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
@@ -640,29 +672,35 @@ function WardrobeModal() {
   }
 
   return (
-    <div className="card side-modal" role="dialog">
-      <button className="icon-btn close" onClick={handleClose} aria-label="Đóng">
-        ✕
+    <div className="card side-modal" role="dialog" aria-modal="true" aria-labelledby="boy-wardrobe-title">
+      <button type="button" className="icon-btn close" onClick={handleClose} aria-label="Đóng tủ đồ của Khoa">
+        {I.close}
       </button>
-      <h2>👕 Trang phục của Khoa</h2>
+      <h2 id="boy-wardrobe-title">👕 Trang phục của Khoa</h2>
       <div className="outfit-list">
-        {OUTFITS.map((o) => (
-          <button
-            key={o.id}
-            className={`outfit-item ${outfitId === o.id ? 'active' : ''}`}
-            onClick={() => useStore.getState().setOutfitId(o.id)}
-          >
-            <span className="swatch">
-              <i style={{ background: o.shirt }} />
-              <i style={{ background: o.pants }} />
-            </span>
-            <span>{o.name}</span>
-          </button>
-        ))}
+        {OUTFITS.map((o) => {
+          const selected = outfitId === o.id
+          return (
+            <button
+              type="button"
+              key={o.id}
+              aria-pressed={selected}
+              className={`outfit-item ${selected ? 'active' : ''}`}
+              onClick={() => useStore.getState().setOutfitId(o.id)}
+            >
+              <span className="swatch" aria-hidden="true">
+                <i style={{ background: o.shirt }} />
+                <i style={{ background: o.pants }} />
+              </span>
+              <span className="outfit-name">{o.name}</span>
+              {selected && <span className="outfit-check" aria-hidden="true">✓</span>}
+            </button>
+          )
+        })}
       </div>
       <button
-        className="dock-btn primary"
-        style={{ marginTop: 12, width: '100%', height: 36 }}
+        type="button"
+        className="dock-btn primary modal-done-btn"
         onClick={handleClose}
       >
         ✓ Hoàn tất thay đồ
@@ -691,29 +729,35 @@ function GirlWardrobeModal() {
   }
 
   return (
-    <div className="card side-modal" role="dialog">
-      <button className="icon-btn close" onClick={handleClose} aria-label="Đóng">
-        ✕
+    <div className="card side-modal" role="dialog" aria-modal="true" aria-labelledby="girl-wardrobe-title">
+      <button type="button" className="icon-btn close" onClick={handleClose} aria-label="Đóng tủ đồ Bạn Gái">
+        {I.close}
       </button>
-      <h2>👗 Trang phục Bạn Gái</h2>
+      <h2 id="girl-wardrobe-title">👗 Trang phục Bạn Gái</h2>
       <div className="outfit-list">
-        {GIRL_OUTFITS.map((o) => (
-          <button
-            key={o.id}
-            className={`outfit-item ${girlOutfitId === o.id ? 'active' : ''}`}
-            onClick={() => useStore.getState().setGirlOutfitId(o.id)}
-          >
-            <span className="swatch">
-              <i style={{ background: o.jacket }} />
-              <i style={{ background: o.skirt }} />
-            </span>
-            <span>{o.name}</span>
-          </button>
-        ))}
+        {GIRL_OUTFITS.map((o) => {
+          const selected = girlOutfitId === o.id
+          return (
+            <button
+              type="button"
+              key={o.id}
+              aria-pressed={selected}
+              className={`outfit-item ${selected ? 'active' : ''}`}
+              onClick={() => useStore.getState().setGirlOutfitId(o.id)}
+            >
+              <span className="swatch" aria-hidden="true">
+                <i style={{ background: o.jacket }} />
+                <i style={{ background: o.skirt }} />
+              </span>
+              <span className="outfit-name">{o.name}</span>
+              {selected && <span className="outfit-check" aria-hidden="true">✓</span>}
+            </button>
+          )
+        })}
       </div>
       <button
-        className="dock-btn primary"
-        style={{ marginTop: 12, width: '100%', height: 36 }}
+        type="button"
+        className="dock-btn primary modal-done-btn"
         onClick={handleClose}
       >
         ✓ Hoàn tất thay đồ
@@ -741,17 +785,17 @@ function PhotoModal() {
   }
 
   return (
-    <div className="card side-modal" role="dialog">
-      <button className="icon-btn close" onClick={close} aria-label="Đóng">
+    <div className="card side-modal" role="dialog" aria-modal="true" aria-labelledby="photo-modal-title">
+      <button type="button" className="icon-btn close" onClick={close} aria-label="Đóng khung ảnh">
         {I.close}
       </button>
       <img src={item.src} alt={item.title} className="photo-preview" />
-      <h2>{item.title}</h2>
+      <h2 id="photo-modal-title">{item.title}</h2>
       <div className="modal-actions">
-        <button className="pill-btn" onClick={() => switchPhoto(-1)}>
+        <button type="button" className="pill-btn" onClick={() => switchPhoto(-1)}>
           ← Trước
         </button>
-        <button className="pill-btn" onClick={() => switchPhoto(1)}>
+        <button type="button" className="pill-btn" onClick={() => switchPhoto(1)}>
           Tiếp →
         </button>
       </div>

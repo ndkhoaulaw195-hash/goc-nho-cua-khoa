@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Interact } from './prims'
@@ -6,8 +6,10 @@ import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { LuxuryLandscaping } from './LuxuryLandscaping'
 import { RooftopTerrace } from './RooftopTerrace'
 import { marbleTiles, outdoorWoodDeck, woodFloor } from './textures'
-import { getHousePalette, type V3 } from '../data/config'
+import { getHousePalette, LIVE_ACTORS, type V3 } from '../data/config'
 import { useStore } from '../store'
+
+export type ShellWallMode = 'full' | 'ghost'
 
 export const FLOOR1_HEIGHT = 4.35
 export const FLOOR2_Y = 4.35
@@ -50,9 +52,9 @@ export function WallAttached({
     const st = useStore.getState()
     const cutawayActive =
       st.mode === 'orbit' &&
-      (st.wallMode === 'cutaway' || (hideInGhost && st.wallMode === 'ghost')) &&
-      (st.viewPreset === (floor === 1 ? 'floor1' : 'floor2') ||
-        (st.viewPreset === 'overview' && !st.roofVisible))
+      hideInGhost &&
+      st.wallMode === 'ghost' &&
+      (st.viewPreset === (floor === 1 ? 'floor1' : 'floor2') || st.viewPreset === 'overview')
     const cut = cutawayActive && isWallCutByCamera(camera.position, normal)
     ref.current.visible = !cut
   })
@@ -62,34 +64,36 @@ export function WallAttached({
 
 interface ArchitectureShellProps {
   onFloorClick?: (e: ThreeEvent<MouseEvent>) => void
+  onYardClick?: (e: ThreeEvent<MouseEvent>) => void
 }
 
 /**
  * Hệ thống Khung Kiến trúc Khối đặc (Solid Volume Architecture Shell)
- * Bao gồm: Sàn khối đặc 0.3 units, Tường bao 4 mặt dày 0.28 với Sims-style CutawayWall,
- * Vách ngăn nội thất 0.16-0.22 units, Cửa chính, Cửa sổ đố 3D, Hệ Mái bằng có seno & giếng trời,
- * và Khuôn viên Sân vườn bậc tam cấp + hiên + sân lát đá + thảm cỏ + cây xanh.
+ * Bao gồm: Sàn khối đặc 0.3 units, Tường bao 4 mặt dày 0.28 với CutawayWall chế độ Ghost làm mờ riêng phần tường xây thô,
+ * giữ sắc nét hệ mặt tiền (khung chữ L kem #F4F1EA, lam gỗ Teak, cửa Pivot + mái hiên, ban công kính, cửa sổ tràn viền),
+ * Vách ngăn nội thất 0.16-0.22 units, Hệ Mái bằng có seno & giếng trời, và Khuôn viên Sân vườn Resort.
  */
-export function ArchitectureShell({ onFloorClick }: ArchitectureShellProps) {
+export function ArchitectureShell({ onFloorClick, onYardClick }: ArchitectureShellProps) {
   const darkMode = useStore((s) => s.darkMode)
   const mode = useStore((s) => s.mode)
   const viewPreset = useStore((s) => s.viewPreset)
   const roofVisible = useStore((s) => s.roofVisible)
-  const wallMode = useStore((s) => s.wallMode)
+  const rawWallMode = useStore((s) => s.wallMode)
+  const wallMode: ShellWallMode = rawWallMode === 'ghost' ? 'ghost' : 'full'
   const palette = getHousePalette(darkMode)
 
   const showFloor2 = viewPreset !== 'floor1'
   const showRoof = viewPreset === 'overview' && roofVisible
   const showTerrace = showFloor2 && (roofVisible || wallMode === 'full' || viewPreset === 'floor2')
   const cutawayFloor1 =
-    mode === 'orbit' && wallMode !== 'full' && (viewPreset === 'floor1' || (viewPreset === 'overview' && !roofVisible))
+    mode === 'orbit' && wallMode === 'ghost' && (viewPreset === 'floor1' || viewPreset === 'overview')
   const cutawayFloor2 =
-    mode === 'orbit' && wallMode !== 'full' && (viewPreset === 'floor2' || (viewPreset === 'overview' && !roofVisible))
+    mode === 'orbit' && wallMode === 'ghost' && (viewPreset === 'floor2' || viewPreset === 'overview')
 
   return (
     <group>
       {/* 1. Quy hoạch Sân vườn Resort, Đế đá tối màu, Lối đi mặt nước, Hồ bơi vô cực mini & Firepit Lounge */}
-      <LuxuryLandscaping darkMode={darkMode} />
+      <LuxuryLandscaping darkMode={darkMode} onYardClick={onYardClick} />
 
       {/* 2. Sàn Khối đặc Tầng 1 (dày 0.3 units, mảng 6 material, castShadow & receiveShadow) */}
       <SolidFloor1Slabs darkMode={darkMode} onFloorClick={onFloorClick} />
@@ -97,12 +101,13 @@ export function ArchitectureShell({ onFloorClick }: ArchitectureShellProps) {
       {/* 3. Trụ cột góc kiến trúc cố định giữ vững khung khối 3D ở mọi góc xoay */}
       <StructuralCornerColumns palette={palette} showFloor2={showFloor2} />
 
-      {/* 4. Hệ Tường bao Tầng 1 (dày 0.28, Sims-style CutawayWall) & Vách ngăn nội thất */}
+      {/* 4. Hệ Tường bao Tầng 1 (dày 0.28, CutawayWall Ghost) & Vách ngăn nội thất */}
       <Floor1Envelope
         darkMode={darkMode}
         palette={palette}
         cutawayEnabled={cutawayFloor1}
         wallMode={wallMode}
+        onYardClick={onYardClick}
       />
 
       {/* 5. Hệ Tường bao Tầng 2 (dày 0.28, ẩn hoàn toàn khi viewPreset === 'floor1') */}
@@ -174,91 +179,105 @@ function StructuralCornerColumns({
 }
 
 /* ============================================================================
- * 1. SIMS-STYLE DYNAMIC WALL CUTAWAY (Tường lửng 1.05m / Tường mờ / Đủ tường)
+ * 1. DYNAMIC WALL GHOST MODE (Làm mờ riêng phần tường xây thô, giữ sắc nét mặt tiền)
  * ============================================================================ */
 function CutawayWall({
   normal,
   baseY,
-  fullHeight,
   cutawayEnabled,
   wallMode,
-  wallBox,
-  upperChildren,
+  privacy = false,
+  darkMode,
+  facadeChildren,
   children,
 }: {
   normal: V3
   baseY: number
-  fullHeight: number
+  fullHeight?: number
   cutawayEnabled: boolean
-  wallMode: 'cutaway' | 'ghost' | 'full'
-  wallBox: { p: V3; s: V3 }
-  upperChildren?: ReactNode
+  wallMode: ShellWallMode
+  privacy?: boolean
+  darkMode: boolean
+  facadeChildren?: ReactNode
   children: ReactNode
 }) {
-  const wallRef = useRef<THREE.Group>(null)
-  const solidRef = useRef<THREE.Group>(null)
-  const upperRef = useRef<THREE.Group>(null)
-  const ghostRef = useRef<THREE.Group>(null)
-  const curHeightRef = useRef(fullHeight)
-  const prevCutShadowRef = useRef(false)
+  const masonryRef = useRef<THREE.Group>(null)
+  const prevGhostRef = useRef<boolean | null>(null)
 
-  useFrame(({ camera }, dt) => {
-    if (!wallRef.current || !solidRef.current) return
+  useLayoutEffect(() => {
+    prevGhostRef.current = null
+  }, [darkMode, privacy])
 
-    const shouldCut = cutawayEnabled && isWallCutByCamera(camera.position, normal)
-    const isGhost = wallMode === 'ghost' && shouldCut
-
-    if (ghostRef.current) {
-      ghostRef.current.visible = isGhost
-    }
-    solidRef.current.visible = !isGhost
-
-    const targetH = wallMode === 'cutaway' && shouldCut ? CUTAWAY_HEIGHT : fullHeight
-    const k = 1 - Math.exp(-Math.min(dt, 0.05) * 11)
-    let nextH = THREE.MathUtils.lerp(curHeightRef.current, targetH, k)
-    if (Math.abs(nextH - targetH) < 0.002) nextH = targetH
-    curHeightRef.current = nextH
-
-    const scaleY = nextH / fullHeight
-    solidRef.current.scale.y = scaleY
-
-    if (upperRef.current) {
-      upperRef.current.visible = !isGhost && scaleY > 0.55
-    }
-
-    const disableShadow = isGhost || scaleY < 0.85
-    if (disableShadow !== prevCutShadowRef.current) {
-      prevCutShadowRef.current = disableShadow
-      solidRef.current.traverse((obj) => {
+  useEffect(() => {
+    const grp = masonryRef.current
+    return () => {
+      if (!grp) return
+      grp.traverse((obj) => {
         const mesh = obj as THREE.Mesh
         if (!mesh.isMesh) return
+        if (mesh.userData.ghostMat) {
+          ;(mesh.userData.ghostMat as THREE.Material).dispose()
+          mesh.userData.ghostMat = undefined
+        }
+      })
+    }
+  }, [])
+
+  useFrame(({ camera }) => {
+    if (!masonryRef.current) return
+    const shouldCut = cutawayEnabled && isWallCutByCamera(camera.position, normal)
+    const isGhost = wallMode === 'ghost' && shouldCut
+    if (isGhost === prevGhostRef.current) return
+    prevGhostRef.current = isGhost
+
+    masonryRef.current.traverse((obj) => {
+      const mesh = obj as THREE.Mesh
+      if (!mesh.isMesh) return
+
+      if (
+        mesh.userData.origMat === undefined ||
+        (mesh.material !== mesh.userData.ghostMat && mesh.material !== mesh.userData.origMat)
+      ) {
+        mesh.userData.origMat = mesh.material
         if (mesh.userData.origCastShadow === undefined) {
           mesh.userData.origCastShadow = mesh.castShadow
         }
-        mesh.castShadow = disableShadow ? false : Boolean(mesh.userData.origCastShadow)
-      })
-    }
+        if (mesh.userData.ghostMat) {
+          ;(mesh.userData.ghostMat as THREE.Material).dispose()
+          mesh.userData.ghostMat = undefined
+        }
+      }
+
+      if (isGhost) {
+        if (!mesh.userData.ghostMat || mesh.userData.ghostPrivacy !== privacy) {
+          if (mesh.userData.ghostMat) {
+            ;(mesh.userData.ghostMat as THREE.Material).dispose()
+          }
+          const orig = mesh.userData.origMat as THREE.MeshStandardMaterial
+          const cloned = orig.clone()
+          cloned.transparent = true
+          cloned.opacity = privacy ? 0.28 : 0.1
+          cloned.depthWrite = false
+          if (privacy) {
+            cloned.roughness = 0.55
+          }
+          cloned.needsUpdate = true
+          mesh.userData.ghostMat = cloned
+          mesh.userData.ghostPrivacy = privacy
+        }
+        mesh.material = mesh.userData.ghostMat
+        mesh.castShadow = false
+      } else {
+        mesh.material = mesh.userData.origMat
+        mesh.castShadow = Boolean(mesh.userData.origCastShadow)
+      }
+    })
   })
 
   return (
-    <group ref={wallRef} position={[0, baseY, 0]}>
-      <group ref={solidRef}>
-        {children}
-        {upperChildren && <group ref={upperRef}>{upperChildren}</group>}
-      </group>
-      <group ref={ghostRef} visible={false}>
-        <mesh position={wallBox.p}>
-          <boxGeometry args={wallBox.s} />
-          <meshPhysicalMaterial
-            color="#9FB0C0"
-            transparent
-            opacity={0.14}
-            roughness={0.18}
-            metalness={0.05}
-            depthWrite={false}
-          />
-        </mesh>
-      </group>
+    <group position={[0, baseY, 0]}>
+      <group ref={masonryRef}>{children}</group>
+      {facadeChildren && <group>{facadeChildren}</group>}
     </group>
   )
 }
@@ -364,6 +383,29 @@ function SolidFloor1Slabs({
 /* ============================================================================
  * 3. HỆ VÁCH KÍNH TRÀN VIỀN, LAM GỖ TEAK DỌC & CỬA PIVOT KỊCH TRẦN + MÁI HIÊN
  * ============================================================================ */
+let flutedBumpCache: THREE.CanvasTexture | null = null
+function getFlutedBumpTexture(): THREE.CanvasTexture {
+  if (flutedBumpCache) return flutedBumpCache
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 16
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    for (let x = 0; x < 128; x++) {
+      const phase = (x / 128) * Math.PI * 2 * 8
+      const v = Math.round(128 + 115 * Math.sin(phase))
+      ctx.fillStyle = `rgb(${v},${v},${v})`
+      ctx.fillRect(x, 0, 1, 16)
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(8, 1)
+  tex.needsUpdate = true
+  flutedBumpCache = tex
+  return tex
+}
+
 function Window3DMullioned({
   pos,
   size,
@@ -372,6 +414,7 @@ function Window3DMullioned({
   rows = 1,
   darkMode,
   frosted = false,
+  fluted = false,
   sillColor,
 }: {
   pos: V3
@@ -381,6 +424,7 @@ function Window3DMullioned({
   rows?: number
   darkMode: boolean
   frosted?: boolean
+  fluted?: boolean
   sillColor?: string
 }) {
   const [W, H] = size
@@ -390,15 +434,19 @@ function Window3DMullioned({
   const frostedMat = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: darkMode ? '#6A7580' : '#E8E6E1',
+        color: darkMode ? (fluted ? '#525E69' : '#6A7580') : fluted ? '#EAE7E0' : '#E8E6E1',
         transparent: true,
-        opacity: 0.62,
-        roughness: 0.42,
-        metalness: 0.05,
+        opacity: fluted ? 0.78 : 0.64,
+        roughness: fluted ? 0.72 : 0.52,
+        metalness: 0.04,
+        clearcoat: fluted ? 0.35 : 0.45,
+        clearcoatRoughness: fluted ? 0.48 : 0.35,
+        bumpMap: fluted ? getFlutedBumpTexture() : null,
+        bumpScale: fluted ? 0.035 : 0,
         ior: 1.48,
         depthWrite: false,
       }),
-    [darkMode],
+    [darkMode, fluted],
   )
   const isZ = orientation === 'z'
   const frameDepth = WALL_THICKNESS + 0.025
@@ -544,7 +592,13 @@ function VerticalTeakCladding({
   )
 }
 
-function MainEntranceDoor({ darkMode }: { darkMode: boolean }) {
+function MainEntranceDoor({
+  darkMode,
+  onYardClick,
+}: {
+  darkMode: boolean
+  onYardClick?: (e: ThreeEvent<MouseEvent>) => void
+}) {
   const [doorOpen, setDoorOpen] = useState(false)
   const leafRef = useRef<THREE.Group>(null)
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
@@ -571,7 +625,17 @@ function MainEntranceDoor({ darkMode }: { darkMode: boolean }) {
 
   useFrame((_, dt) => {
     if (!leafRef.current) return
-    const targetRot = doorOpen ? -Math.PI * 0.42 : 0
+    const DOOR_X = -1.4
+    const DOOR_Z = 6.14
+    const PROXIMITY_RADIUS = 1.8
+    const khoaNear =
+      LIVE_ACTORS.khoaFloorY < 1.2 &&
+      Math.hypot(LIVE_ACTORS.khoaPos[0] - DOOR_X, LIVE_ACTORS.khoaPos[1] - DOOR_Z) <= PROXIMITY_RADIUS
+    const girlNear =
+      LIVE_ACTORS.girlPos[1] < 1.2 &&
+      Math.hypot(LIVE_ACTORS.girlPos[0] - DOOR_X, LIVE_ACTORS.girlPos[2] - DOOR_Z) <= PROXIMITY_RADIUS
+    const isOpen = doorOpen || khoaNear || girlNear
+    const targetRot = isOpen ? -1.35 : 0
     const k = 1 - Math.exp(-Math.min(dt, 0.05) * 9)
     leafRef.current.rotation.y = THREE.MathUtils.lerp(leafRef.current.rotation.y, targetRot, k)
   })
@@ -590,8 +654,19 @@ function MainEntranceDoor({ darkMode }: { darkMode: boolean }) {
         <boxGeometry args={[0.32, 4.09, 0.03]} />
       </mesh>
 
-      {/* Bậu đá bazan tối màu (#23272F) */}
-      <BB p={[0, 0, 0.025]} s={[1.76, 0.04, 0.36]} c={darkMode ? '#1F232A' : '#2C313A'} rough={0.58} />
+      {/* Bậu đá bazan tối màu (#23272F) — gắn onYardClick để đi qua ngưỡng cửa mượt mà */}
+      <group
+        onClick={
+          onYardClick
+            ? (e) => {
+                e.stopPropagation()
+                onYardClick(e)
+              }
+            : undefined
+        }
+      >
+        <BB p={[0, 0, 0.025]} s={[1.76, 0.04, 0.36]} c={darkMode ? '#1F232A' : '#2C313A'} rough={0.58} />
+      </group>
 
       {/* Cánh cửa gỗ Teak bản lớn dạng trục xoay Pivot cao kịch trần (rộng 1.22, cao 4.09, Click để đóng/mở) */}
       <Interact
@@ -712,11 +787,13 @@ function Floor1Envelope({
   palette,
   cutawayEnabled,
   wallMode,
+  onYardClick,
 }: {
   darkMode: boolean
   palette: ReturnType<typeof getHousePalette>
   cutawayEnabled: boolean
-  wallMode: 'cutaway' | 'ghost' | 'full'
+  wallMode: ShellWallMode
+  onYardClick?: (e: ThreeEvent<MouseEvent>) => void
 }) {
   const H = FLOOR1_HEIGHT
   const extC = palette.extWall
@@ -727,23 +804,18 @@ function Floor1Envelope({
       <CutawayWall
         normal={[0, 0, -1]}
         baseY={0}
-        fullHeight={H}
         cutawayEnabled={false}
         wallMode={wallMode}
-        wallBox={{ p: [-2.8, H / 2, -6.14], s: [26.16, H, 0.28] }}
-        upperChildren={
-          <group>
-            <B p={[0.0, H - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            <B p={[-12.8, H - 0.08, -5.96]} s={[5.6, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            <B
-              p={[-5.4, H - 0.17, -5.93]}
-              s={[9.1, 0.045, 0.05]}
-              c="#F5C98B"
-              emissive="#F5C98B"
-              ei={darkMode ? 1.15 : 1.1}
-              shadow={false}
-            />
-          </group>
+        darkMode={darkMode}
+        facadeChildren={
+          <B
+            p={[-5.4, H - 0.17, -5.93]}
+            s={[9.1, 0.045, 0.05]}
+            c="#F5C98B"
+            emissive="#F5C98B"
+            ei={darkMode ? 1.15 : 1.1}
+            shadow={false}
+          />
         }
       >
         <B p={[-2.8, H / 2, -6.16]} s={[26.16, H, 0.24]} c={extC} rough={0.85} shadow />
@@ -752,29 +824,28 @@ function Floor1Envelope({
         <B p={[4.6, H / 2, -6.02]} s={[10.8, H, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
         <B p={[0.0, 0.07, -5.985]} s={[20.0, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
         <B p={[-12.8, 0.07, -5.985]} s={[5.6, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[0.0, H - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
+        <B p={[-12.8, H - 0.08, -5.96]} s={[5.6, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
-      {/* 2. TƯỜNG TRÁI PHÒNG TẮM (x = -15.74, dày 0.28, có cửa sổ kính mờ trên cao) */}
+      {/* 2. TƯỜNG TRÁI PHÒNG TẮM (x = -15.74, dày 0.28, bảo mật riêng tư ở Ghost Mode) */}
       <CutawayWall
         normal={[-1, 0, 0]}
         baseY={0}
-        fullHeight={H}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [-15.74, H / 2, 0], s: [0.28, H, 12.28] }}
-        upperChildren={
-          <group>
-            <B p={[-15.56, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            <Window3DMullioned
-              pos={[-15.74, 3.25, -1.6]}
-              size={[2.0, 1.0]}
-              orientation="x"
-              bays={2}
-              rows={1}
-              darkMode={darkMode}
-              frosted
-            />
-          </group>
+        privacy
+        darkMode={darkMode}
+        facadeChildren={
+          <Window3DMullioned
+            pos={[-15.74, 3.25, -1.6]}
+            size={[2.0, 1.0]}
+            orientation="x"
+            bays={2}
+            rows={1}
+            darkMode={darkMode}
+            frosted
+          />
         }
       >
         {/* Đoạn sau cửa sổ (z: -6.0..-2.6) */}
@@ -789,30 +860,27 @@ function Floor1Envelope({
         {/* Đoạn trước cửa sổ (z: -0.6..+6.0) */}
         <B p={[-15.76, H / 2, 2.7]} s={[0.24, H, 6.6]} c={extC} rough={0.85} shadow />
         <B p={[-15.62, H / 2, 2.7]} s={[0.04, H, 6.6]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
-        {/* Phào chân tường */}
+        {/* Phào chân tường & phào trần */}
         <B p={[-15.585, 0.07, 0]} s={[0.03, 0.14, 12.0]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[-15.56, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
       {/* 3. TƯỜNG PHẢI TẦNG 1 (x = +10.14, dày 0.28, có ô cửa sổ Panorama khớp PanoramicWindow) */}
       <CutawayWall
         normal={[1, 0, 0]}
         baseY={0}
-        fullHeight={H}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [10.14, H / 2, 0], s: [0.28, H, 12.28] }}
-        upperChildren={
-          <group>
-            <B p={[9.96, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            <Window3DMullioned
-              pos={[10.14, 2.17, -1.0]}
-              size={[5.3, 4.06]}
-              orientation="x"
-              bays={3}
-              rows={1}
-              darkMode={darkMode}
-            />
-          </group>
+        darkMode={darkMode}
+        facadeChildren={
+          <Window3DMullioned
+            pos={[10.14, 2.17, -1.0]}
+            size={[5.3, 4.06]}
+            orientation="x"
+            bays={3}
+            rows={1}
+            darkMode={darkMode}
+          />
         }
       >
         {/* Trụ tường sau cửa sổ (z: -6.0..-3.65) */}
@@ -827,94 +895,113 @@ function Floor1Envelope({
         {/* Trụ tường trước cửa sổ (z: +1.65..+6.0) */}
         <B p={[10.16, H / 2, 3.825]} s={[0.24, H, 4.35]} c={extC} rough={0.85} shadow />
         <B p={[10.02, H / 2, 3.825]} s={[0.04, H, 4.35]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        {/* Phào chân tường */}
+        {/* Phào chân tường & phào trần */}
         <B p={[9.985, 0.07, 0]} s={[0.03, 0.14, 12.0]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[9.96, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
-      {/* 4. TƯỜNG TRƯỚC TẦNG 1 (z = +6.14, dày 0.28, Cửa Pivot kịch trần, Vách kính tràn viền & Lam gỗ Teak) */}
+      {/* 4A. TƯỜNG MẶT TIỀN PHÒNG TẮM TẦNG 1 (x: -15.88..-10.00, z = +6.14, kính sọc mờ & privacy Ghost Mode) */}
       <CutawayWall
         normal={[0, 0, 1]}
         baseY={0}
-        fullHeight={H}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [-2.8, H / 2, 6.14], s: [26.16, H, 0.28] }}
-        upperChildren={
+        privacy
+        darkMode={darkMode}
+        facadeChildren={
+          /* Vách kính sọc mờ bảo mật Phòng tắm (x: -14.80..-11.00, y: 1.45..3.85, bays: 6) */
+          <Window3DMullioned
+            pos={[-12.9, 2.65, 6.14]}
+            size={[3.8, 2.4]}
+            orientation="z"
+            bays={6}
+            rows={1}
+            darkMode={darkMode}
+            frosted
+            fluted
+          />
+        }
+      >
+        {/* Trụ góc trái phòng tắm (x: -15.88..-14.80) */}
+        <B p={[-15.34, H / 2, 6.16]} s={[1.08, H, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-15.2, H / 2, 6.02]} s={[0.8, H, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
+        {/* Tường đặc phía dưới vách kính sọc mờ che chắn riêng tư hoàn toàn (x: -14.80..-11.00, y: 0..1.45) */}
+        <B p={[-12.9, 0.725, 6.16]} s={[3.8, 1.45, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-12.9, 0.725, 6.02]} s={[3.8, 1.45, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
+        {/* Lanh tô trên vách kính sọc mờ (x: -14.80..-11.00, y: 3.85..4.35) */}
+        <B p={[-12.9, 4.1, 6.16]} s={[3.8, 0.5, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-12.9, 4.1, 6.02]} s={[3.8, 0.5, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
+        {/* Trụ giáp ranh phòng tắm (x: -11.00..-10.00) */}
+        <B p={[-10.5, H / 2, 6.16]} s={[1.0, H, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-10.5, H / 2, 6.02]} s={[1.0, H, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
+        {/* Phào chân tường & phào trần phòng tắm */}
+        <B p={[-12.8, 0.07, 5.985]} s={[5.6, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[-12.8, H - 0.08, 5.96]} s={[5.6, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
+      </CutawayWall>
+
+      {/* 4B. TƯỜNG TRƯỚC KHU SINH HOẠT TẦNG 1 (x: -10.00..+10.28, z = +6.14, Cửa Pivot tự động, Lam Teak & Vách kính mở rộng) */}
+      <CutawayWall
+        normal={[0, 0, 1]}
+        baseY={0}
+        cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        darkMode={darkMode}
+        facadeChildren={
           <group>
-            <B p={[-2.8, H - 0.08, 5.96]} s={[25.6, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            <MainEntranceDoor darkMode={darkMode} />
-            {/* Vách kính lớn kịch trần Phòng khách (x: +1.1..+7.7, y: 0.14..4.20) */}
+            <MainEntranceDoor darkMode={darkMode} onYardClick={onYardClick} />
+            <VerticalTeakCladding xRange={[-3.48, -2.27]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
+            <VerticalTeakCladding xRange={[-0.53, 1.08]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
+            {/* Vách kính tràn viền Tầng 1 trái - Cầu thang/Bếp mở rộng (x: -9.55..-3.50, y: 0.14..4.20, bays: 4) */}
             <Window3DMullioned
-              pos={[4.4, 2.17, 6.14]}
-              size={[6.6, 4.06]}
+              pos={[-6.525, 2.17, 6.14]}
+              size={[6.05, 4.06]}
               orientation="z"
               bays={4}
               rows={1}
               darkMode={darkMode}
             />
-            {/* Vách kính lớn kịch trần Góc thú cưng & Cầu thang (x: -7.1..-3.5, y: 0.14..4.20) */}
+            {/* Vách kính tràn viền Tầng 1 phải - Phòng khách mở rộng (x: +1.10..+9.15, y: 0.14..4.20, bays: 5) */}
             <Window3DMullioned
-              pos={[-5.3, 2.17, 6.14]}
-              size={[3.6, 4.06]}
+              pos={[5.125, 2.17, 6.14]}
+              size={[8.05, 4.06]}
               orientation="z"
-              bays={2}
+              bays={5}
               rows={1}
               darkMode={darkMode}
-            />
-            {/* Cửa sổ kính mờ trên cao Phòng tắm (x: -14.2..-11.4, y: 2.55..3.65) */}
-            <Window3DMullioned
-              pos={[-12.8, 3.1, 6.14]}
-              size={[2.8, 1.1]}
-              orientation="z"
-              bays={2}
-              rows={1}
-              darkMode={darkMode}
-              frosted
             />
           </group>
         }
       >
-        {/* Trụ góc trái phòng tắm (x: -15.88..-14.20) */}
-        <B p={[-15.04, H / 2, 6.16]} s={[1.68, H, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-14.9, H / 2, 6.02]} s={[1.4, H, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
-        {/* Dưới & Trên cửa sổ phòng tắm (x: -14.20..-11.40) */}
-        <B p={[-12.8, 1.275, 6.16]} s={[2.8, 2.55, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-12.8, 1.275, 6.02]} s={[2.8, 2.55, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
-        <B p={[-12.8, 4.0, 6.16]} s={[2.8, 0.7, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-12.8, 4.0, 6.02]} s={[2.8, 0.7, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ giữa phòng tắm & vách kính cầu thang (x: -11.40..-7.10) */}
-        <B p={[-9.25, H / 2, 6.16]} s={[4.3, H, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-10.7, H / 2, 6.02]} s={[1.4, H, 0.04]} c={palette.wallBath} rough={0.85} shadow={false} polyOffset />
-        <B p={[-8.55, H / 2, 6.02]} s={[2.9, H, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Chân & Lanh tô mỏng vách kính cầu thang (x: -7.10..-3.50) */}
-        <B p={[-5.3, 0.07, 6.16]} s={[3.6, 0.14, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-5.3, 0.07, 6.02]} s={[3.6, 0.14, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        <B p={[-5.3, 4.275, 6.16]} s={[3.6, 0.15, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-5.3, 4.275, 6.02]} s={[3.6, 0.15, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ cạnh trái cửa chính (x: -3.50..-2.25) + Ốp lam gỗ Teak dọc */}
+        {/* Trụ ngăn giữa phòng tắm & vách kính cầu thang/bếp (x: -10.00..-9.55) */}
+        <B p={[-9.775, H / 2, 6.16]} s={[0.45, H, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-9.775, H / 2, 6.02]} s={[0.45, H, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        {/* Chân & Lanh tô mỏng vách kính cầu thang/bếp (x: -9.55..-3.50) */}
+        <B p={[-6.525, 0.07, 6.16]} s={[6.05, 0.14, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-6.525, 0.07, 6.02]} s={[6.05, 0.14, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        <B p={[-6.525, 4.275, 6.16]} s={[6.05, 0.15, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-6.525, 4.275, 6.02]} s={[6.05, 0.15, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        {/* Trụ cạnh trái cửa chính (x: -3.50..-2.25) */}
         <B p={[-2.875, H / 2, 6.16]} s={[1.25, H, 0.24]} c={extC} rough={0.85} shadow />
         <B p={[-2.875, H / 2, 6.02]} s={[1.25, H, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        <VerticalTeakCladding xRange={[-3.48, -2.27]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
         {/* Lanh tô mỏng trên cửa Pivot kịch trần (x: -2.25..-0.55, y: 4.18..4.35) */}
         <B p={[-1.4, 4.265, 6.16]} s={[1.7, 0.17, 0.24]} c={extC} rough={0.85} shadow />
         <B p={[-1.4, 4.265, 6.02]} s={[1.7, 0.17, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ giữa cửa chính & phòng khách (x: -0.55..+1.10) + Ốp lam gỗ Teak dọc */}
+        {/* Trụ giữa cửa chính & phòng khách (x: -0.55..+1.10) */}
         <B p={[0.275, H / 2, 6.16]} s={[1.65, H, 0.24]} c={extC} rough={0.85} shadow />
         <B p={[0.275, H / 2, 6.02]} s={[1.65, H, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        <VerticalTeakCladding xRange={[-0.53, 1.08]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
-        {/* Chân & Lanh tô mỏng vách kính phòng khách (x: +1.10..+7.70) */}
-        <B p={[4.4, 0.07, 6.16]} s={[6.6, 0.14, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[4.4, 0.07, 6.02]} s={[6.6, 0.14, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        <B p={[4.4, 4.275, 6.16]} s={[6.6, 0.15, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[4.4, 4.275, 6.02]} s={[6.6, 0.15, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ góc phải phòng khách (x: +7.70..+10.28) */}
-        <B p={[8.99, H / 2, 6.16]} s={[2.58, H, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[8.85, H / 2, 6.02]} s={[2.3, H, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        {/* Chân & Lanh tô mỏng vách kính phòng khách (x: +1.10..+9.15) */}
+        <B p={[5.125, 0.07, 6.16]} s={[8.05, 0.14, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[5.125, 0.07, 6.02]} s={[8.05, 0.14, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        <B p={[5.125, 4.275, 6.16]} s={[8.05, 0.15, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[5.125, 4.275, 6.02]} s={[8.05, 0.15, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        {/* Trụ góc phải phòng khách (x: +9.15..+10.28) */}
+        <B p={[9.715, H / 2, 6.16]} s={[1.13, H, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[9.575, H / 2, 6.02]} s={[0.85, H, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
 
-        {/* Phào chân tường mặt trong tường trước (ngắt gọn tại cửa chính) */}
-        <B p={[-12.8, 0.07, 5.985]} s={[5.6, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        {/* Phào chân tường & phào trần mặt trong (ngắt gọn tại cửa chính) */}
         <B p={[-6.125, 0.07, 5.985]} s={[7.75, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
         <B p={[4.725, 0.07, 5.985]} s={[10.55, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[0, H - 0.08, 5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
       {/* 5. VÁCH NGĂN NỘI THẤT PHÒNG TẮM (x = -10.0, dày 0.22) */}
@@ -970,7 +1057,7 @@ function InteriorLivingPartition({ palette }: { palette: ReturnType<typeof getHo
 }
 
 /* ============================================================================
- * 5. TƯỜNG BAO TẦNG 2 (dày 0.28, đồng bộ lớp sơn nội thất & CutawayWall)
+ * 5. TƯỜNG BAO TẦNG 2 (dày 0.28, đồng bộ lớp sơn nội thất & CutawayWall Ghost Mode)
  * ============================================================================ */
 function Floor2Envelope({
   darkMode,
@@ -981,7 +1068,7 @@ function Floor2Envelope({
   darkMode: boolean
   palette: ReturnType<typeof getHousePalette>
   cutawayEnabled: boolean
-  wallMode: 'cutaway' | 'ghost' | 'full'
+  wallMode: ShellWallMode
 }) {
   const Y = FLOOR2_Y
   const H2 = FLOOR2_HEIGHT
@@ -991,7 +1078,7 @@ function Floor2Envelope({
   const balconyDeckTex = useMemo(() => {
     const t = outdoorWoodDeck().clone()
     t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(3.2, 0.7)
+    t.repeat.set(4.2, 0.7)
     t.needsUpdate = true
     return t
   }, [])
@@ -1002,42 +1089,35 @@ function Floor2Envelope({
       <CutawayWall
         normal={[0, 0, -1]}
         baseY={Y}
-        fullHeight={H2}
         cutawayEnabled={false}
         wallMode={wallMode}
-        wallBox={{ p: [0, H2 / 2, -6.14], s: [20.56, H2, 0.28] }}
-        upperChildren={
-          <B p={[0, H2 - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-        }
+        darkMode={darkMode}
       >
         <B p={[0, H2 / 2, -6.16]} s={[20.56, H2, 0.24]} c={extC} rough={0.85} shadow />
         <B p={[-5.525, H2 / 2, -6.02]} s={[8.95, H2, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
         <B p={[4.475, H2 / 2, -6.02]} s={[11.05, H2, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
         <B p={[-5.9, 0.07, -5.985]} s={[8.2, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
         <B p={[4.85, 0.07, -5.985]} s={[10.3, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[0, H2 - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
       {/* 2. TƯỜNG TRÁI TẦNG 2 (x = -10.14, normal [-1,0,0]) */}
       <CutawayWall
         normal={[-1, 0, 0]}
         baseY={Y}
-        fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [-10.14, H2 / 2, 0], s: [0.28, H2, 12.28] }}
-        upperChildren={
-          <group>
-            <B p={[-9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            {/* Cửa sổ 3D nhỏ trên cao mặt bên Tầng 2 (z: +2.2..+4.2, y: 1.8..3.4) */}
-            <Window3DMullioned
-              pos={[-10.14, 2.6, 3.2]}
-              size={[2.0, 1.6]}
-              orientation="x"
-              bays={2}
-              rows={1}
-              darkMode={darkMode}
-            />
-          </group>
+        darkMode={darkMode}
+        facadeChildren={
+          /* Cửa sổ 3D nhỏ trên cao mặt bên Tầng 2 (z: +2.2..+4.2, y: 1.8..3.4) */
+          <Window3DMullioned
+            pos={[-10.14, 2.6, 3.2]}
+            size={[2.0, 1.6]}
+            orientation="x"
+            bays={2}
+            rows={1}
+            darkMode={darkMode}
+          />
         }
       >
         {/* Đoạn tường sau (z: -6.0..+2.2) */}
@@ -1051,22 +1131,21 @@ function Floor2Envelope({
         {/* Đoạn tường trước (z: +4.2..+6.0) */}
         <B p={[-10.16, H2 / 2, 5.1]} s={[0.24, H2, 1.8]} c={extC} rough={0.85} shadow />
         <B p={[-10.02, H2 / 2, 5.1]} s={[0.04, H2, 1.8]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Phào chân tường */}
+        {/* Phào chân tường & phào trần */}
         <B p={[-9.985, 0.07, -5.3]} s={[0.03, 0.14, 1.4]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
         <B p={[-9.985, 0.07, 2.4]} s={[0.03, 0.14, 7.2]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[-9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
       {/* 3. TƯỜNG PHẢI TẦNG 2 (x = +10.14, normal [+1,0,0], 2 hệ vách kính tràn viền kịch trần) */}
       <CutawayWall
         normal={[1, 0, 0]}
         baseY={Y}
-        fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [10.14, H2 / 2, 0], s: [0.28, H2, 12.28] }}
-        upperChildren={
+        darkMode={darkMode}
+        facadeChildren={
           <group>
-            <B p={[9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
             {/* Vách kính kịch trần 1 Phòng ngủ (z: -4.12..-0.48, y: 0.14..4.05) */}
             <Window3DMullioned
               pos={[10.14, 2.095, -2.3]}
@@ -1107,75 +1186,75 @@ function Floor2Envelope({
         {/* Trụ trước (z: +4.70..+6.0) */}
         <B p={[10.16, H2 / 2, 5.35]} s={[0.24, H2, 1.3]} c={extC} rough={0.85} shadow />
         <B p={[10.02, H2 / 2, 5.35]} s={[0.04, H2, 1.3]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        {/* Phào chân tường */}
+        {/* Phào chân tường & phào trần */}
         <B p={[9.985, 0.07, 0]} s={[0.03, 0.14, 12.0]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
 
-      {/* 4. TƯỜNG TRƯỚC TẦNG 2 (z = +6.14, Vách kính tràn viền, Ban công kính đua ra, Lam gỗ Teak & Khung chữ L ngược #F4F1EA) */}
+      {/* 4. TƯỜNG TRƯỚC TẦNG 2 (z = +6.14, Vách kính tràn viền mở rộng, Ban công kính nới rộng, Lam gỗ Teak & Khung chữ L ngược #F4F1EA) */}
       <CutawayWall
         normal={[0, 0, 1]}
         baseY={Y}
-        fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
         wallMode={wallMode}
-        wallBox={{ p: [0, H2 / 2, 6.14], s: [20.56, H2, 0.28] }}
-        upperChildren={
+        darkMode={darkMode}
+        facadeChildren={
           <group>
-            <B p={[0, H2 - 0.08, 5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-            {/* Hệ vách kính tràn viền Ban công Tầng 2 (x: -7.5..-1.4, y: 0.14..4.05) */}
+            {/* Hệ vách kính tràn viền Ban công Tầng 2 mở rộng (x: -9.45..-1.40, y: 0.14..4.05, bays: 5) */}
             <Window3DMullioned
-              pos={[-4.45, 2.095, 6.14]}
-              size={[6.1, 3.91]}
+              pos={[-5.425, 2.095, 6.14]}
+              size={[8.05, 3.91]}
               orientation="z"
-              bays={4}
+              bays={5}
               rows={1}
               darkMode={darkMode}
             />
-            {/* Hệ vách kính tràn viền Thông tầng Phòng khách (x: +1.1..+7.7, y: 0.14..4.05) */}
+            {/* Hệ vách kính tràn viền Thông tầng Phòng khách mở rộng (x: +1.10..+9.15, y: 0.14..4.05, bays: 5) */}
             <Window3DMullioned
-              pos={[4.4, 2.095, 6.14]}
-              size={[6.6, 3.91]}
+              pos={[5.125, 2.095, 6.14]}
+              size={[8.05, 3.91]}
               orientation="z"
-              bays={4}
+              bays={5}
               rows={1}
               darkMode={darkMode}
             />
+            {/* Hệ lam gỗ Teak dọc mặt tiền trung tâm */}
+            <VerticalTeakCladding xRange={[-1.36, 1.06]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
 
-            {/* BAN CÔNG KÍNH CƯỜNG LỰC ĐUA NHẸ MẶT TIỀN TẦNG 2 (x: -7.56..-1.34, z: 6.14..6.96) */}
+            {/* BAN CÔNG KÍNH CƯỜNG LỰC NỚI RỘNG MẶT TIỀN TẦNG 2 (x: -9.52..-1.34, z: 6.14..6.96) */}
             <group>
-              {/* Bệ sàn ban công đua ra +0.82 units (nằm gọn phía trên mái hiên tầng 1) */}
-              <B p={[-4.45, 0.055, 6.55]} s={[6.22, 0.12, 0.82]} c={railColor} rough={0.5} metal={0.35} shadow />
+              <B p={[-5.43, 0.055, 6.55]} s={[8.18, 0.12, 0.82]} c={railColor} rough={0.5} metal={0.35} shadow />
               <B
-                p={[-4.45, 0.122, 6.55]}
-                s={[6.14, 0.02, 0.76]}
+                p={[-5.43, 0.122, 6.55]}
+                s={[8.1, 0.02, 0.76]}
                 map={balconyDeckTex}
                 c={darkMode ? '#A68D78' : '#EEDEC8'}
                 rough={0.68}
               />
               {/* Đèn LED hắt khe dưới mũi ban công */}
               <B
-                p={[-4.45, -0.006, 6.91]}
-                s={[5.8, 0.015, 0.03]}
+                p={[-5.43, -0.006, 6.91]}
+                s={[7.76, 0.015, 0.03]}
                 c="#FFD7A3"
                 emissive="#FFD7A3"
                 ei={darkMode ? 1.7 : 0.2}
                 shadow={false}
               />
               {/* Lan can kính cường lực 3 cạnh */}
-              <mesh position={[-4.45, 0.64, 6.94]} material={glassMat}>
-                <boxGeometry args={[6.16, 1.02, 0.03]} />
+              <mesh position={[-5.43, 0.64, 6.94]} material={glassMat}>
+                <boxGeometry args={[8.12, 1.02, 0.03]} />
               </mesh>
-              <mesh position={[-7.54, 0.64, 6.55]} material={glassMat}>
+              <mesh position={[-9.5, 0.64, 6.55]} material={glassMat}>
                 <boxGeometry args={[0.03, 1.02, 0.78]} />
               </mesh>
               <mesh position={[-1.36, 0.64, 6.55]} material={glassMat}>
                 <boxGeometry args={[0.03, 1.02, 0.78]} />
               </mesh>
               {/* Tay vịn nhôm đen mờ siêu mảnh trên đỉnh kính & kẹp chân kính */}
-              <B p={[-4.45, 1.16, 6.94]} s={[6.22, 0.04, 0.048]} c={railColor} rough={0.35} metal={0.62} shadow />
-              <B p={[-7.54, 1.16, 6.55]} s={[0.048, 0.04, 0.82]} c={railColor} rough={0.35} metal={0.62} shadow />
-              <B p={[-1.36, 1.16, 6.55]} s={[0.048, 0.04, 0.82]} c={railColor} rough={0.35} metal={0.62} shadow />
-              {[-6.8, -5.25, -3.65, -2.1].map((sx, idx) => (
+              <B p={[-5.43, 1.16, 6.94]} s={[8.18, 0.04, 0.048]} c={railColor} rough={0.35} metal={0.62} shadow />
+              <B p={[-9.496, 1.16, 6.55]} s={[0.048, 0.04, 0.82]} c={railColor} rough={0.35} metal={0.62} shadow />
+              <B p={[-1.364, 1.16, 6.55]} s={[0.048, 0.04, 0.82]} c={railColor} rough={0.35} metal={0.62} shadow />
+              {[-8.7, -7.05, -5.43, -3.8, -2.15].map((sx, idx) => (
                 <B key={idx} p={[sx, 0.2, 6.94]} s={[0.06, 0.14, 0.065]} c={railColor} rough={0.35} metal={0.7} />
               ))}
             </group>
@@ -1201,28 +1280,28 @@ function Floor2Envelope({
           </group>
         }
       >
-        {/* Trụ góc trái (x: -10.28..-7.50) */}
-        <B p={[-8.89, H2 / 2, 6.16]} s={[2.78, H2, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-8.75, H2 / 2, 6.02]} s={[2.5, H2, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Chân & Lanh tô mỏng Vách kính ban công (x: -7.50..-1.40) */}
-        <B p={[-4.45, 0.07, 6.16]} s={[6.1, 0.14, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-4.45, 0.07, 6.02]} s={[6.1, 0.14, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        <B p={[-4.45, 4.125, 6.16]} s={[6.1, 0.15, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[-4.45, 4.125, 6.02]} s={[6.1, 0.15, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ trung tâm mặt tiền giữa hai vách kính lớn (x: -1.40..+1.10) + Ốp hệ lam gỗ Teak dọc */}
+        {/* Trụ góc trái (x: -10.28..-9.45) */}
+        <B p={[-9.865, H2 / 2, 6.16]} s={[0.83, H2, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-9.725, H2 / 2, 6.02]} s={[0.55, H2, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        {/* Chân & Lanh tô mỏng Vách kính ban công (x: -9.45..-1.40) */}
+        <B p={[-5.425, 0.07, 6.16]} s={[8.05, 0.14, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-5.425, 0.07, 6.02]} s={[8.05, 0.14, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        <B p={[-5.425, 4.125, 6.16]} s={[8.05, 0.15, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[-5.425, 4.125, 6.02]} s={[8.05, 0.15, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
+        {/* Trụ trung tâm mặt tiền giữa hai vách kính lớn (x: -1.40..+1.10) */}
         <B p={[-0.15, H2 / 2, 6.16]} s={[2.5, H2, 0.24]} c={extC} rough={0.85} shadow />
         <B p={[-0.15, H2 / 2, 6.02]} s={[2.5, H2, 0.04]} c={palette.wallCream} rough={0.85} shadow={false} polyOffset />
-        <VerticalTeakCladding xRange={[-1.36, 1.06]} yRange={[0.02, 4.18]} z={6.295} darkMode={darkMode} />
-        {/* Chân & Lanh tô mỏng Vách kính thông tầng (x: +1.10..+7.70) */}
-        <B p={[4.4, 0.07, 6.16]} s={[6.6, 0.14, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[4.4, 0.07, 6.02]} s={[6.6, 0.14, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        <B p={[4.4, 4.125, 6.16]} s={[6.6, 0.15, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[4.4, 4.125, 6.02]} s={[6.6, 0.15, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        {/* Trụ góc phải (x: +7.70..+10.28) */}
-        <B p={[8.99, H2 / 2, 6.16]} s={[2.58, H2, 0.24]} c={extC} rough={0.85} shadow />
-        <B p={[8.85, H2 / 2, 6.02]} s={[2.3, H2, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
-        {/* Phào chân tường */}
+        {/* Chân & Lanh tô mỏng Vách kính thông tầng (x: +1.10..+9.15) */}
+        <B p={[5.125, 0.07, 6.16]} s={[8.05, 0.14, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[5.125, 0.07, 6.02]} s={[8.05, 0.14, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        <B p={[5.125, 4.125, 6.16]} s={[8.05, 0.15, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[5.125, 4.125, 6.02]} s={[8.05, 0.15, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        {/* Trụ góc phải (x: +9.15..+10.28) */}
+        <B p={[9.715, H2 / 2, 6.16]} s={[1.13, H2, 0.24]} c={extC} rough={0.85} shadow />
+        <B p={[9.575, H2 / 2, 6.02]} s={[0.85, H2, 0.04]} c={palette.wallAccent} rough={0.85} shadow={false} polyOffset />
+        {/* Phào chân tường & phào trần */}
         <B p={[0, 0.07, 5.985]} s={[20.0, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+        <B p={[0, H2 - 0.08, 5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
       </CutawayWall>
     </group>
   )
