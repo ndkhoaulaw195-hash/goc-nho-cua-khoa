@@ -52,104 +52,9 @@ export type PcState = 'on' | 'rgb' | 'off'
 
 export type WeatherMode = 'clear' | 'sunset' | 'rain' | 'night'
 
-export interface StickyNote {
-  id: string
-  author: 'boy' | 'girl'
-  text: string
-  date: string
-  color: string
-}
-
-export interface QuestItem {
-  id: string
-  title: string
-  desc: string
-  icon: string
-  completed: boolean
-  points: number
-}
-
-export interface HiddenMemoryItem {
-  id: string
-  title: string
-  desc: string
-  location: string
-  icon: string
-}
-
-export interface TennisBallState {
-  pos: [number, number, number]
-  inFlight: boolean
-  targetPos: [number, number, number]
-  dogHolding: 'mochi' | 'bo' | null
-}
-
 export interface CamFocus {
   pos: V3
   target: V3
-}
-
-export const DEFAULT_STICKY_NOTES: StickyNote[] = [
-  {
-    id: 'note-1',
-    author: 'boy',
-    text: 'Chúc em một ngày tràn đầy niềm vui và năng lượng nhé! ❤️',
-    date: 'Hôm nay, 08:30',
-    color: '#fef08a',
-  },
-  {
-    id: 'note-2',
-    author: 'girl',
-    text: 'Khoa nhớ uống đủ 2 lít nước và cho 2 bé cún ăn chiều nha! 🐶',
-    date: 'Hôm nay, 09:15',
-    color: '#fbcfe8',
-  },
-]
-
-export const INITIAL_QUESTS: QuestItem[] = [
-  { id: 'quest_drink', title: 'Pha nước ấm / Cà phê', desc: 'Ra quầy nước Tầng 1 pha 1 ly nước ấm thơm ngon', icon: '☕', completed: false, points: 20 },
-  { id: 'quest_pet', title: 'Âu yếm vuốt ve cún cưng', desc: 'Đến chơi đùa và vuốt ve Mochi hoặc Bo', icon: '🐶', completed: false, points: 20 },
-  { id: 'quest_read', title: 'Đọc một trang sách hay', desc: 'Ngồi ở ghế lười Tầng 1 hoặc góc đọc sách Tầng 2', icon: '📖', completed: false, points: 20 },
-  { id: 'quest_piano', title: 'Dạo phím đàn Piano', desc: 'Lên Tầng 2 chơi một bản nhạc nhẹ nhàng', icon: '🎹', completed: false, points: 20 },
-  { id: 'quest_laundry', title: 'Giặt giũ quần áo', desc: 'Đến phòng giặt Tầng 1 bật máy giặt sạch sẽ', icon: '🧺', completed: false, points: 20 },
-]
-
-export const HIDDEN_MEMORIES_DATA: Record<string, HiddenMemoryItem> = {
-  letter_desk: {
-    id: 'letter_desk',
-    title: 'Bức thư tay ngày đầu gặp gỡ',
-    desc: '"Khoảnh khắc nhìn thấy ánh mắt em mỉm cười, anh đã biết căn phòng này từ nay không còn một mình nữa."',
-    location: 'Hộc bàn làm việc Tầng 1',
-    icon: '💌',
-  },
-  key_plant: {
-    id: 'key_plant',
-    title: 'Chiếc chìa khóa bí mật của trái tim',
-    desc: '"Cất giữ những điều ngọt ngào nhất mà chúng mình dành cho nhau suốt những năm tháng qua."',
-    location: 'Chậu cây xanh ban công Tầng 2',
-    icon: '🗝️',
-  },
-  doll_bed: {
-    id: 'doll_bed',
-    title: 'Chú gấu len kỷ niệm 1 năm',
-    desc: '"Món quà nhỏ xinh luôn đặt ở đầu giường để mỗi tối ngủ đều cảm nhận được sự ấm áp."',
-    location: 'Góc gối giường ngủ Tầng 1',
-    icon: '🧸',
-  },
-  note_piano: {
-    id: 'note_piano',
-    title: 'Mảnh nhạc phổ Kiss The Rain',
-    desc: '"Từng giai điệu ngân vang trong buổi chiều mưa rơi rả rích ngoài ban công yên bình."',
-    location: 'Cây đàn Piano Tầng 2',
-    icon: '🎵',
-  },
-  gift_bath: {
-    id: 'gift_bath',
-    title: 'Hộp quà thắt nơ nhung đỏ',
-    desc: '"Bất ngờ lãng mạn nhân ngày đặc biệt mà anh đã bí mật chuẩn bị từ rất lâu."',
-    location: 'Kệ đồ phòng tắm Tầng 1',
-    icon: '🎁',
-  },
 }
 
 interface State {
@@ -288,10 +193,6 @@ interface State {
   readBookPage: number
   nextBookPage: () => void
 
-  // Nhà thông minh
-  robotVacuumOn: boolean
-  toggleRobotVacuum: () => void
-
   // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
   candlesLit: boolean
   toggleCandles: () => void
@@ -304,43 +205,6 @@ interface State {
   weather: WeatherMode
   setWeather: (w: WeatherMode) => void
   cycleWeather: () => void
-
-  // 2. Bảng tin nhắn Tủ lạnh (Sticky Love Notes)
-  refrigeratorOpen: boolean
-  toggleRefrigerator: () => void
-  stickyNotes: StickyNote[]
-  addStickyNote: (text: string, color?: string) => void
-  deleteStickyNote: (id: string) => void
-
-  // 3. Bảng Nhiệm Vụ Hàng Ngày (Cozy Quests & Tim ❤️)
-  questModalOpen: boolean
-  setQuestModalOpen: (v: boolean) => void
-  quests: QuestItem[]
-  lovePoints: number
-  completeQuest: (id: string) => void
-  resetQuests: () => void
-
-  // 4. Săn tìm 5 Ký ức Ẩn (Memory Hunt)
-  foundMemories: string[]
-  memoryModalItem: HiddenMemoryItem | null
-  collectMemory: (id: string) => void
-  setMemoryModalItem: (item: HiddenMemoryItem | null) => void
-
-  // 5. Mini-game Phi Tiêu Tính Điểm (PvP Darts)
-  dartsModalOpen: boolean
-  setDartsModalOpen: (v: boolean) => void
-  dartScores: { boy: number[]; girl: number[] }
-  recordDartScore: (char: ActiveChar, score: number) => void
-  resetDartsGame: () => void
-
-  // 6. Chơi Game Trên PC (Arcade Console)
-  pcGameModalOpen: boolean
-  setPcGameModalOpen: (v: boolean) => void
-
-  // 7. Ném Bóng Cho Cún Nhặt (Fetch Game)
-  tennisBall: TennisBallState
-  throwTennisBall: (target: [number, number, number]) => void
-  retrieveTennisBall: () => void
 
   // Gợi ý & thông báo ngắn
   hoverHint: string | null
@@ -661,16 +525,11 @@ export const useStore = create<State>()(
             }
           }
 
-          // Tự động kích hoạt hoàn thành nhiệm vụ hàng ngày khi người chơi tương tác
-          if (fromUser) {
-            if (act === 'drink') setTimeout(() => useStore.getState().completeQuest('quest_drink'), 1200)
-            if (act === 'read' || act === 'girl_lounge' || act === 'girl_nook') setTimeout(() => useStore.getState().completeQuest('quest_read'), 1200)
-            if (act === 'piano') setTimeout(() => {
-              useStore.getState().completeQuest('quest_piano')
+          // Tự động mở bàn phím Piano khi người dùng chủ động bước tới đàn Piano
+          if (fromUser && act === 'piano') {
+            setTimeout(() => {
               useStore.setState({ pianoModalOpen: true })
             }, 1200)
-            if (act === 'laundry') setTimeout(() => useStore.getState().completeQuest('quest_laundry'), 1200)
-            if (act === 'darts') setTimeout(() => useStore.setState({ dartsModalOpen: true }), 400)
           }
 
           return {
@@ -688,7 +547,6 @@ export const useStore = create<State>()(
             activePhoto: fromUser ? null : s.activePhoto,
             wardrobeOpen: fromUser && act === 'wardrobe',
             girlWardrobeOpen: fromUser && act === 'girl_wardrobe',
-            dartsModalOpen: fromUser && act === 'darts' ? true : s.dartsModalOpen,
             girlOutfitId:
               !fromUser && act === 'girl_wardrobe'
                 ? GIRL_OUTFITS[(GIRL_OUTFITS.findIndex((o) => o.id === s.girlOutfitId) + 1) % GIRL_OUTFITS.length].id
@@ -1034,7 +892,6 @@ export const useStore = create<State>()(
         const char = forChar ?? useStore.getState().userRole ?? useStore.getState().activeChar
         if (fromUser && !fromRemote) {
           broadcastPlayerAction(char, 'petDog', { dogId: id })
-          setTimeout(() => useStore.getState().completeQuest('quest_pet'), 1200)
         }
         set((s) => {
           const dogName = id === 'mochi' ? 'Mochi' : 'Bơ'
@@ -1187,17 +1044,6 @@ export const useStore = create<State>()(
           toastMessage: `📖 Trang ${(s.girlBookPage % 4) + 1}`,
         })),
 
-      robotVacuumOn: true,
-      toggleRobotVacuum: () =>
-        set((s) => {
-          const next = !s.robotVacuumOn
-          broadcastWorldChange('robotVacuumOn', next)
-          return {
-            robotVacuumOn: next,
-            toastMessage: next ? '🤖 Bật Robot hút bụi' : '🔌 Tắt Robot hút bụi',
-          }
-        }),
-
       // 1. Thời tiết & Bầu không khí đa dạng
       weather: 'clear',
       setWeather: (weather) => {
@@ -1227,138 +1073,6 @@ export const useStore = create<State>()(
           }
         }),
 
-      // 2. Bảng tin nhắn Tủ lạnh (Sticky Love Notes)
-      refrigeratorOpen: false,
-      toggleRefrigerator: () => set((s) => ({ refrigeratorOpen: !s.refrigeratorOpen })),
-      stickyNotes: DEFAULT_STICKY_NOTES,
-      addStickyNote: (text, color = '#fef08a') =>
-        set((s) => {
-          const author = s.userRole || s.activeChar || 'boy'
-          const note: StickyNote = {
-            id: `note-${Date.now()}`,
-            author,
-            text,
-            date: `Hôm nay, ${new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`,
-            color,
-          }
-          const next = [note, ...s.stickyNotes]
-          broadcastWorldChange('stickyNotes', next)
-          return { stickyNotes: next, toastMessage: '📌 Đã dán giấy nhắn yêu thương lên tủ lạnh!' }
-        }),
-      deleteStickyNote: (id) =>
-        set((s) => {
-          const next = s.stickyNotes.filter((n) => n.id !== id)
-          broadcastWorldChange('stickyNotes', next)
-          return { stickyNotes: next, toastMessage: '🗑️ Đã gỡ giấy nhắn' }
-        }),
-
-      // 3. Bảng Nhiệm Vụ Hàng Ngày (Cozy Quests & Tim ❤️)
-      questModalOpen: false,
-      setQuestModalOpen: (questModalOpen) => set({ questModalOpen }),
-      quests: INITIAL_QUESTS,
-      lovePoints: 100,
-      completeQuest: (id) =>
-        set((s) => {
-          const q = s.quests.find((item) => item.id === id)
-          if (!q || q.completed) return {}
-          const nextQuests = s.quests.map((item) => (item.id === id ? { ...item, completed: true } : item))
-          const nextPoints = s.lovePoints + q.points
-          broadcastWorldChange('quests', nextQuests)
-          broadcastWorldChange('lovePoints', nextPoints)
-          return {
-            quests: nextQuests,
-            lovePoints: nextPoints,
-            toastMessage: `🎉 Hoàn thành: ${q.title} (+${q.points} Tim ❤️)`,
-          }
-        }),
-      resetQuests: () =>
-        set(() => {
-          const nextQuests = INITIAL_QUESTS.map((q) => ({ ...q, completed: false }))
-          broadcastWorldChange('quests', nextQuests)
-          return { quests: nextQuests, toastMessage: '📋 Đã làm mới bảng nhiệm vụ ngày mới!' }
-        }),
-
-      // 4. Săn tìm 5 Ký ức Ẩn (Memory Hunt)
-      foundMemories: [],
-      memoryModalItem: null,
-      collectMemory: (id) =>
-        set((s) => {
-          const mem = HIDDEN_MEMORIES_DATA[id]
-          if (s.foundMemories.includes(id)) {
-            return { memoryModalItem: mem || null }
-          }
-          const next = [...s.foundMemories, id]
-          broadcastWorldChange('foundMemories', next)
-          const allFound = next.length >= Object.keys(HIDDEN_MEMORIES_DATA).length
-          return {
-            foundMemories: next,
-            memoryModalItem: mem || null,
-            toastMessage: allFound
-              ? '🏆 TUYỆT VỜI! Đã tìm đủ 5 mảnh ký ức tình yêu!'
-              : `✨ Tìm thấy ký ức: ${mem?.title || id} (${next.length}/5)`,
-          }
-        }),
-      setMemoryModalItem: (memoryModalItem) => set({ memoryModalItem }),
-
-      // 5. Mini-game Phi Tiêu Tính Điểm (PvP Darts)
-      dartsModalOpen: false,
-      setDartsModalOpen: (dartsModalOpen) => set({ dartsModalOpen }),
-      dartScores: { boy: [], girl: [] },
-      recordDartScore: (char, score) =>
-        set((s) => {
-          const curList = s.dartScores[char]
-          const nextList = curList.length >= 3 ? [score] : [...curList, score]
-          const nextScores = { ...s.dartScores, [char]: nextList }
-          broadcastWorldChange('dartScores', nextScores)
-          return {
-            dartScores: nextScores,
-            toastMessage: `🎯 ${char === 'boy' ? 'Khoa' : 'Bạn Gái'} ném: ${score} điểm!`,
-          }
-        }),
-      resetDartsGame: () =>
-        set(() => {
-          const empty = { boy: [], girl: [] }
-          broadcastWorldChange('dartScores', empty)
-          return { dartScores: empty, toastMessage: '🎯 Bắt đầu ván phi tiêu mới!' }
-        }),
-
-      // 6. Chơi Game Trên PC (Arcade Console)
-      pcGameModalOpen: false,
-      setPcGameModalOpen: (pcGameModalOpen) => set({ pcGameModalOpen }),
-
-      // 7. Ném Bóng Cho Cún Nhặt (Fetch Game)
-      tennisBall: {
-        pos: [0.6, 0.05, 0.8],
-        inFlight: false,
-        targetPos: [0.6, 0.05, 0.8],
-        dogHolding: null,
-      },
-      throwTennisBall: (target) =>
-        set((s) => {
-          const next = {
-            pos: s.tennisBall.pos,
-            inFlight: true,
-            targetPos: target,
-            dogHolding: null,
-          }
-          broadcastWorldChange('tennisBall', next)
-          return {
-            tennisBall: next,
-            toastMessage: '🎾 Ném bóng cho cún! Mochi & Bo đang đuổi theo...',
-          }
-        }),
-      retrieveTennisBall: () =>
-        set(() => {
-          const next: TennisBallState = {
-            pos: [0.6, 0.05, 0.8],
-            inFlight: false,
-            targetPos: [0.6, 0.05, 0.8],
-            dogHolding: null,
-          }
-          broadcastWorldChange('tennisBall', next)
-          return { tennisBall: next, toastMessage: '🐶 Bé cún đã ngoạm bóng mang về!' }
-        }),
-
       // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
       candlesLit: true,
       toggleCandles: () =>
@@ -1385,16 +1099,13 @@ export const useStore = create<State>()(
       notify: (toastMessage: string) => set({ toastMessage }),
     }),
     {
-      name: 'goc-nho-cua-khoa-v9',
+      name: 'goc-nho-cua-khoa-v10',
       partialize: (s) => ({
         darkMode: s.darkMode,
         weather: s.weather,
         graphicMode: s.graphicMode,
         outfitId: s.outfitId,
         girlOutfitId: s.girlOutfitId,
-        stickyNotes: s.stickyNotes,
-        lovePoints: s.lovePoints,
-        foundMemories: s.foundMemories,
       }),
     },
   ),

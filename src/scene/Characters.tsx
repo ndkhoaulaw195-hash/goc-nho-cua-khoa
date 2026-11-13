@@ -1123,10 +1123,10 @@ export function CharacterRoleIndicator({
     <mesh position={[0, y, 0]}>
       <sphereGeometry args={[0.024, 16, 16]} />
       <meshStandardMaterial
-        color={isControlled ? '#22c55e' : '#ef4444'}
-        emissive={isControlled ? '#22c55e' : '#ef4444'}
-        emissiveIntensity={2.8}
-        roughness={0.2}
+        color={isControlled ? '#6f8772' : '#9c6e67'}
+        emissive={isControlled ? '#6f8772' : '#9c6e67'}
+        emissiveIntensity={2.0}
+        roughness={0.25}
       />
     </mesh>
   )
@@ -1600,7 +1600,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         {[0, 1, 2].map((i) => (
           <mesh key={i}>
             <sphereGeometry args={[1, 14, 14]} />
-            <meshStandardMaterial color="#fde68a" emissive="#f59e0b" emissiveIntensity={1.1} transparent opacity={0.85} />
+            <meshStandardMaterial color="#f3dfc0" emissive="#d8be98" emissiveIntensity={0.85} transparent opacity={0.85} />
           </mesh>
         ))}
       </group>
@@ -1643,7 +1643,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         />
         <mesh position={[-0.045, -0.42, 0]} rotation={[0, 0, 0.06]}>
           <cylinderGeometry args={[0.052, 0.052, 0.025, 16]} />
-          <meshStandardMaterial color="#cbd5e1" metalness={0.85} roughness={0.2} />
+          <meshStandardMaterial color="#d2cec6" metalness={0.75} roughness={0.22} />
         </mesh>
         <Ball p={[-0.048, -0.49, 0]} s={[0.05, 0.058, 0.05]} c={SKIN} />
       </group>
@@ -1660,22 +1660,22 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         <Ball p={[0.048, -0.49, 0]} s={[0.05, 0.058, 0.05]} c={SKIN} />
         <mesh ref={cupRef} position={[0.05, -0.52, 0.06]} rotation={[Math.PI / 2, 0, 0]} visible={false}>
           <cylinderGeometry args={[0.038, 0.03, 0.095, 14]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+          <meshStandardMaterial color="#f2ede4" roughness={0.3} />
         </mesh>
         <mesh ref={remoteRef} position={[0.05, -0.52, 0.06]} visible={false}>
           <boxGeometry args={[0.04, 0.018, 0.11]} />
-          <meshStandardMaterial color="#18181b" roughness={0.4} />
+          <meshStandardMaterial color="#252321" roughness={0.4} />
         </mesh>
       </group>
 
       <group ref={bookRef} position={[0, 1.08, 0.28]} rotation={[-0.45, 0, 0]} visible={false}>
         <mesh position={[0, 0, -0.006]} castShadow>
           <boxGeometry args={[0.42, 0.28, 0.012]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.7} />
+          <meshStandardMaterial color="#363330" roughness={0.7} />
         </mesh>
         <mesh position={[0, 0, -0.012]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.012, 0.012, 0.28, 12]} />
-          <meshStandardMaterial color="#d4af37" metalness={0.7} roughness={0.3} />
+          <meshStandardMaterial color="#b8ab96" metalness={0.65} roughness={0.3} />
         </mesh>
         <mesh position={[0, 0, 0.005]}>
           <planeGeometry args={[0.4, 0.26]} />
@@ -1683,7 +1683,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         </mesh>
         <mesh position={[0, -0.08, 0.008]}>
           <boxGeometry args={[0.014, 0.18, 0.002]} />
-          <meshStandardMaterial color="#ef4444" roughness={0.6} />
+          <meshStandardMaterial color="#856d61" roughness={0.6} />
         </mesh>
       </group>
 
@@ -1704,15 +1704,15 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           <>
             <mesh position={[-0.048, 0.17, 0.126]}>
               <torusGeometry args={[0.034, 0.005, 8, 20]} />
-              <meshStandardMaterial color="#d4d8e2" metalness={0.75} roughness={0.2} />
+              <meshStandardMaterial color="#c8c4bc" metalness={0.75} roughness={0.2} />
             </mesh>
             <mesh position={[0.048, 0.17, 0.126]}>
               <torusGeometry args={[0.034, 0.005, 8, 20]} />
-              <meshStandardMaterial color="#d4d8e2" metalness={0.75} roughness={0.2} />
+              <meshStandardMaterial color="#c8c4bc" metalness={0.75} roughness={0.2} />
             </mesh>
             <mesh position={[0, 0.175, 0.126]} rotation={[0, 0, Math.PI / 2]}>
               <cylinderGeometry args={[0.004, 0.004, 0.028, 6]} />
-              <meshStandardMaterial color="#d4d8e2" metalness={0.75} />
+              <meshStandardMaterial color="#c8c4bc" metalness={0.75} />
             </mesh>
           </>
         )}
@@ -1729,10 +1729,10 @@ interface DogLook {
   earType: 'up' | 'floppy'
 }
 export const CORGI: DogLook = {
-  body: '#d58a44',
-  belly: '#f6efe4',
-  face: '#f6efe4',
-  ear: '#c97c38',
+  body: '#c79f74',
+  belly: '#f4eee4',
+  face: '#f4eee4',
+  ear: '#b99166',
   earType: 'up',
 }
 export const PUG: DogLook = {
@@ -2017,14 +2017,14 @@ export function Dog({
       }}
     >
       <mesh ref={heartRef} geometry={heartGeo} position={[0, 0.62, 0.2]} visible={false}>
-        <meshStandardMaterial color="#f43f5e" emissive="#f43f5e" emissiveIntensity={1.2} />
+        <meshStandardMaterial color="#c98882" emissive="#c98882" emissiveIntensity={0.85} />
       </mesh>
 
       <group ref={zzzRef} position={[0, 0.35, 0.25]} visible={false}>
         {[0, 1, 2].map((i) => (
           <mesh key={i}>
             <sphereGeometry args={[1, 12, 12]} />
-            <meshStandardMaterial color="#fde68a" emissive="#f59e0b" emissiveIntensity={1.1} />
+            <meshStandardMaterial color="#f3dfc0" emissive="#d8be98" emissiveIntensity={0.85} />
           </mesh>
         ))}
       </group>

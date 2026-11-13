@@ -7,7 +7,6 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
 import { Avatar, CORGI, Dog, PUG } from './Characters'
-import { MemoryCollectibles, TennisBall } from './MemoryCollectibles'
 import { ScentedCandles } from './ScentedCandles'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
@@ -55,10 +54,10 @@ function RainEffect() {
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        color="#a5b4fc"
+        color="#d4d8dd"
         size={0.065}
         transparent
-        opacity={0.65}
+        opacity={0.55}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
       />
@@ -196,8 +195,6 @@ export function Experience() {
       <Room />
       <Furniture />
       <RainEffect />
-      <MemoryCollectibles />
-      <TennisBall />
       <ScentedCandles />
       <Avatar p={[-1.1, 0, -1.2]} ry={0.15} />
       <Dog

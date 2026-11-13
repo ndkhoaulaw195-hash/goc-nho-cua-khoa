@@ -85,7 +85,7 @@ export function LoginLobby() {
             <div className="role-sub-title">Vai Nam · Tầng 1</div>
 
             <div className="role-feature-tags">
-              <span className="role-feature-tag">🖥️ PC & Game</span>
+              <span className="role-feature-tag">🖥️ Góc PC</span>
               <span className="role-feature-tag">🛋️ Phòng khách</span>
               <span className="role-feature-tag">🐶 Cún cưng</span>
             </div>

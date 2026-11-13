@@ -18,7 +18,7 @@ export function getArchitecturalGlassMat(darkMode: boolean): THREE.MeshPhysicalM
   const key = darkMode ? 'dark' : 'light'
   if (!glassMatCache[key]) {
     glassMatCache[key] = new THREE.MeshPhysicalMaterial({
-      color: darkMode ? '#6e9ec4' : '#d6ecf8',
+      color: darkMode ? '#7f8994' : '#dfe4e8',
       transparent: true,
       opacity: darkMode ? 0.21 : 0.16,
       roughness: 0.06,
@@ -46,7 +46,7 @@ export function GlassCurtainWall({
 }: GlassCurtainWallProps) {
   const darkMode = useStore((s) => s.darkMode)
   const [L, H] = size
-  const frameColor = darkMode ? '#181b20' : '#232830'
+  const frameColor = darkMode ? '#1c1b19' : '#2b2927'
 
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
 

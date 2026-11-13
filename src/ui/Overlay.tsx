@@ -3,13 +3,6 @@ import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
 import { PianoModal } from './PianoModal'
 import {
-  StickyNotesModal,
-  QuestsModal,
-  DartsGameModal,
-  PcArcadeModal,
-  MemoryModal,
-} from './CozyFeaturesModal'
-import {
   FLOOR1_VIEW,
   FLOOR2_VIEW,
   GIRL_OUTFITS,
@@ -84,11 +77,6 @@ export function Overlay() {
       if (e.key !== 'Escape') return
       const st = useStore.getState()
       if (st.pianoModalOpen) return st.setPianoModalOpen(false)
-      if (st.questModalOpen) return st.setQuestModalOpen(false)
-      if (st.refrigeratorOpen) return st.toggleRefrigerator()
-      if (st.dartsModalOpen) return st.setDartsModalOpen(false)
-      if (st.pcGameModalOpen) return st.setPcGameModalOpen(false)
-      if (st.memoryModalItem) return st.setMemoryModalItem(null)
       if (st.wardrobeOpen) {
         return useStore.setState({ wardrobeOpen: false, boyActivity: 'idle', boyPhase: 'active', isUserInitiated: false })
       }
@@ -112,11 +100,6 @@ export function Overlay() {
       <WardrobeModal />
       <GirlWardrobeModal />
       <PhotoModal />
-      <StickyNotesModal />
-      <QuestsModal />
-      <DartsGameModal />
-      <PcArcadeModal />
-      <MemoryModal />
       <PianoModal />
       <LoginLobby />
 
@@ -142,7 +125,6 @@ function TopLeft({
 }) {
   const userRole = useStore((s) => s.userRole)
   const logout = useStore((s) => s.logout)
-  const lovePoints = useStore((s) => s.lovePoints)
   const isAuto = userRole === 'boy' ? boyAutoLife : girlAutoLife
 
   return (
@@ -169,14 +151,6 @@ function TopLeft({
           >
             <span className={`pulse-dot ${isAuto ? 'on' : ''}`} />
             <span>Auto</span>
-          </button>
-
-          <button
-            className="love-chip-btn"
-            onClick={() => useStore.getState().setQuestModalOpen(true)}
-            title="Điểm Tim Hạnh Phúc — Bấm để xem Sổ nhiệm vụ"
-          >
-            ❤️ {lovePoints}
           </button>
 
           <button
@@ -238,9 +212,6 @@ function ContextualDock() {
           <button className="dock-btn" onClick={() => useStore.getState().cyclePcState()}>
             🖥️ Màn hình: {pcState === 'on' ? 'Code' : pcState === 'rgb' ? 'RGB' : 'Tắt'}
           </button>
-          <button className="dock-btn" onClick={() => useStore.getState().setPcGameModalOpen(true)}>
-            🎮 Chơi Game PC
-          </button>
           <button className="dock-btn" onClick={() => useStore.getState().spinChair()}>
             🔄 Xoay ghế
           </button>
@@ -265,14 +236,9 @@ function ContextualDock() {
       )}
 
       {activity === 'darts' && (
-        <>
-          <button className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
-            🎯 Phóng thêm phi tiêu
-          </button>
-          <button className="dock-btn" onClick={() => useStore.getState().setDartsModalOpen(true)}>
-            🏆 Bảng đấu Phi Tiêu
-          </button>
-        </>
+        <button className="dock-btn" onClick={() => useStore.getState().triggerDartFlight()}>
+          🎯 Phóng thêm phi tiêu
+        </button>
       )}
 
       {activity === 'drink' && (
@@ -293,27 +259,15 @@ function ContextualDock() {
       )}
 
       {activity === 'pet' && (
-        <>
-          <button
-            className="dock-btn"
-            onClick={() => {
-              const nextId = useStore.getState().petTargetId === 'mochi' ? 'bo' : 'mochi'
-              useStore.getState().petDog(nextId, true)
-            }}
-          >
-            🐶 Đổi sang vuốt ve {useStore.getState().petTargetId === 'mochi' ? 'Bơ' : 'Mochi'}
-          </button>
-          <button
-            className="dock-btn"
-            onClick={() => {
-              const rx = -1.5 + Math.random() * 3.5
-              const rz = 0.5 + Math.random() * 3.0
-              useStore.getState().throwTennisBall([rx, 0.05, rz])
-            }}
-          >
-            🎾 Ném bóng cho cún
-          </button>
-        </>
+        <button
+          className="dock-btn"
+          onClick={() => {
+            const nextId = useStore.getState().petTargetId === 'mochi' ? 'bo' : 'mochi'
+            useStore.getState().petDog(nextId, true)
+          }}
+        >
+          🐶 Đổi sang vuốt ve {useStore.getState().petTargetId === 'mochi' ? 'Bơ' : 'Mochi'}
+        </button>
       )}
 
       {activity === 'read' && (
@@ -410,8 +364,6 @@ function TopRight() {
   const cycleWeather = useStore((s) => s.cycleWeather)
   const candlesLit = useStore((s) => s.candlesLit)
   const toggleCandles = useStore((s) => s.toggleCandles)
-  const quests = useStore((s) => s.quests)
-  const pendingQuests = quests.filter((q) => !q.completed).length
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
@@ -542,23 +494,6 @@ function TopRight() {
         </button>
 
         <span className="dock-sep" />
-
-        <button
-          className="dock-pill-btn"
-          onClick={() => useStore.getState().setQuestModalOpen(true)}
-          title="Sổ nhiệm vụ hàng ngày & Tim Hạnh Phúc"
-        >
-          📋 <span className="hide-on-mobile">Nhiệm vụ</span>
-          {pendingQuests > 0 && <span className="quest-count-badge">{pendingQuests}</span>}
-        </button>
-
-        <button
-          className="dock-pill-btn"
-          onClick={() => useStore.getState().toggleRefrigerator()}
-          title="Xem & Dán giấy nhắn tình yêu lên Tủ lạnh"
-        >
-          🧊 <span className="hide-on-mobile">Tủ lạnh</span>
-        </button>
 
         <button
           className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}

@@ -52,12 +52,12 @@ function CandleItem({ position, scale = 1, castLight = false }: CandleItemProps)
         useStore.getState().setHoverHint(null)
       }}
     >
-      {/* Cốc thủy tinh đựng nến màu hổ phách (không dùng transmission để tránh render scene 2 lần mỗi frame) */}
+      {/* Cốc thủy tinh đựng nến màu khói trung tính */}
       <mesh position={[0, 0.04, 0]}>
         <cylinderGeometry args={[0.042, 0.038, 0.08, 14]} />
         <meshStandardMaterial
-          color="#c26308"
-          roughness={0.14}
+          color="#6e5f50"
+          roughness={0.16}
           metalness={0.08}
           transparent
           opacity={0.62}
@@ -68,40 +68,40 @@ function CandleItem({ position, scale = 1, castLight = false }: CandleItemProps)
       <mesh position={[0, 0.035, 0]}>
         <cylinderGeometry args={[0.037, 0.034, 0.064, 14]} />
         <meshStandardMaterial
-          color="#fef3c7"
+          color="#f2ece1"
           roughness={0.75}
-          emissive={candlesLit ? '#f59e0b' : '#000000'}
-          emissiveIntensity={candlesLit ? 0.22 : 0}
+          emissive={candlesLit ? '#e5cc9c' : '#000000'}
+          emissiveIntensity={candlesLit ? 0.2 : 0}
         />
       </mesh>
 
       {/* Bấc nến đen nhỏ */}
       <mesh position={[0, 0.07, 0]}>
         <cylinderGeometry args={[0.002, 0.002, 0.015, 8]} />
-        <meshBasicMaterial color="#1e1e24" />
+        <meshBasicMaterial color="#1f1e1c" />
       </mesh>
 
-      {/* Ngọn lửa nến hình giọt nước ấm áp */}
+      {/* Ngọn lửa nến hình giọt nước dịu nhẹ */}
       {candlesLit && (
         <>
           <mesh ref={flameRef} position={[0, 0.085, 0]}>
             <coneGeometry args={[0.012, 0.032, 10]} />
-            <meshBasicMaterial color="#fbbf24" />
+            <meshBasicMaterial color="#f5dfa8" />
           </mesh>
 
-          {/* Hào quang đỏ cam bên ngoài ngọn lửa */}
+          {/* Hào quang kem ấm nhẹ bên ngoài ngọn lửa */}
           <mesh position={[0, 0.082, 0]}>
             <sphereGeometry args={[0.02, 10, 10]} />
-            <meshBasicMaterial color="#f97316" transparent opacity={0.42} />
+            <meshBasicMaterial color="#e8c488" transparent opacity={0.36} />
           </mesh>
 
-          {/* Nguồn sáng PointLight vàng ấm bập bùng nhẹ (chỉ bật ban đêm ở nến chính để giữ 60fps) */}
+          {/* Nguồn sáng PointLight kem ấm dịu nhẹ ban đêm */}
           {darkMode && castLight && (
             <pointLight
               ref={lightRef}
               position={[0, 0.14, 0]}
-              color="#f59e0b"
-              intensity={1.45}
+              color="#f2d5a4"
+              intensity={1.35}
               distance={3.6}
               decay={2}
               castShadow={false}

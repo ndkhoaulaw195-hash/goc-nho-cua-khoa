@@ -8,10 +8,10 @@ import { useStore } from '../store'
 import { Bathroom } from './Bathroom'
 import { SecondFloor } from './SecondFloor'
 
-const DARK = '#231c18'
-const WALNUT = '#4a3325'
-const WALNUT_LIGHT = '#6e4e37'
-const OAK = '#c8ad88'
+const DARK = '#25221f'
+const WALNUT = '#4c453e'
+const WALNUT_LIGHT = '#696056'
+const OAK = '#b8ae9f'
 
 function Interact({
   onClick,
@@ -57,7 +57,6 @@ export function Furniture() {
       <Painting />
       <FloatingWallShelves />
       <WaterDispenser />
-      <Refrigerator />
       <LowCabinet />
       <PanoramicWindow />
       <WindowPlantBench />
@@ -89,64 +88,61 @@ function Wardrobe() {
   })
 
   const shirts = [
-    { x: -0.82, c: '#f5f3ef', h: 0.88 },
-    { x: -0.58, c: '#e5e0d8', h: 0.82 },
-    { x: -0.34, c: '#d6cfc2', h: 0.92 },
-    { x: 0.0, c: '#f8fafc', h: 0.84 },
-    { x: 0.24, c: '#cbd5e1', h: 0.78 },
-    { x: 0.56, c: '#334155', h: 0.88 },
-    { x: 0.82, c: '#1e293b', h: 0.82 },
+    { x: -0.82, c: '#f4f1ea', h: 0.88 },
+    { x: -0.58, c: '#e5e0d7', h: 0.82 },
+    { x: -0.34, c: '#d4ccc0', h: 0.92 },
+    { x: 0.0, c: '#f6f3ee', h: 0.84 },
+    { x: 0.24, c: '#c8c4bc', h: 0.78 },
+    { x: 0.56, c: '#524e49', h: 0.88 },
+    { x: 0.82, c: '#2e2b28', h: 0.82 },
   ]
 
   const wardrobeBody = (
     <G p={[-7.3, 0, -5.45]}>
-      {/* Khung tủ gỗ óc chó sẫm bo góc mềm mại */}
+      {/* Khung tủ gỗ khói trung tính */}
       <RBB p={[0, 0, -0.42]} s={[2.32, 2.78, 0.06]} c={DARK} rough={0.5} radius={0.03} shadow />
       <RBB p={[-1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} radius={0.02} shadow />
       <RBB p={[1.13, 0, 0]} s={[0.06, 2.78, 0.88]} c={DARK} rough={0.5} radius={0.02} shadow />
-      <BB p={[-0.36, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
-      <BB p={[0.38, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d231e" />
+      <BB p={[-0.36, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d2925" />
+      <BB p={[0.38, 0.06, -0.02]} s={[0.04, 2.66, 0.8]} c="#2d2925" />
       <BB p={[0, 0, 0]} s={[2.32, 0.08, 0.88]} c={DARK} />
       <RBB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={DARK} radius={0.02} shadow />
-      <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#352923" />
+      <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#36312d" />
 
-      {/* Đèn LED ấm áp bên trong tủ quần áo */}
-      <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#fff3d6" emissive="#ffbe5c" ei={2.2} shadow={false} />
-      <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#4a392c" emissive="#ffbe5c" ei={0.28} shadow={false} />
+      {/* Đèn LED kem ấm bên trong tủ */}
+      <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#f6e9d4" emissive="#ebd2ab" ei={1.8} shadow={false} />
+      <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#453f39" emissive="#ebd2ab" ei={0.22} shadow={false} />
 
-      {/* Thanh treo & Quần áo bên trong */}
-      <Cyl p={[0, 2.42, 0]} r={[0, 0, Math.PI / 2]} rt={0.018} h={2.15} c="#d4c5b0" metal={0.8} />
+      <Cyl p={[0, 2.42, 0]} r={[0, 0, Math.PI / 2]} rt={0.018} h={2.15} c="#b8b0a3" metal={0.8} />
       {shirts.map((sh, i) => (
         <BB key={i} p={[sh.x, 2.38 - sh.h, 0]} s={[0.18, sh.h, 0.46]} c={sh.c} rough={0.85} />
       ))}
 
-      {/* Ngăn kéo & Hộp đồ phía dưới */}
       <BB p={[-0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#dfd9ce" />
       <BB p={[0.0, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#cfc7b8" />
       <BB p={[0.75, 0.12, 0]} s={[0.62, 0.26, 0.56]} c="#e2dcd3" />
       <BB p={[-0.75, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#cbc3b5" />
       <BB p={[0.0, 0.42, 0]} s={[0.62, 0.22, 0.56]} c="#dfd9ce" />
 
-      {/* 3 Cánh cửa kính khói viền gỗ tối */}
       <group ref={leftDoor} position={[-1.1, 0, 0.43]}>
-        <BB p={[0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1d1b19" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
         <BB p={[0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
         <BB p={[0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-        <B p={[0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+        <B p={[0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#a89e90" metal={0.7} />
       </group>
 
       <group ref={midDoor} position={[-0.36, 0, 0.43]}>
-        <BB p={[0.37, 0.05, 0]} s={[0.74, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[0.37, 0.05, 0]} s={[0.74, 2.62, 0.035]} c="#1d1b19" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
         <BB p={[0.03, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
         <BB p={[0.71, 0.05, 0.005]} s={[0.05, 2.62, 0.045]} c={DARK} />
-        <B p={[0.66, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+        <B p={[0.66, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#a89e90" metal={0.7} />
       </group>
 
       <group ref={rightDoor} position={[1.1, 0, 0.43]}>
-        <BB p={[-0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1a1412" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
+        <BB p={[-0.36, 0.05, 0]} s={[0.72, 2.62, 0.035]} c="#1d1b19" opacity={0.36} rough={0.15} metal={0.2} shadow={false} />
         <BB p={[-0.03, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
         <BB p={[-0.69, 0.05, 0.005]} s={[0.06, 2.62, 0.045]} c={DARK} />
-        <B p={[-0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#b89d7a" metal={0.7} />
+        <B p={[-0.65, 1.32, 0.04]} s={[0.02, 0.42, 0.025]} c="#a89e90" metal={0.7} />
       </group>
     </G>
   )
@@ -178,17 +174,17 @@ function LeftNightstand() {
       ))}
       {/* Khung tranh nhỏ tựa tường trên kệ */}
       <G p={[-0.28, 0.94, -0.1]}>
-        <B s={[0.46, 0.56, 0.03]} c="#231c18" />
-        <B p={[0, 0, 0.012]} s={[0.38, 0.48, 0.015]} c="#f8f5f0" />
-        <Sph p={[0, 0.02, 0.025]} s={[0.08, 0.12, 0.01]} c="#5f7a52" />
+        <B s={[0.46, 0.56, 0.03]} c="#2f2a26" />
+        <B p={[0, 0, 0.012]} s={[0.38, 0.48, 0.015]} c="#f2ede4" />
+        <Sph p={[0, 0.02, 0.025]} s={[0.08, 0.12, 0.01]} c="#53614e" />
       </G>
       {/* Bình hoa nhỏ bên phải kệ */}
-      <Cyl p={[0.28, 0.78, 0.04]} rt={0.07} rb={0.09} h={0.18} c="#f3efe8" />
-      <Sph p={[0.28, 0.92, 0.04]} s={[0.13, 0.1, 0.13]} c="#f9a8d4" />
-      <Sph p={[0.24, 0.96, 0.02]} s={[0.09, 0.08, 0.09]} c="#fde68a" />
+      <Cyl p={[0.28, 0.78, 0.04]} rt={0.07} rb={0.09} h={0.18} c="#ebe6dc" />
+      <Sph p={[0.28, 0.92, 0.04]} s={[0.13, 0.1, 0.13]} c="#e2dad0" />
+      <Sph p={[0.24, 0.96, 0.02]} s={[0.09, 0.08, 0.09]} c="#efe8da" />
       {/* Đèn gắn tường phía trên */}
-      <B p={[0.05, 1.62, -0.32]} s={[0.08, 0.14, 0.12]} c="#2b221e" metal={0.6} />
-      <Cyl p={[0.05, 1.56, -0.24]} rt={0.05} rb={0.08} h={0.1} c="#fff3d6" emissive="#ffbe5c" ei={1.4} />
+      <B p={[0.05, 1.62, -0.32]} s={[0.08, 0.14, 0.12]} c="#2d2926" metal={0.6} />
+      <Cyl p={[0.05, 1.56, -0.24]} rt={0.05} rb={0.08} h={0.1} c="#f6e9d4" emissive="#ebd2ab" ei={1.1} />
     </G>
   )
 }
@@ -231,20 +227,20 @@ function Dartboard() {
       onClick={() => useStore.getState().startActivity('darts', true)}
     >
       <group ref={flyingRef} visible={false}>
-        <Cyl r={[Math.PI / 2, 0, 0]} rt={0.015} rb={0.004} h={0.18} c="#fbbf24" metal={0.7} />
-        <B p={[0, 0, 0.08]} s={[0.065, 0.065, 0.012]} c="#ef4444" emissive="#ef4444" ei={0.8} />
+        <Cyl r={[Math.PI / 2, 0, 0]} rt={0.015} rb={0.004} h={0.18} c="#b8ab96" metal={0.65} />
+        <B p={[0, 0, 0.08]} s={[0.065, 0.065, 0.012]} c="#8a6c5d" emissive="#8a6c5d" ei={0.45} />
       </group>
 
       <G p={[-4.9, 2.48, -5.94]}>
-        <Cyl r={[Math.PI / 2, 0, 0]} rt={0.34} rb={0.34} h={0.045} c="#1a1615" seg={36} />
+        <Cyl r={[Math.PI / 2, 0, 0]} rt={0.34} rb={0.34} h={0.045} c="#1c1a18" seg={36} />
         <mesh position={[0, 0, 0.026]}>
           <circleGeometry args={[0.3, 40]} />
           <meshStandardMaterial map={map} roughness={0.85} />
         </mesh>
         {offsets.slice(0, dartCount).map(([dx, dy], i) => (
           <G key={i} p={[dx, dy, 0.08]}>
-            <Cyl r={[Math.PI / 2, 0, 0]} rt={0.011} rb={0.003} h={0.13} c="#f59e0b" metal={0.6} />
-            <B p={[0, 0, 0.055]} s={[0.045, 0.045, 0.01]} c="#ef4444" />
+            <Cyl r={[Math.PI / 2, 0, 0]} rt={0.011} rb={0.003} h={0.13} c="#b8ab96" metal={0.6} />
+            <B p={[0, 0, 0.055]} s={[0.045, 0.045, 0.01]} c={i % 2 ? '#8a6c5d' : '#535f52'} />
           </G>
         ))}
       </G>
@@ -266,13 +262,13 @@ function AirCon() {
   return (
     <Interact hint="❄️ Điều hòa" onClick={() => useStore.getState().toggleAc()}>
       <G p={[-2.6, 3.55, -5.82]}>
-        <B s={[1.55, 0.4, 0.3]} c="#f8f6f2" rough={0.4} />
-        <B p={[0, -0.14, 0.15]} r={[acOn ? 0.55 : 0, 0, 0]} s={[1.45, 0.035, 0.04]} c="#e2ddd5" />
-        <B p={[0.58, 0.02, 0.155]} s={[0.06, 0.025, 0.01]} c={acOn ? '#34d399' : '#94a3b8'} emissive={acOn ? '#34d399' : '#000'} ei={2} />
+        <B s={[1.55, 0.4, 0.3]} c="#f2efe9" rough={0.4} />
+        <B p={[0, -0.14, 0.15]} r={[acOn ? 0.55 : 0, 0, 0]} s={[1.45, 0.035, 0.04]} c="#dfd9ce" />
+        <B p={[0.58, 0.02, 0.155]} s={[0.06, 0.025, 0.01]} c={acOn ? '#7e917b' : '#8d8880'} emissive={acOn ? '#8fa38b' : '#000'} ei={1.4} />
         {acOn && (
           <group ref={airRef} position={[0, -0.32, 0.28]}>
             {[-0.42, 0, 0.42].map((x, i) => (
-              <B key={i} p={[x, 0, 0]} r={[0.4, 0, 0]} s={[0.24, 0.015, 0.35]} c="#bae6fd" emissive="#7dd3fc" ei={0.8} opacity={0.45} shadow={false} />
+              <B key={i} p={[x, 0, 0]} r={[0.4, 0, 0]} s={[0.24, 0.015, 0.35]} c="#e2e6e8" emissive="#d0d7db" ei={0.45} opacity={0.4} shadow={false} />
             ))}
           </group>
         )}
@@ -315,8 +311,8 @@ function RightNightstand() {
   return (
     <G p={[-0.65, 0, -5.5]}>
       <BB p={[0, 0, 0]} s={[0.68, 0.56, 0.52]} c={WALNUT} rough={0.6} shadow />
-      <BB p={[0, 0.3, 0.265]} s={[0.6, 0.2, 0.02]} c="#362419" />
-      <BB p={[0, 0.08, 0.265]} s={[0.6, 0.18, 0.02]} c="#362419" />
+      <BB p={[0, 0.3, 0.265]} s={[0.6, 0.2, 0.02]} c="#36312d" />
+      <BB p={[0, 0.08, 0.265]} s={[0.6, 0.18, 0.02]} c="#36312d" />
       {/* Đèn ngủ đầu giường: Click trực tiếp để bật/tắt riêng biệt */}
       <Interact
         hint={floor1BedLampOn ? '💡 Tắt đèn ngủ Tầng 1' : '💡 Bật đèn ngủ Tầng 1'}
@@ -324,28 +320,28 @@ function RightNightstand() {
       >
         <G p={[-0.08, 0, 0]}>
           <Cyl p={[0, 0.62, 0]} rt={0.07} rb={0.09} h={0.12} c="#d6cfc4" />
-          <Cyl p={[0, 0.75, 0]} rt={0.015} h={0.16} c="#b89d7a" metal={0.85} rough={0.18} />
+          <Cyl p={[0, 0.75, 0]} rt={0.015} h={0.16} c="#a89e90" metal={0.8} rough={0.22} />
           <Cyl
             p={[0, 0.88, 0]}
             rt={0.14}
             rb={0.16}
             h={0.24}
-            c={floor1BedLampOn ? '#fff3d6' : '#dfd8cc'}
-            emissive={floor1BedLampOn ? '#ffbe55' : '#000000'}
-            ei={floor1BedLampOn ? 2.5 : 0}
+            c={floor1BedLampOn ? '#f6e9d4' : '#dfd8cc'}
+            emissive={floor1BedLampOn ? '#ebd2ab' : '#000000'}
+            ei={floor1BedLampOn ? 1.85 : 0}
             seg={24}
           />
           {floor1BedLampOn && (
             <mesh position={[0, 0.88, 0]}>
               <sphereGeometry args={[0.22, 16, 12]} />
-              <meshBasicMaterial color="#ffbe55" transparent opacity={0.25} depthWrite={false} />
+              <meshBasicMaterial color="#ebd2ab" transparent opacity={0.18} depthWrite={false} />
             </mesh>
           )}
         </G>
       </Interact>
       {/* Chậu cây nhỏ cạnh đèn ngủ */}
-      <Cyl p={[0.18, 0.61, 0.06]} rt={0.045} rb={0.038} h={0.09} c="#f3efe8" />
-      <Sph p={[0.18, 0.69, 0.06]} s={[0.065, 0.055, 0.065]} c="#4d7c3f" />
+      <Cyl p={[0.18, 0.61, 0.06]} rt={0.045} rb={0.038} h={0.09} c="#ece7de" />
+      <Sph p={[0.18, 0.69, 0.06]} s={[0.065, 0.055, 0.065]} c="#53614e" />
     </G>
   )
 }
@@ -361,13 +357,13 @@ function PhotoFrames() {
       <G p={[0.22, 2.58, -5.78]}>
         <B s={[1.72, 0.045, 0.24]} c={WALNUT_LIGHT} rough={0.55} />
         {/* 2 Chậu cây xanh ở 2 đầu kệ + Đồ decor ở giữa */}
-        <Cyl p={[-0.62, 0.09, 0]} rt={0.065} rb={0.05} h={0.13} c="#f3efe8" />
-        <Sph p={[-0.62, 0.21, 0]} s={[0.13, 0.1, 0.13]} c="#3f7a38" />
-        <Sph p={[-0.56, 0.18, 0.04]} s={[0.09, 0.08, 0.09]} c="#529447" />
-        <BB p={[0, 0.03, 0]} s={[0.26, 0.09, 0.12]} c="#d6d3cd" />
-        <Cyl p={[0.62, 0.09, 0]} rt={0.065} rb={0.05} h={0.13} c="#f3efe8" />
-        <Sph p={[0.62, 0.21, 0]} s={[0.13, 0.1, 0.13]} c="#3f7a38" />
-        <Sph p={[0.68, 0.18, -0.03]} s={[0.09, 0.08, 0.09]} c="#529447" />
+        <Cyl p={[-0.62, 0.09, 0]} rt={0.065} rb={0.05} h={0.13} c="#ece7de" />
+        <Sph p={[-0.62, 0.21, 0]} s={[0.13, 0.1, 0.13]} c="#4b5948" />
+        <Sph p={[-0.56, 0.18, 0.04]} s={[0.09, 0.08, 0.09]} c="#616f5a" />
+        <BB p={[0, 0.03, 0]} s={[0.26, 0.09, 0.12]} c="#d6d1c8" />
+        <Cyl p={[0.62, 0.09, 0]} rt={0.065} rb={0.05} h={0.13} c="#ece7de" />
+        <Sph p={[0.62, 0.21, 0]} s={[0.13, 0.1, 0.13]} c="#4b5948" />
+        <Sph p={[0.68, 0.18, -0.03]} s={[0.09, 0.08, 0.09]} c="#616f5a" />
       </G>
     </group>
   )
@@ -385,14 +381,14 @@ function WallPhotoFrame({ item }: { item: (typeof WALL_PHOTOS)[number] }) {
       }}
     >
       <G p={item.position}>
-        {/* Đèn rọi tranh bằng đồng ấm áp phía trên */}
-        <B p={[0, 0.44, 0.04]} s={[0.1, 0.04, 0.08]} c="#b89758" metal={0.8} />
-        <Cyl p={[0, 0.41, 0.1]} r={[0, 0, Math.PI / 2]} rt={0.022} h={0.22} c="#c9a664" metal={0.85} />
-        <B p={[0, 0.39, 0.1]} s={[0.18, 0.015, 0.025]} c="#fff3d6" emissive="#ffbe5c" ei={1.8} shadow={false} />
+        {/* Đèn rọi tranh champagne pewter phía trên */}
+        <B p={[0, 0.44, 0.04]} s={[0.1, 0.04, 0.08]} c="#9a9083" metal={0.75} />
+        <Cyl p={[0, 0.41, 0.1]} r={[0, 0, Math.PI / 2]} rt={0.022} h={0.22} c="#a89e90" metal={0.8} />
+        <B p={[0, 0.39, 0.1]} s={[0.18, 0.015, 0.025]} c="#f6e9d4" emissive="#ebd2ab" ei={1.35} shadow={false} />
 
-        {/* Khung ảnh gỗ sáng & Bo trắng */}
-        <B s={[0.54, 0.66, 0.04]} c="#d8c3a5" rough={0.55} polyOffset />
-        <B p={[0, 0, 0.015]} s={[0.46, 0.58, 0.02]} c="#ffffff" polyOffset />
+        {/* Khung ảnh gỗ sáng & Bo kem */}
+        <B s={[0.54, 0.66, 0.04]} c="#cfc4b4" rough={0.55} polyOffset />
+        <B p={[0, 0, 0.015]} s={[0.46, 0.58, 0.02]} c="#f6f3ed" polyOffset />
         <mesh position={[0, 0, 0.028]}>
           <planeGeometry args={[0.4, 0.5]} />
           <meshBasicMaterial
@@ -409,10 +405,10 @@ function WallPhotoFrame({ item }: { item: (typeof WALL_PHOTOS)[number] }) {
 }
 
 const SHELF_PALETTES = [
-  ['#4d7c3f', '#65a30d', '#3f6212', '#84cc16'],
-  ['#eab308', '#f59e0b', '#d97706', '#fde047'],
-  ['#e11d48', '#f43f5e', '#fb7185', '#be123c'],
-  ['#7c3aed', '#6366f1', '#3b82f6', '#a855f7'],
+  ['#f2ede4', '#dfd8cc', '#b8ae9f', '#8e8378'],
+  ['#616f5a', '#4b5948', '#d6cfc4', '#9c9286'],
+  ['#8c7d70', '#696056', '#eae4db', '#b5aa9c'],
+  ['#5b6064', '#3f4346', '#cfc6b9', '#8a857e'],
 ]
 
 function Bookshelf({ p, seed }: { p: V3; seed: number }) {
@@ -438,7 +434,7 @@ function Bookshelf({ p, seed }: { p: V3; seed: number }) {
       onClick={() => useStore.getState().startActivity('read', true)}
     >
       <G p={p}>
-        <BB p={[0, 0, -0.18]} s={[1.04, 2.32, 0.04]} c="#1a1412" />
+        <BB p={[0, 0, -0.18]} s={[1.04, 2.32, 0.04]} c="#1e1c1a" />
         <BB p={[-0.5, 0, 0]} s={[0.04, 2.32, 0.4]} c={DARK} />
         <BB p={[0.5, 0, 0]} s={[0.04, 2.32, 0.4]} c={DARK} />
         {[0, 0.46, 0.92, 1.38, 1.84, 2.28].map((y) => (
@@ -447,9 +443,9 @@ function Bookshelf({ p, seed }: { p: V3; seed: number }) {
         {books.map((b, i) => (
           <BB key={i} p={[b.x, b.y, 0.02]} s={[b.w, b.h, 0.28]} c={b.c} rough={0.65} />
         ))}
-        {/* Ngăn trên cùng bày cúp & mô hình nhỏ */}
-        <Cyl p={[-0.22, 1.98, 0]} rt={0.05} rb={0.035} h={0.18} c="#eab308" metal={0.8} />
-        <BB p={[0.18, 1.88, 0]} s={[0.26, 0.22, 0.22]} c="#334155" />
+        {/* Ngăn trên cùng bày cúp & mô hình trung tính */}
+        <Cyl p={[-0.22, 1.98, 0]} rt={0.05} rb={0.035} h={0.18} c="#b8ab96" metal={0.75} />
+        <BB p={[0.18, 1.88, 0]} s={[0.26, 0.22, 0.22]} c="#454340" />
       </G>
     </Interact>
   )
@@ -493,50 +489,50 @@ function Desk() {
 
   return (
     <G p={[2.85, 0, -5.2]}>
-      {/* Mặt bàn gỗ óc chó dày ấm áp bo góc */}
+      {/* Mặt bàn gỗ taupe ấm áp bo góc */}
       <RBB p={[0, 0.74, 0]} s={[2.75, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.45} radius={0.025} shadow />
       {[-1.3, 1.3].map((x) => (
-        <BB key={x} p={[x, 0, 0]} s={[0.06, 0.74, 0.84]} c="#18181b" metal={0.85} rough={0.18} shadow />
+        <BB key={x} p={[x, 0, 0]} s={[0.06, 0.74, 0.84]} c="#262523" metal={0.75} rough={0.22} shadow />
       ))}
 
-      {/* Đèn LED Ambilight ấm áp sau bàn máy tính */}
+      {/* Đèn LED Ambilight champagne dịu sau bàn máy tính */}
       {pcState !== 'off' && (
-        <B p={[0, 0.78, -0.44]} s={[2.2, 0.03, 0.03]} c="#ffbe5c" emissive="#ff9e2c" ei={1.8} shadow={false} />
+        <B p={[0, 0.78, -0.44]} s={[2.2, 0.03, 0.03]} c="#f5e6cc" emissive="#dfd1ba" ei={1.15} shadow={false} />
       )}
 
       <Interact
         hint="💻 Bàn máy tính Tầng 1"
         onClick={() => useStore.getState().startActivity('pc', true)}
       >
-        {/* Cặp màn hình đôi ghép cong như ảnh mẫu */}
+        {/* Cặp màn hình đôi ghép cong */}
         <Monitor p={[-0.49, 0.79, -0.14]} w={0.95} h={0.5} variant={1} ry={0.16} />
         <Monitor p={[0.49, 0.79, -0.14]} w={0.95} h={0.5} variant={2} ry={-0.16} />
 
-        {/* Cặp loa kiểm âm vỏ gỗ (Studio Monitors) hai bên */}
+        {/* Cặp loa kiểm âm vỏ gỗ hai bên */}
         {[-1.14, 1.14].map((sx, idx) => (
           <G key={idx} p={[sx, 0.79, -0.08]} r={[0, idx === 0 ? 0.25 : -0.25, 0]}>
             <BB p={[0, 0, 0]} s={[0.22, 0.34, 0.24]} c={WALNUT} rough={0.5} />
-            <Cyl p={[0, 0.13, 0.122]} r={[Math.PI / 2, 0, 0]} rt={0.065} h={0.01} c="#18181b" />
-            <Cyl p={[0, 0.25, 0.122]} r={[Math.PI / 2, 0, 0]} rt={0.035} h={0.01} c="#27272a" />
+            <Cyl p={[0, 0.13, 0.122]} r={[Math.PI / 2, 0, 0]} rt={0.065} h={0.01} c="#1d1c1a" />
+            <Cyl p={[0, 0.25, 0.122]} r={[Math.PI / 2, 0, 0]} rt={0.035} h={0.01} c="#33312e" />
           </G>
         ))}
 
-        {/* Thảm trải bàn (Deskmat), Bàn phím cơ RGB & Chuột */}
-        <BB p={[0, 0.795, 0.2]} s={[0.92, 0.008, 0.34]} c="#18181b" rough={0.9} />
-        <BB p={[-0.06, 0.8, 0.2]} s={[0.42, 0.024, 0.14]} c="#27272a" />
-        <B p={[-0.06, 0.805, 0.2]} s={[0.4, 0.018, 0.12]} c="#a855f7" emissive="#a855f7" ei={1.1} />
-        <BB p={[0.28, 0.8, 0.2]} s={[0.065, 0.025, 0.1]} c="#27272a" />
+        {/* Thảm trải bàn (Deskmat), Bàn phím cơ xám-kem & Chuột */}
+        <BB p={[0, 0.795, 0.2]} s={[0.92, 0.008, 0.34]} c="#272523" rough={0.9} />
+        <BB p={[-0.06, 0.8, 0.2]} s={[0.42, 0.024, 0.14]} c="#3b3834" />
+        <B p={[-0.06, 0.805, 0.2]} s={[0.4, 0.018, 0.12]} c="#e2dad0" emissive="#dfd1ba" ei={0.75} />
+        <BB p={[0.28, 0.8, 0.2]} s={[0.065, 0.025, 0.1]} c="#3b3834" />
 
-        {/* Thùng PC Gaming kính cường lực & Quạt RGB đặt dưới gầm bàn bên phải */}
+        {/* Thùng PC kính khói & Quạt ánh champagne/bạc đặt dưới gầm bàn bên phải */}
         <G p={[1.05, 0.02, 0.05]}>
-          <BB p={[0, 0, 0]} s={[0.26, 0.56, 0.52]} c="#141417" metal={0.4} rough={0.3} />
+          <BB p={[0, 0, 0]} s={[0.26, 0.56, 0.52]} c="#1d1c1a" metal={0.4} rough={0.3} />
           <B
             p={[-0.132, 0.28, 0]}
             s={[0.01, 0.44, 0.42]}
-            c="#1e1b4b"
-            emissive={pcState === 'off' ? '#000' : '#6366f1'}
-            ei={pcState === 'off' ? 0 : 0.9}
-            opacity={0.75}
+            c="#2c2b29"
+            emissive={pcState === 'off' ? '#000' : '#a8a093'}
+            ei={pcState === 'off' ? 0 : 0.45}
+            opacity={0.72}
           />
           {[0.14, 0.28, 0.42].map((fy, fi) => (
             <Cyl
@@ -545,9 +541,9 @@ function Desk() {
               r={[Math.PI / 2, 0, 0]}
               rt={0.055}
               h={0.012}
-              c={fi === 1 ? '#ec4899' : '#38bdf8'}
-              emissive={pcState === 'off' ? '#000' : fi === 1 ? '#ec4899' : '#38bdf8'}
-              ei={pcState === 'off' ? 0 : 1.8}
+              c={fi === 1 ? '#d4cabd' : '#a8b0b8'}
+              emissive={pcState === 'off' ? '#000' : fi === 1 ? '#dfd2be' : '#b2bcc4'}
+              ei={pcState === 'off' ? 0 : 1.05}
             />
           ))}
         </G>
@@ -592,16 +588,16 @@ function OfficeChair({
             p={[Math.cos((i / 5) * Math.PI * 2) * 0.22, 0.05, Math.sin((i / 5) * Math.PI * 2) * 0.22]}
             r={[0, -(i / 5) * Math.PI * 2, 0]}
             s={[0.44, 0.035, 0.045]}
-            c="#18181b"
+            c="#262523"
           />
         ))}
-        <Cyl p={[0, 0.25, 0]} rt={0.028} h={0.38} c="#27272a" metal={0.6} />
-        <BB p={[0, 0.44, 0]} s={[0.54, 0.08, 0.5]} c="#27272a" />
+        <Cyl p={[0, 0.25, 0]} rt={0.028} h={0.38} c="#353330" metal={0.6} />
+        <BB p={[0, 0.44, 0]} s={[0.54, 0.08, 0.5]} c="#353330" />
         {/* Lưng ghế công thái học + Tựa đầu + Tay vịn */}
-        <BB p={[0, 0.52, 0.23]} s={[0.48, 0.64, 0.06]} c="#1f2024" />
-        <BB p={[0, 1.18, 0.22]} s={[0.28, 0.14, 0.06]} c="#18181b" />
-        <BB p={[-0.27, 0.62, 0.04]} s={[0.045, 0.03, 0.26]} c="#18181b" />
-        <BB p={[0.27, 0.62, 0.04]} s={[0.045, 0.03, 0.26]} c="#18181b" />
+        <BB p={[0, 0.52, 0.23]} s={[0.48, 0.64, 0.06]} c="#2d2b28" />
+        <BB p={[0, 1.18, 0.22]} s={[0.28, 0.14, 0.06]} c="#262523" />
+        <BB p={[-0.27, 0.62, 0.04]} s={[0.045, 0.03, 0.26]} c="#262523" />
+        <BB p={[0.27, 0.62, 0.04]} s={[0.045, 0.03, 0.26]} c="#262523" />
       </group>
     </Interact>
   )
@@ -612,14 +608,14 @@ function Painting() {
   const map = useMemo(() => sunflowerArt(), [])
   return (
     <G p={[2.85, 3.05, -5.92]}>
-      {/* Đèn rọi tranh bằng đồng phía trên */}
-      <B p={[0, 0.86, 0.05]} s={[0.14, 0.05, 0.1]} c="#b89758" metal={0.85} />
-      <Cyl p={[0, 0.82, 0.14]} r={[0, 0, Math.PI / 2]} rt={0.025} h={0.45} c="#c9a664" metal={0.85} />
-      <B p={[0, 0.8, 0.14]} s={[0.38, 0.015, 0.03]} c="#fff3d6" emissive="#ffbe5c" ei={1.8} shadow={false} />
+      {/* Đèn rọi tranh Champagne Pewter phía trên */}
+      <B p={[0, 0.86, 0.05]} s={[0.14, 0.05, 0.1]} c="#9a9083" metal={0.75} />
+      <Cyl p={[0, 0.82, 0.14]} r={[0, 0, Math.PI / 2]} rt={0.025} h={0.45} c="#a89e90" metal={0.8} />
+      <B p={[0, 0.8, 0.14]} s={[0.38, 0.015, 0.03]} c="#f6e9d4" emissive="#ebd2ab" ei={1.35} shadow={false} />
 
-      {/* Khung tranh viền vàng gỗ & Bo kem */}
-      <B s={[1.36, 1.56, 0.045]} c="#c9a259" rough={0.4} metal={0.3} polyOffset />
-      <B p={[0, 0, 0.015]} s={[1.22, 1.42, 0.02]} c="#faf7f0" polyOffset />
+      {/* Khung tranh Champagne Pewter & Bo kem */}
+      <B s={[1.36, 1.56, 0.045]} c="#b5aa99" rough={0.45} metal={0.22} polyOffset />
+      <B p={[0, 0, 0.015]} s={[1.22, 1.42, 0.02]} c="#f4f0e8" polyOffset />
       <mesh position={[0, 0, 0.028]}>
         <planeGeometry args={[1.04, 1.24]} />
         <meshStandardMaterial
@@ -637,9 +633,9 @@ function Painting() {
   )
 }
 
-/* ---------- 3 Kệ gỗ treo tường bên phải có dây đèn Fairy Lights rực rỡ + Sách & Mô hình Gundam ---------- */
+/* ---------- 3 Kệ gỗ treo tường bên phải có dây đèn Champagne ấm + Sách & Mô hình trung tính ---------- */
 function FloatingWallShelves() {
-  const fairyColors = ['#fbbf24', '#f472b6', '#38bdf8', '#4ade80', '#a78bfa', '#fb923c']
+  const fairyColors = ['#f6e9d4', '#ebd2ab', '#efe4d0', '#dfd2be', '#f2e8d7', '#e5d4b7']
   const shelfBooks = useMemo(() => {
     const r = rng(21)
     const out: { sy: number; x: number; w: number; h: number; c: string }[] = []
@@ -665,7 +661,7 @@ function FloatingWallShelves() {
       {[2.25, 2.8, 3.35].map((sy, sIdx) => (
         <group key={sy}>
           <B p={[0, sy, 0]} s={[2.68, 0.048, 0.28]} c={WALNUT_LIGHT} rough={0.5} />
-          {/* Dây đèn led Fairy Lights đa sắc lung linh dọc mép kệ */}
+          {/* Dây đèn LED Champagne dịu dọc mép kệ */}
           {Array.from({ length: 14 }, (_, li) => {
             const lx = -1.22 + li * 0.188
             const lc = fairyColors[(li + sIdx * 2) % fairyColors.length]
@@ -676,7 +672,7 @@ function FloatingWallShelves() {
                 s={[0.018, 0.018, 0.018]}
                 c={lc}
                 emissive={lc}
-                ei={2.4}
+                ei={1.65}
               />
             )
           })}
@@ -688,27 +684,27 @@ function FloatingWallShelves() {
         <BB key={i} p={[b.x, b.sy + 0.025, 0]} s={[b.w, b.h, 0.22]} c={b.c} rough={0.65} />
       ))}
 
-      {/* Mô hình Robot / Gundam ở đầu trái tầng kệ 2 & 3 */}
+      {/* Mô hình trang trí trung tính ở đầu trái tầng kệ 2 & 3 */}
       {[-0.95, -0.58].map((rx, i) => (
         <G key={i} p={[rx, 2.83, 0.02]}>
-          <BB p={[0, 0.12, 0]} s={[0.12, 0.16, 0.08]} c="#f8fafc" />
-          <BB p={[0, 0.16, 0.01]} s={[0.09, 0.08, 0.09]} c={i === 0 ? '#ef4444' : '#3b82f6'} />
-          <BB p={[-0.04, 0, 0]} s={[0.035, 0.12, 0.04]} c="#e2e8f0" />
-          <BB p={[0.04, 0, 0]} s={[0.035, 0.12, 0.04]} c="#e2e8f0" />
-          <BB p={[0, 0.29, 0]} s={[0.06, 0.06, 0.06]} c="#f8fafc" />
+          <BB p={[0, 0.12, 0]} s={[0.12, 0.16, 0.08]} c="#f2ede4" />
+          <BB p={[0, 0.16, 0.01]} s={[0.09, 0.08, 0.09]} c={i === 0 ? '#78685c' : '#5b666e'} />
+          <BB p={[-0.04, 0, 0]} s={[0.035, 0.12, 0.04]} c="#dbd4c9" />
+          <BB p={[0.04, 0, 0]} s={[0.035, 0.12, 0.04]} c="#dbd4c9" />
+          <BB p={[0, 0.29, 0]} s={[0.06, 0.06, 0.06]} c="#f2ede4" />
         </G>
       ))}
       <G p={[-0.92, 3.38, 0.02]}>
-        <BB p={[0, 0.14, 0]} s={[0.14, 0.18, 0.09]} c="#f8fafc" />
-        <BB p={[0, 0.18, 0.01]} s={[0.24, 0.08, 0.04]} c="#1e293b" />
-        <BB p={[-0.045, 0, 0]} s={[0.04, 0.14, 0.04]} c="#cbd5e1" />
-        <BB p={[0.045, 0, 0]} s={[0.04, 0.14, 0.04]} c="#cbd5e1" />
+        <BB p={[0, 0.14, 0]} s={[0.14, 0.18, 0.09]} c="#f2ede4" />
+        <BB p={[0, 0.18, 0.01]} s={[0.24, 0.08, 0.04]} c="#35322e" />
+        <BB p={[-0.045, 0, 0]} s={[0.04, 0.14, 0.04]} c="#cfc7b9" />
+        <BB p={[0.045, 0, 0]} s={[0.04, 0.14, 0.04]} c="#cfc7b9" />
       </G>
 
-      {/* Mô hình máy bay & Chậu cây xanh trên kệ trên cùng */}
-      <B p={[0.72, 3.44, 0.02]} r={[0, 0.3, 0.1]} s={[0.32, 0.025, 0.18]} c="#e2e8f0" />
-      <Cyl p={[1.1, 3.44, 0]} rt={0.075} rb={0.06} h={0.14} c="#27272a" />
-      <Sph p={[1.1, 3.58, 0]} s={[0.16, 0.13, 0.16]} c="#3f7a38" />
+      {/* Mô hình & Chậu cây Olive trên kệ trên cùng */}
+      <B p={[0.72, 3.44, 0.02]} r={[0, 0.3, 0.1]} s={[0.32, 0.025, 0.18]} c="#dbd5ca" />
+      <Cyl p={[1.1, 3.44, 0]} rt={0.075} rb={0.06} h={0.14} c="#36332f" />
+      <Sph p={[1.1, 3.58, 0]} s={[0.16, 0.13, 0.16]} c="#4b5948" />
     </G>
   )
 }
@@ -727,7 +723,7 @@ function WaterDispenser() {
     }
   })
 
-  const streamColor = drinkType === 'tea' ? '#f59e0b' : drinkType === 'coffee' ? '#78350f' : '#38bdf8'
+  const streamColor = drinkType === 'tea' ? '#d4b483' : drinkType === 'coffee' ? '#6b4c35' : '#b8cbd1'
   const drinkLabel = drinkType === 'tea' ? '🌼 Trà hoa cúc' : drinkType === 'coffee' ? '☕ Cà phê nóng' : '💧 Nước tinh khiết'
 
   return (
@@ -736,78 +732,32 @@ function WaterDispenser() {
       onClick={() => useStore.getState().startActivity('drink', true)}
     >
       <G p={[5.35, 0, -5.45]}>
-        <BB s={[0.44, 1.06, 0.42]} c="#f4f2ed" rough={0.35} />
-        <B p={[0, 0.76, 0.215]} s={[0.26, 0.2, 0.02]} c="#27272a" />
+        <BB s={[0.44, 1.06, 0.42]} c="#efebe3" rough={0.35} />
+        <B p={[0, 0.76, 0.215]} s={[0.26, 0.2, 0.02]} c="#2d2b29" />
         <group ref={streamRef} position={[0, 0.72, 0.21]} visible={false}>
-          <Cyl p={[0, 0, 0]} rt={0.012} h={0.14} c={streamColor} emissive={streamColor} ei={1.8} />
-          <Cyl p={[0, -0.05, 0]} rt={0.036} h={0.075} c="#ffffff" />
-          <Cyl p={[0, -0.03, 0]} rt={0.032} h={0.03} c={streamColor} emissive={streamColor} ei={0.5} />
+          <Cyl p={[0, 0, 0]} rt={0.012} h={0.14} c={streamColor} emissive={streamColor} ei={1.2} />
+          <Cyl p={[0, -0.05, 0]} rt={0.036} h={0.075} c="#f6f3ed" />
+          <Cyl p={[0, -0.03, 0]} rt={0.032} h={0.03} c={streamColor} emissive={streamColor} ei={0.4} />
         </group>
-        <Cyl p={[0, 1.28, 0]} rt={0.16} h={0.42} c="#60a5fa" rough={0.12} opacity={0.72} />
+        <Cyl p={[0, 1.28, 0]} rt={0.16} h={0.42} c="#c4d0d4" rough={0.14} opacity={0.7} />
       </G>
     </Interact>
   )
 }
 
-/* ---------- Tủ lạnh hiện đại (Dán giấy nhắn yêu thương của Khoa & Bạn Gái) ---------- */
-function Refrigerator() {
-  const stickyNotes = useStore((s) => s.stickyNotes)
-
-  return (
-    <Interact
-      hint="🧊 Tủ lạnh (Xem & Dán giấy nhắn tình yêu)"
-      onClick={() => useStore.getState().toggleRefrigerator()}
-    >
-      <G p={[4.45, 0, -5.5]}>
-        {/* Thân tủ lạnh kim loại xám titan cao cấp bo cạnh */}
-        <RBB p={[0, 0.85, 0]} s={[0.68, 1.7, 0.65]} c="#334155" metal={0.65} rough={0.3} radius={0.03} shadow />
-        {/* Rãnh ngăn ngăn đá trên và ngăn mát dưới */}
-        <B p={[0, 1.15, 0.33]} s={[0.64, 0.015, 0.02]} c="#0f172a" />
-        {/* Tay nắm cửa âm tường viền kim loại */}
-        <B p={[0.26, 0.95, 0.335]} s={[0.02, 0.35, 0.015]} c="#94a3b8" metal={0.9} />
-        <B p={[0.26, 1.35, 0.335]} s={[0.02, 0.25, 0.015]} c="#94a3b8" metal={0.9} />
-
-        {/* Các mẩu giấy note dán trên cánh tủ lạnh */}
-        {stickyNotes.slice(0, 3).map((note, idx) => {
-          const offsets: [number, number, number][] = [
-            [-0.14, 0.85, 0.332],
-            [0.1, 0.72, 0.332],
-            [-0.05, 0.52, 0.332],
-          ]
-          const rots = [-0.08, 0.06, -0.04]
-          const [nx, ny, nz] = offsets[idx]
-          return (
-            <group key={note.id} position={[nx, ny, nz]} rotation={[0, 0, rots[idx]]}>
-              <mesh>
-                <planeGeometry args={[0.11, 0.11]} />
-                <meshStandardMaterial color={note.color || '#fef08a'} roughness={0.7} />
-              </mesh>
-              {/* Nam châm tròn gắn giữ giấy */}
-              <mesh position={[0, 0.042, 0.003]}>
-                <circleGeometry args={[0.012, 16]} />
-                <meshStandardMaterial color="#ef4444" roughness={0.3} metalness={0.5} />
-              </mesh>
-            </group>
-          )
-        })}
-      </G>
-    </Interact>
-  )
-}
-
-/* ---------- Tủ thấp bên phải bàn PC + Chậu cây + Đèn bàn ánh vàng ---------- */
+/* ---------- Tủ thấp bên phải bàn PC + Chậu cây + Đèn bàn ánh Champagne ---------- */
 function LowCabinet() {
   const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
   return (
     <G p={[6.95, 0, -5.5]}>
       <BB s={[2.05, 0.58, 0.54]} c={DARK} />
-      <BB p={[0, 0.58, 0]} s={[2.08, 0.05, 0.56]} c="#eae4dc" />
-      {/* Chậu cây xanh */}
+      <BB p={[0, 0.58, 0]} s={[2.08, 0.05, 0.56]} c="#e4ded4" />
+      {/* Chậu cây xanh Olive */}
       <G p={[-0.38, 0.63, 0]}>
-        <Cyl p={[0, 0.13, 0]} rt={0.12} rb={0.095} h={0.26} c="#e5dfd5" />
-        <Sph p={[0, 0.42, 0]} s={[0.24, 0.2, 0.24]} c="#3f7a38" />
-        <Sph p={[0.12, 0.36, 0.05]} s={[0.16, 0.14, 0.16]} c="#4d8f44" />
-        <Sph p={[-0.12, 0.38, -0.04]} s={[0.16, 0.14, 0.16]} c="#35692f" />
+        <Cyl p={[0, 0.13, 0]} rt={0.12} rb={0.095} h={0.26} c="#e2dcd1" />
+        <Sph p={[0, 0.42, 0]} s={[0.24, 0.2, 0.24]} c="#53614e" />
+        <Sph p={[0.12, 0.36, 0.05]} s={[0.16, 0.14, 0.16]} c="#616f5a" />
+        <Sph p={[-0.12, 0.38, -0.04]} s={[0.16, 0.14, 0.16]} c="#445141" />
       </G>
       {/* Đèn bàn ấm áp bên phải tủ thấp: Click trực tiếp để bật/tắt riêng biệt */}
       <Interact
@@ -815,22 +765,22 @@ function LowCabinet() {
         onClick={() => useStore.getState().toggleFloor1DeskLamp()}
       >
         <G p={[0.55, 0.63, 0]}>
-          <Cyl p={[0, 0.02, 0]} rt={0.1} h={0.03} c="#27272a" />
-          <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#3f3f46" metal={0.85} rough={0.18} />
+          <Cyl p={[0, 0.02, 0]} rt={0.1} h={0.03} c="#2c2a27" />
+          <Cyl p={[0, 0.24, 0]} rt={0.018} h={0.42} c="#45423e" metal={0.8} rough={0.2} />
           <Cyl
             p={[0, 0.48, 0]}
             rt={0.18}
             rb={0.22}
             h={0.28}
-            c={floor1DeskLampOn ? '#fff3d6' : '#dfd8cc'}
-            emissive={floor1DeskLampOn ? '#ffbe55' : '#000000'}
-            ei={floor1DeskLampOn ? 2.5 : 0}
+            c={floor1DeskLampOn ? '#f6e9d4' : '#dfd8cc'}
+            emissive={floor1DeskLampOn ? '#ebd2ab' : '#000000'}
+            ei={floor1DeskLampOn ? 1.85 : 0}
             seg={24}
           />
           {floor1DeskLampOn && (
             <mesh position={[0, 0.48, 0]}>
               <sphereGeometry args={[0.26, 16, 12]} />
-              <meshBasicMaterial color="#ffbe55" transparent opacity={0.25} depthWrite={false} />
+              <meshBasicMaterial color="#ebd2ab" transparent opacity={0.18} depthWrite={false} />
             </mesh>
           )}
         </G>
@@ -882,22 +832,22 @@ function PanoramicWindow() {
           />
         </mesh>
 
-        {/* Khung cửa sổ trắng chia ô hiện đại */}
-        <B p={[0, 3.82, 0.04]} s={[5.4, 0.09, 0.09]} c="#f4f1ea" />
-        <B p={[0, 0.68, 0.04]} s={[5.4, 0.09, 0.14]} c="#f4f1ea" />
+        {/* Khung cửa sổ kem-đá chia ô hiện đại */}
+        <B p={[0, 3.82, 0.04]} s={[5.4, 0.09, 0.09]} c="#efebe3" />
+        <B p={[0, 0.68, 0.04]} s={[5.4, 0.09, 0.14]} c="#efebe3" />
         {[-2.65, -0.88, 0.88, 2.65].map((wx, i) => (
-          <B key={i} p={[wx, 2.25, 0.04]} s={[0.07, 3.18, 0.08]} c="#f4f1ea" />
+          <B key={i} p={[wx, 2.25, 0.04]} s={[0.07, 3.18, 0.08]} c="#efebe3" />
         ))}
-        <B p={[0, 2.55, 0.04]} s={[5.3, 0.06, 0.07]} c="#f4f1ea" />
+        <B p={[0, 2.55, 0.04]} s={[5.3, 0.06, 0.07]} c="#efebe3" />
 
-        {/* Lớp rèm voan trắng mỏng xuyên sáng hai bên */}
-        <BB p={[-1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#ffffff" opacity={0.52} rough={0.9} shadow={false} />
-        <BB p={[1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#ffffff" opacity={0.52} rough={0.9} shadow={false} />
+        {/* Lớp rèm voan trắng ngà mỏng xuyên sáng hai bên */}
+        <BB p={[-1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#f8f6f2" opacity={0.52} rough={0.9} shadow={false} />
+        <BB p={[1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#f8f6f2" opacity={0.52} rough={0.9} shadow={false} />
 
         {/* Thanh treo rèm chạy suốt chiều dài cửa sổ */}
-        <Cyl p={[0, 3.96, 0.18]} r={[0, 0, Math.PI / 2]} rt={0.025} h={5.8} c="#27201c" metal={0.5} />
+        <Cyl p={[0, 3.96, 0.18]} r={[0, 0, Math.PI / 2]} rt={0.025} h={5.8} c="#2c2926" metal={0.5} />
 
-        {/* Rèm vải kem ấm áp xếp ly cao kịch trần chạm sàn */}
+        {/* Rèm vải Linen Greige xếp ly cao kịch trần chạm sàn */}
         <group ref={leftRef} position={[-2.35, 0, 0.2]}>
           {[-0.36, -0.22, -0.08, 0.06, 0.2, 0.34].map((dx, i) => (
             <Cyl
@@ -906,7 +856,7 @@ function PanoramicWindow() {
               rt={0.085}
               rb={0.095}
               h={3.9}
-              c={i % 2 ? '#b8a38c' : '#c7b29b'}
+              c={i % 2 ? '#cec5b8' : '#dbd4c9'}
               seg={12}
               rough={0.95}
             />
@@ -920,7 +870,7 @@ function PanoramicWindow() {
               rt={0.085}
               rb={0.095}
               h={3.9}
-              c={i % 2 ? '#b8a38c' : '#c7b29b'}
+              c={i % 2 ? '#cec5b8' : '#dbd4c9'}
               seg={12}
               rough={0.95}
             />
@@ -940,19 +890,19 @@ function WindowPlantBench() {
       <BB p={[0, 0, 0.76]} s={[0.48, 0.38, 0.05]} c={WALNUT} />
       <BB p={[0, 0.08, 0]} s={[0.44, 0.04, 1.5]} c={WALNUT} />
 
-      {/* 3 Chậu cây xanh mát đón nắng */}
+      {/* 3 Chậu cây xanh Olive đón nắng */}
       {[-0.52, 0, 0.52].map((pz, i) => (
         <G key={i} p={[0, 0.43, pz]}>
-          <Cyl p={[0, 0.1, 0]} rt={0.095} rb={0.075} h={0.2} c={i === 1 ? '#d6cfc4' : '#f5f2ec'} />
-          <Sph p={[0, 0.3, 0]} s={[0.16, 0.14, 0.16]} c={i % 2 ? '#4d8f44' : '#3f7a38'} />
-          <Sph p={[0.06, 0.24, 0.05]} s={[0.11, 0.1, 0.11]} c="#65a30d" />
+          <Cyl p={[0, 0.1, 0]} rt={0.095} rb={0.075} h={0.2} c={i === 1 ? '#d6cfc4' : '#f2ede4'} />
+          <Sph p={[0, 0.3, 0]} s={[0.16, 0.14, 0.16]} c={i % 2 ? '#53614e' : '#4b5948'} />
+          <Sph p={[0.06, 0.24, 0.05]} s={[0.11, 0.1, 0.11]} c="#616f5a" />
         </G>
       ))}
     </G>
   )
 }
 
-/* ---------- Đèn cây đứng cao tỏa sáng ấm áp ở góc phải phía trước ---------- */
+/* ---------- Đèn cây đứng cao tỏa sáng champagne ở góc phải phía trước ---------- */
 function FloorLamp() {
   const lampOn = useStore((s) => s.lampOn)
   return (
@@ -961,16 +911,16 @@ function FloorLamp() {
       onClick={() => useStore.getState().toggleLamp()}
     >
       <G p={[8.75, 0, 3.45]}>
-        <Cyl p={[0, 0.025, 0]} rt={0.26} h={0.05} c="#1c1917" metal={0.5} />
-        <Cyl p={[0, 1.05, 0]} rt={0.022} h={2.05} c="#1c1917" metal={0.5} />
+        <Cyl p={[0, 0.025, 0]} rt={0.26} h={0.05} c="#262421" metal={0.5} />
+        <Cyl p={[0, 1.05, 0]} rt={0.022} h={2.05} c="#262421" metal={0.5} />
         <Cyl
           p={[0, 2.12, 0]}
           rt={0.32}
           rb={0.38}
           h={0.48}
-          c={lampOn ? '#fff4d9' : '#d6cfc2'}
-          emissive={lampOn ? '#ffbe55' : '#000000'}
-          ei={lampOn ? 1.4 : 0}
+          c={lampOn ? '#f6e9d4' : '#dcd5c9'}
+          emissive={lampOn ? '#ebd2ab' : '#000000'}
+          ei={lampOn ? 1.2 : 0}
           seg={32}
         />
       </G>
@@ -1017,64 +967,64 @@ function DogCorner() {
           [-0.4, 0.4],
           [0.4, 0.4],
         ].map(([px, pz], i) => (
-          <Cyl key={i} p={[px, 0.42, pz]} rt={0.055} h={0.68} c="#d6c29f" rough={0.95} />
+          <Cyl key={i} p={[px, 0.42, pz]} rt={0.055} h={0.68} c="#cec5b8" rough={0.95} />
         ))}
         {/* Mặt sàn tầng 2 + Cầu thang nhỏ */}
         <BB p={[0, 0.76, 0]} s={[1.08, 0.07, 1.08]} c={OAK} rough={0.8} />
         <BB p={[0.35, 0.38, 0.65]} r={[0.65, 0, 0]} s={[0.28, 0.05, 0.85]} c={OAK} />
         {/* Trụ tầng 2 + Hộp nhà vuông tầng 3 */}
-        <Cyl p={[-0.36, 1.12, -0.36]} rt={0.055} h={0.65} c="#d6c29f" rough={0.95} />
-        <Cyl p={[0.36, 1.12, -0.36]} rt={0.055} h={0.65} c="#d6c29f" rough={0.95} />
-        <Cyl p={[-0.36, 1.12, 0.36]} rt={0.055} h={0.65} c="#d6c29f" rough={0.95} />
-        <BB p={[0.08, 1.38, 0.05]} s={[0.88, 0.62, 0.88]} c="#dfd3be" rough={0.85} />
-        <Cyl p={[0.53, 1.68, 0.05]} r={[0, 0, Math.PI / 2]} rt={0.18} h={0.02} c="#3a2e26" />
-        <Cyl p={[0.08, 1.68, 0.5]} r={[Math.PI / 2, 0, 0]} rt={0.18} h={0.02} c="#3a2e26" />
+        <Cyl p={[-0.36, 1.12, -0.36]} rt={0.055} h={0.65} c="#cec5b8" rough={0.95} />
+        <Cyl p={[0.36, 1.12, -0.36]} rt={0.055} h={0.65} c="#cec5b8" rough={0.95} />
+        <Cyl p={[-0.36, 1.12, 0.36]} rt={0.055} h={0.65} c="#cec5b8" rough={0.95} />
+        <BB p={[0.08, 1.38, 0.05]} s={[0.88, 0.62, 0.88]} c="#dcd5c9" rough={0.85} />
+        <Cyl p={[0.53, 1.68, 0.05]} r={[0, 0, Math.PI / 2]} rt={0.18} h={0.02} c="#36322d" />
+        <Cyl p={[0.08, 1.68, 0.5]} r={[Math.PI / 2, 0, 0]} rt={0.18} h={0.02} c="#36322d" />
         {/* 2 Đài quan sát tròn êm ái trên đỉnh tháp */}
-        <Cyl p={[-0.22, 2.15, -0.18]} rt={0.055} h={0.42} c="#d6c29f" />
-        <Cyl p={[-0.22, 2.38, -0.18]} rt={0.34} rb={0.32} h={0.12} c="#e8decb" />
-        <Cyl p={[0.24, 2.28, -0.18]} rt={0.055} h={0.65} c="#d6c29f" />
-        <Cyl p={[0.24, 2.62, -0.18]} rt={0.34} rb={0.32} h={0.12} c="#e8decb" />
+        <Cyl p={[-0.22, 2.15, -0.18]} rt={0.055} h={0.42} c="#cec5b8" />
+        <Cyl p={[-0.22, 2.38, -0.18]} rt={0.34} rb={0.32} h={0.12} c="#eae5dc" />
+        <Cyl p={[0.24, 2.28, -0.18]} rt={0.055} h={0.65} c="#cec5b8" />
+        <Cyl p={[0.24, 2.62, -0.18]} rt={0.34} rb={0.32} h={0.12} c="#eae5dc" />
       </G>
 
       {/* 2. Đệm nằm chần bông chữ nhật & Máy ăn phụ phía trước tháp */}
       <G p={[-7.35, 0, 3.65]}>
-        <BB p={[0, 0, 0]} s={[0.92, 0.1, 0.68]} c="#c8b496" rough={0.9} />
-        <BB p={[0, 0.08, 0]} s={[0.8, 0.06, 0.56]} c="#efe8dc" rough={0.95} />
+        <BB p={[0, 0, 0]} s={[0.92, 0.1, 0.68]} c="#c4bcb0" rough={0.9} />
+        <BB p={[0, 0.08, 0]} s={[0.8, 0.06, 0.56]} c="#efebe3" rough={0.95} />
       </G>
       <G p={[-8.75, 0, 3.85]}>
-        <Cyl p={[0, 0.22, -0.12]} rt={0.14} h={0.44} c="#f5f3ef" />
-        <BB p={[0, 0, 0.06]} s={[0.36, 0.1, 0.48]} c="#e7e4de" />
-        <Cyl p={[0, 0.1, 0.16]} rt={0.11} h={0.03} c="#92400e" />
+        <Cyl p={[0, 0.22, -0.12]} rt={0.14} h={0.44} c="#f2efe9" />
+        <BB p={[0, 0, 0.06]} s={[0.36, 0.1, 0.48]} c="#e4dfd7" />
+        <Cyl p={[0, 0.1, 0.16]} rt={0.11} h={0.03} c="#7a6450" />
       </G>
 
       {/* 3. Chuồng gỗ thú cưng rỗng bên trong có nệm êm & đèn ấm (Nơi Mochi & Bơ đi vào ngủ ngon lành) */}
       <G p={[-7.6, 0, -0.3]}>
         {/* Vách sau & Vách trái */}
-        <BB p={[0, 0, -0.71]} s={[1.95, 1.15, 0.08]} c="#d9c3a2" rough={0.85} />
-        <BB p={[-0.935, 0, 0]} s={[0.08, 1.15, 1.5]} c="#d9c3a2" rough={0.85} />
+        <BB p={[0, 0, -0.71]} s={[1.95, 1.15, 0.08]} c="#c8bfb2" rough={0.85} />
+        <BB p={[-0.935, 0, 0]} s={[0.08, 1.15, 1.5]} c="#c8bfb2" rough={0.85} />
         {/* Vách trước có ô cửa lớn mở thông thoáng */}
-        <BB p={[-0.72, 0, 0.71]} s={[0.5, 1.15, 0.08]} c="#d9c3a2" rough={0.85} />
-        <BB p={[0.72, 0, 0.71]} s={[0.5, 1.15, 0.08]} c="#d9c3a2" rough={0.85} />
-        <BB p={[0, 0.78, 0.71]} s={[1.95, 0.37, 0.08]} c="#d9c3a2" rough={0.85} />
+        <BB p={[-0.72, 0, 0.71]} s={[0.5, 1.15, 0.08]} c="#c8bfb2" rough={0.85} />
+        <BB p={[0.72, 0, 0.71]} s={[0.5, 1.15, 0.08]} c="#c8bfb2" rough={0.85} />
+        <BB p={[0, 0.78, 0.71]} s={[1.95, 0.37, 0.08]} c="#c8bfb2" rough={0.85} />
         {/* Vách phải có cửa sổ/cửa phụ mở thông thoáng */}
-        <BB p={[0.935, 0, -0.48]} s={[0.08, 1.15, 0.54]} c="#d9c3a2" rough={0.85} />
-        <BB p={[0.935, 0, 0.48]} s={[0.08, 1.15, 0.54]} c="#d9c3a2" rough={0.85} />
-        <BB p={[0.935, 0.78, 0]} s={[0.08, 0.37, 1.5]} c="#d9c3a2" rough={0.85} />
-        {/* Mái gỗ & Đệm xanh lá êm ái trên nóc chuồng */}
-        <BB p={[0, 1.15, 0]} s={[2.02, 0.08, 1.56]} c="#c5ab86" />
-        <BB p={[0.02, 1.23, 0.02]} s={[1.64, 0.1, 1.24]} c="#8fa876" rough={0.95} />
-        {/* Nệm ấm bên trong chuồng gỗ + Ánh đèn vàng dịu trong chuồng */}
-        <BB p={[0, 0.02, 0]} s={[1.72, 0.06, 1.28]} c="#efe6d8" rough={0.95} />
-        <B p={[0, 1.1, 0]} s={[0.8, 0.02, 0.5]} c="#fff3d6" emissive="#ffbe5c" ei={1.4} shadow={false} />
+        <BB p={[0.935, 0, -0.48]} s={[0.08, 1.15, 0.54]} c="#c8bfb2" rough={0.85} />
+        <BB p={[0.935, 0, 0.48]} s={[0.08, 1.15, 0.54]} c="#c8bfb2" rough={0.85} />
+        <BB p={[0.935, 0.78, 0]} s={[0.08, 0.37, 1.5]} c="#c8bfb2" rough={0.85} />
+        {/* Mái gỗ & Đệm olive trầm trên nóc chuồng */}
+        <BB p={[0, 1.15, 0]} s={[2.02, 0.08, 1.56]} c="#b3a99b" />
+        <BB p={[0.02, 1.23, 0.02]} s={[1.64, 0.1, 1.24]} c="#73806e" rough={0.95} />
+        {/* Nệm ấm bên trong chuồng gỗ + Ánh đèn champagne dịu trong chuồng */}
+        <BB p={[0, 0.02, 0]} s={[1.72, 0.06, 1.28]} c="#ece6db" rough={0.95} />
+        <B p={[0, 1.1, 0]} s={[0.8, 0.02, 0.5]} c="#f6e9d4" emissive="#ebd2ab" ei={1.1} shadow={false} />
       </G>
 
       {/* 4. Nệm tròn Donut êm ái trên thảm */}
       <G p={[-6.0, 0, 0.85]}>
         <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.46, 0.13, 16, 40]} />
-          <meshStandardMaterial color="#ede6dc" roughness={0.95} />
+          <meshStandardMaterial color="#ece7de" roughness={0.95} />
         </mesh>
-        <Cyl p={[0, 0.05, 0]} rt={0.46} h={0.08} c="#dfd6c9" seg={32} />
+        <Cyl p={[0, 0.05, 0]} rt={0.46} h={0.08} c="#ddd6ca" seg={32} />
       </G>
 
       {/* 5. Máy cho ăn tự động & Bát ăn + Hoạt ảnh hạt thức ăn rơi xuống bát */}
@@ -1083,20 +1033,20 @@ function DogCorner() {
         onClick={() => useStore.getState().startActivity('feed', true)}
       >
         <G p={[-7.7, 0, 1.25]}>
-          <BB s={[0.56, 0.76, 0.48]} c="#f5f3ef" rough={0.35} />
-          <BB p={[0, 0.76, 0]} s={[0.58, 0.1, 0.5]} c="#262626" />
+          <BB s={[0.56, 0.76, 0.48]} c="#f2efe9" rough={0.35} />
+          <BB p={[0, 0.76, 0]} s={[0.58, 0.1, 0.5]} c="#282624" />
           <BB p={[0.38, 0, 0.05]} s={[0.28, 0.12, 0.28]} c="#dcd7cf" />
         </G>
-        <Cyl p={[-6.95, 0.05, 1.45]} rt={0.18} rb={0.14} h={0.1} c="#c8a27a" />
+        <Cyl p={[-6.95, 0.05, 1.45]} rt={0.18} rb={0.14} h={0.1} c="#b8ab9a" />
         <mesh ref={foodMoundRef} position={[-6.95, 0.11, 1.45]} visible={false}>
           <sphereGeometry args={[1, 16, 12]} />
-          <meshStandardMaterial color="#854d0e" roughness={0.9} />
+          <meshStandardMaterial color="#6e5742" roughness={0.9} />
         </mesh>
         <group ref={pelletsRef} visible={false}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <mesh key={i} position={[-7.1, 0.4, 1.44 + (i % 2) * 0.04]}>
               <sphereGeometry args={[0.028, 8, 8]} />
-              <meshStandardMaterial color="#a16207" />
+              <meshStandardMaterial color="#846b53" />
             </mesh>
           ))}
         </group>
@@ -1117,30 +1067,30 @@ function SmartTvUnit() {
   return (
     <G p={[4.15, 0, 0.35]}>
       <Interact hint="📺 Smart TV" onClick={handleTvClick}>
-        {/* Kệ gỗ óc chó thấp */}
+        {/* Kệ gỗ taupe thấp */}
         <BB p={[0, 0, 0]} s={[2.85, 0.44, 0.56]} c={WALNUT} rough={0.5} />
         <BB p={[0, 0.44, 0]} s={[2.89, 0.04, 0.58]} c={WALNUT_LIGHT} rough={0.42} />
         {[-0.92, 0, 0.92].map((x, i) => (
-          <B key={i} p={[x, 0.22, 0.285]} s={[0.86, 0.32, 0.02]} c="#2d1e16" />
+          <B key={i} p={[x, 0.22, 0.285]} s={[0.86, 0.32, 0.02]} c="#35312c" />
         ))}
-        {/* Loa Soundbar & Máy PS5 trắng đặt bên phải kệ */}
-        <BB p={[0, 0.48, 0.14]} s={[1.05, 0.065, 0.11]} c="#18181b" metal={0.5} rough={0.3} />
-        <BB p={[1.18, 0.48, 0.02]} s={[0.12, 0.42, 0.24]} c="#f8fafc" />
-        <BB p={[1.18, 0.48, 0.02]} s={[0.07, 0.41, 0.25]} c="#111113" />
-        <BB p={[-1.12, 0.48, 0.04]} s={[0.2, 0.24, 0.2]} c="#18181b" />
-        <BB p={[0, 0.48, -0.04]} s={[0.68, 0.03, 0.26]} c="#18181b" metal={0.7} />
-        <BB p={[0, 0.51, -0.08]} s={[0.12, 0.24, 0.08]} c="#222" metal={0.6} />
+        {/* Loa Soundbar & Thiết bị console cạnh kệ */}
+        <BB p={[0, 0.48, 0.14]} s={[1.05, 0.065, 0.11]} c="#22201e" metal={0.5} rough={0.3} />
+        <BB p={[1.18, 0.48, 0.02]} s={[0.12, 0.42, 0.24]} c="#f2efe9" />
+        <BB p={[1.18, 0.48, 0.02]} s={[0.07, 0.41, 0.25]} c="#1d1b19" />
+        <BB p={[-1.12, 0.48, 0.04]} s={[0.2, 0.24, 0.2]} c="#22201e" />
+        <BB p={[0, 0.48, -0.04]} s={[0.68, 0.03, 0.26]} c="#22201e" metal={0.7} />
+        <BB p={[0, 0.51, -0.08]} s={[0.12, 0.24, 0.08]} c="#2e2c29" metal={0.6} />
 
         {/* Khung màn hình Smart TV 75 inch */}
-        <B p={[0, 1.32, -0.04]} s={[2.16, 1.24, 0.045]} c="#0f1014" metal={0.5} rough={0.25} />
+        <B p={[0, 1.32, -0.04]} s={[2.16, 1.24, 0.045]} c="#181716" metal={0.5} rough={0.25} />
         {tvOn && (
           <B
             p={[0, 1.32, -0.075]}
             s={[2.22, 1.28, 0.01]}
-            c="#a855f7"
-            emissive="#a855f7"
-            ei={1.25}
-            opacity={0.45}
+            c="#f2e6d0"
+            emissive="#dfd1ba"
+            ei={0.85}
+            opacity={0.35}
             shadow={false}
           />
         )}
@@ -1183,17 +1133,17 @@ function SmartTvScreen({
     const g = liveCtx
 
     if (tvChannel === 0) {
-      // Kênh 0: Bầu trời mây tím hoàng hôn mộng mơ giống hệt ảnh mẫu
+      // Kênh 0: Hoàng hôn trung tính Lofi
       const grd = g.createLinearGradient(0, 0, 0, h)
-      grd.addColorStop(0, '#1e1b4b')
-      grd.addColorStop(0.5, '#4c1d95')
-      grd.addColorStop(0.85, '#7e22ce')
-      grd.addColorStop(1, '#f59e0b')
+      grd.addColorStop(0, '#222428')
+      grd.addColorStop(0.5, '#3d3f44')
+      grd.addColorStop(0.85, '#686259')
+      grd.addColorStop(1, '#a8967e')
       g.fillStyle = grd
       g.fillRect(0, 0, w, h)
 
-      // Những vì sao lấp lánh
-      g.fillStyle = 'rgba(255,255,255,0.85)'
+      // Những vì sao dịu nhẹ
+      g.fillStyle = 'rgba(246,242,235,0.8)'
       for (let s = 0; s < 22; s++) {
         const sx = ((s * 73) % (w - 40)) + 20
         const sy = ((s * 41) % (h * 0.55)) + 12
@@ -1203,12 +1153,12 @@ function SmartTvScreen({
         g.fill()
       }
 
-      // Mặt trời vàng rực tỏa hào quang ở trung tâm
+      // Vầng trăng / Mặt trời champagne dịu ở trung tâm
       const sunGlow = g.createRadialGradient(w / 2, h * 0.56, 12, w / 2, h * 0.56, 115)
-      sunGlow.addColorStop(0, '#fef08a')
-      sunGlow.addColorStop(0.35, '#fbbf24')
-      sunGlow.addColorStop(0.7, 'rgba(244,114,182,0.45)')
-      sunGlow.addColorStop(1, 'rgba(126,34,206,0)')
+      sunGlow.addColorStop(0, '#f7f1e5')
+      sunGlow.addColorStop(0.35, '#dfd0b8')
+      sunGlow.addColorStop(0.7, 'rgba(176,162,142,0.35)')
+      sunGlow.addColorStop(1, 'rgba(56,54,50,0)')
       g.fillStyle = sunGlow
       g.beginPath()
       g.arc(w / 2, h * 0.56, 115, 0, Math.PI * 2)
@@ -1222,7 +1172,7 @@ function SmartTvScreen({
         [w * 0.66, h * 0.7, 56],
         [w * 0.82, h * 0.74, 46],
       ]
-      g.fillStyle = '#f3e8ff'
+      g.fillStyle = '#ece6dc'
       cloudPositions.forEach(([cx, cy, cr], idx) => {
         const dx = Math.sin(t * 0.8 + idx) * 8
         g.beginPath()
@@ -1230,26 +1180,26 @@ function SmartTvScreen({
         g.fill()
       })
 
-      g.fillStyle = '#2e1065'
+      g.fillStyle = '#252422'
       g.fillRect(0, h * 0.78, w, h * 0.22)
       for (let i = 0; i < 32; i++) {
         const barH = 6 + Math.abs(Math.sin(t * 4 + i * 0.45)) * 26
-        g.fillStyle = i % 2 ? '#fde047' : '#f472b6'
+        g.fillStyle = i % 2 ? '#e5dbc9' : '#9c9284'
         g.fillRect(36 + i * 14, h * 0.78 - barH, 8, barH)
       }
       g.fillStyle = 'rgba(255,255,255,0.92)'
       g.font = '600 13px sans-serif'
       g.fillText('✦ CH1 · DREAMY SUNSET LOFI', 22, 28)
     } else if (tvChannel === 1) {
-      // Kênh 1: Thủy cung 3D
+      // Kênh 1: Thủy cung Slate dịu mắt
       const grd = g.createLinearGradient(0, 0, 0, h)
-      grd.addColorStop(0, '#0284c7')
-      grd.addColorStop(0.6, '#0369a1')
-      grd.addColorStop(1, '#0c4a6e')
+      grd.addColorStop(0, '#36454b')
+      grd.addColorStop(0.6, '#27343a')
+      grd.addColorStop(1, '#1a2328')
       g.fillStyle = grd
       g.fillRect(0, 0, w, h)
 
-      g.strokeStyle = 'rgba(224,242,254,0.65)'
+      g.strokeStyle = 'rgba(224,230,234,0.55)'
       g.lineWidth = 2
       for (let b = 0; b < 14; b++) {
         const bx = 35 + ((b * 37) % (w - 70)) + Math.sin(t * 2 + b) * 8
@@ -1259,7 +1209,7 @@ function SmartTvScreen({
         g.stroke()
       }
 
-      const fishColors = ['#fb923c', '#facc15', '#f472b6', '#4ade80', '#38bdf8']
+      const fishColors = ['#c9bba7', '#e8e2d7', '#9aa6aa', '#849488', '#b8a58f']
       for (let f = 0; f < 7; f++) {
         const dir = f % 2 === 0 ? 1 : -1
         const speed = 42 + f * 8
@@ -1281,26 +1231,26 @@ function SmartTvScreen({
       g.font = '600 13px sans-serif'
       g.fillText('✦ CH2 · OCEAN AQUARIUM 4K', 22, 28)
     } else if (tvChannel === 2) {
-      // Kênh 2: Vũ trụ & Sao băng
-      g.fillStyle = '#050814'
+      // Kênh 2: Vũ trụ & Sao băng tối giản
+      g.fillStyle = '#141518'
       g.fillRect(0, 0, w, h)
       for (let s = 0; s < 35; s++) {
         const sx = (s * 97 + Math.floor(t * 12)) % w
         const sy = (s * 53) % h
-        g.fillStyle = s % 3 === 0 ? '#93c5fd' : '#ffffff'
+        g.fillStyle = s % 3 === 0 ? '#cfc8bc' : '#f4f1ea'
         g.fillRect(sx, sy, 2, 2)
       }
       const px = w / 2 + Math.sin(t * 0.7) * 35
       const py = h / 2
       const pGrad = g.createRadialGradient(px - 15, py - 15, 8, px, py, 52)
-      pGrad.addColorStop(0, '#c084fc')
-      pGrad.addColorStop(1, '#3b0764')
+      pGrad.addColorStop(0, '#cfc4b4')
+      pGrad.addColorStop(1, '#343230')
       g.fillStyle = pGrad
       g.beginPath()
       g.arc(px, py, 50, 0, Math.PI * 2)
       g.fill()
 
-      g.strokeStyle = 'rgba(244,114,182,0.8)'
+      g.strokeStyle = 'rgba(220,208,188,0.7)'
       g.lineWidth = 6
       g.beginPath()
       g.ellipse(px, py, 92, 20, -0.25, 0, Math.PI * 2)
@@ -1310,10 +1260,10 @@ function SmartTvScreen({
       g.font = '600 13px sans-serif'
       g.fillText('✦ CH3 · COSMOS & NEBULA', 22, 28)
     } else {
-      // Kênh 3: Trận cầu đỉnh cao
-      g.fillStyle = '#15803d'
+      // Kênh 3: Trận cầu đỉnh cao (tông xám-olive dịu hài hòa)
+      g.fillStyle = '#3f5041'
       g.fillRect(0, 0, w, h)
-      g.strokeStyle = 'rgba(255,255,255,0.75)'
+      g.strokeStyle = 'rgba(244,240,234,0.68)'
       g.lineWidth = 3
       g.strokeRect(26, 24, w - 52, h - 48)
       g.beginPath()
@@ -1326,7 +1276,7 @@ function SmartTvScreen({
 
       const bx = w / 2 + Math.sin(t * 2.6) * 145
       const by = h / 2 + Math.cos(t * 3.4) * 75
-      g.fillStyle = '#ffffff'
+      g.fillStyle = '#f5f2ec'
       g.beginPath()
       g.arc(bx, by, 7, 0, Math.PI * 2)
       g.fill()
@@ -1335,14 +1285,14 @@ function SmartTvScreen({
         const teamRed = p < 3
         const tx = (teamRed ? w * 0.3 : w * 0.7) + Math.sin(t * 2 + p * 1.4) * 65
         const ty = 65 + (p % 3) * 75 + Math.cos(t * 2.5 + p) * 20
-        g.fillStyle = teamRed ? '#ef4444' : '#38bdf8'
+        g.fillStyle = teamRed ? '#a8786d' : '#7b92a1'
         g.beginPath()
         g.arc(tx, ty, 9, 0, Math.PI * 2)
         g.fill()
       }
-      g.fillStyle = 'rgba(15,23,42,0.85)'
+      g.fillStyle = 'rgba(24,24,26,0.86)'
       g.fillRect(22, 14, 195, 24)
-      g.fillStyle = '#ffffff'
+      g.fillStyle = '#f6f3ee'
       g.font = '600 13px sans-serif'
       g.fillText('CH4 · LIVE: KHOA FC 3 - 1', 30, 30)
     }
@@ -1364,11 +1314,11 @@ function SmartTvScreen({
           map={liveTex}
           emissive="#ffffff"
           emissiveMap={liveTex}
-          emissiveIntensity={0.95}
+          emissiveIntensity={0.85}
           roughness={0.2}
         />
       ) : (
-        <meshStandardMaterial color="#07080a" roughness={0.2} />
+        <meshStandardMaterial color="#121315" roughness={0.22} />
       )}
     </mesh>
   )
@@ -1378,14 +1328,14 @@ function SmartTvScreen({
 function Ottoman() {
   return (
     <G p={[2.05, 0, 2.15]}>
-      <RBB s={[1.06, 0.36, 1.06]} c="#7d6c5d" rough={0.9} radius={0.04} shadow />
-      <RBB p={[0, 0.36, 0]} s={[1.02, 0.1, 1.02]} c="#948272" rough={0.9} radius={0.03} shadow={false} />
-      <BB p={[0, 0, 0]} s={[0.98, 0.04, 0.98]} c="#2b211b" />
+      <RBB s={[1.06, 0.36, 1.06]} c="#8a8177" rough={0.9} radius={0.04} shadow />
+      <RBB p={[0, 0.36, 0]} s={[1.02, 0.1, 1.02]} c="#a1978b" rough={0.9} radius={0.03} shadow={false} />
+      <BB p={[0, 0, 0]} s={[0.98, 0.04, 0.98]} c="#2d2925" />
     </G>
   )
 }
 
-/* ---------- Bàn trà gỗ Óc Chó (Bấm để đổi kênh TV) ---------- */
+/* ---------- Bàn trà gỗ Taupe (Bấm để đổi kênh TV) ---------- */
 function CoffeeTable() {
   return (
     <Interact hint="📺 Đổi kênh TV" onClick={() => useStore.getState().cycleTvChannel()}>
@@ -1393,21 +1343,21 @@ function CoffeeTable() {
         <RBB p={[0, 0.4, 0]} s={[1.65, 0.055, 0.92]} c={WALNUT_LIGHT} rough={0.42} metal={0.05} radius={0.03} shadow />
         <BB p={[0, 0.06, 0]} s={[1.55, 0.045, 0.84]} c={WALNUT} />
         {[-0.74, 0.74].map((x) => (
-          <BB key={x} p={[x, 0, 0]} s={[0.06, 0.4, 0.84]} c="#231c18" shadow />
+          <BB key={x} p={[x, 0, 0]} s={[0.06, 0.4, 0.84]} c="#2b2723" shadow />
         ))}
-        {/* Sách tạp chí mở, tách cà phê & lọ hoa trên bàn trà */}
-        <BB p={[-0.22, 0.455, 0.04]} r={[0, 0.18, 0]} s={[0.42, 0.025, 0.3]} c="#f5f2ec" shadow={false} />
+        {/* Sách tạp chí mở, tách cà phê & điều khiển TV trên bàn trà */}
+        <BB p={[-0.22, 0.455, 0.04]} r={[0, 0.18, 0]} s={[0.42, 0.025, 0.3]} c="#f2ede4" shadow={false} />
         <Cyl p={[0.32, 0.52, -0.08]} rt={0.05} rb={0.07} h={0.22} c="#d6cfc2" />
-        <BB p={[0.35, 0.455, 0.2]} r={[0, -0.25, 0]} s={[0.065, 0.02, 0.18]} c="#18181b" shadow={false} />
+        <BB p={[0.35, 0.455, 0.2]} r={[0, -0.25, 0]} s={[0.065, 0.02, 0.18]} c="#252321" shadow={false} />
       </G>
     </Interact>
   )
 }
 
-const LEATHER = '#3d2a20'
-const LEATHER_2 = '#4d362a'
+const LEATHER = '#463f39'
+const LEATHER_2 = '#595149'
 
-/* ---------- Bộ Sofa Da Nâu chữ L sang trọng ---------- */
+/* ---------- Bộ Sofa vải-da Taupe chữ L sang trọng ---------- */
 function Sofa() {
   return (
     <Interact
@@ -1422,7 +1372,7 @@ function Sofa() {
           <RBB p={[-0.06, 0.4, 0.68]} s={[0.96, 0.15, 1.32]} c={LEATHER_2} rough={0.52} radius={0.03} />
           <RBB p={[0.44, 0.4, 0]} s={[0.24, 0.52, 2.85]} c={LEATHER} rough={0.55} radius={0.03} shadow />
           <RBB p={[-0.04, 0.4, -1.32]} s={[1.06, 0.26, 0.2]} c={LEATHER} rough={0.55} radius={0.03} />
-          <RBB p={[0.22, 0.56, -0.75]} s={[0.14, 0.38, 0.48]} r={[0, 0, 0.2]} c="#2b1d16" rough={0.9} radius={0.03} />
+          <RBB p={[0.22, 0.56, -0.75]} s={[0.14, 0.38, 0.48]} r={[0, 0, 0.2]} c="#cfc6b9" rough={0.9} radius={0.03} />
         </G>
         {/* Nhánh ngang phía trước (Khoa ngồi xem TV tại đây) */}
         <G p={[4.45, 0, 3.65]}>
@@ -1431,7 +1381,7 @@ function Sofa() {
           <RBB p={[0.72, 0.4, -0.06]} s={[1.38, 0.15, 0.94]} c={LEATHER_2} rough={0.52} radius={0.03} />
           <RBB p={[0, 0.4, 0.42]} s={[2.95, 0.44, 0.24]} c={LEATHER} rough={0.55} radius={0.03} shadow />
           <RBB p={[-1.36, 0.4, -0.04]} s={[0.22, 0.26, 1.04]} c={LEATHER} rough={0.55} radius={0.03} />
-          <RBB p={[-0.85, 0.54, 0.2]} s={[0.48, 0.34, 0.14]} r={[0.2, 0, 0]} c="#2b1d16" rough={0.9} radius={0.03} />
+          <RBB p={[-0.85, 0.54, 0.2]} s={[0.48, 0.34, 0.14]} r={[0.2, 0, 0]} c="#dfd8cc" rough={0.9} radius={0.03} />
         </G>
       </group>
     </Interact>
@@ -1450,8 +1400,8 @@ export function Monstera({ p }: { p: V3 }) {
   }, [])
   return (
     <G p={p}>
-      <Cyl p={[0, 0.28, 0]} rt={0.3} rb={0.22} h={0.56} c="#231f1d" />
-      <Cyl p={[0, 0.54, 0]} rt={0.27} h={0.04} c="#3b2d22" />
+      <Cyl p={[0, 0.28, 0]} rt={0.3} rb={0.22} h={0.56} c="#2c2825" />
+      <Cyl p={[0, 0.54, 0]} rt={0.27} h={0.04} c="#453d34" />
       {leaves.map((l, i) => {
         const x = Math.cos(l.a) * l.len
         const z = Math.sin(l.a) * l.len
@@ -1462,7 +1412,7 @@ export function Monstera({ p }: { p: V3 }) {
               rotation={[Math.sin(l.a) * 0.5, 0, -Math.cos(l.a) * 0.5]}
             >
               <cylinderGeometry args={[0.012, 0.018, Math.hypot(l.len, l.h), 6]} />
-              <meshStandardMaterial color="#3f6b2b" />
+              <meshStandardMaterial color="#4b5948" />
             </mesh>
             <mesh
               position={[x, 0.55 + l.h, z]}
@@ -1470,7 +1420,7 @@ export function Monstera({ p }: { p: V3 }) {
               scale={[0.32, 0.025, 0.24]}
             >
               <sphereGeometry args={[1, 16, 10]} />
-              <meshStandardMaterial color={i % 2 ? '#367d39' : '#459348'} roughness={0.55} />
+              <meshStandardMaterial color={i % 2 ? '#4d5c4a' : '#5e6d59'} roughness={0.58} />
             </mesh>
           </group>
         )
