@@ -556,12 +556,12 @@ function Floor1Envelope({
 
   return (
     <group>
-      {/* 1. TƯỜNG SAU TẦNG 1 (z = -6.14, dày 0.28: ngoài 0.24 tại -6.16 + trong 0.04 tại -6.02) */}
+      {/* 1. TƯỜNG SAU TẦNG 1 (z = -6.14, dày 0.28: luôn giữ nguyên chiều cao làm phông tựa nội thất chuẩn Diorama) */}
       <CutawayWall
         normal={[0, 0, -1]}
         baseY={0}
         fullHeight={H}
-        cutawayEnabled={cutawayEnabled}
+        cutawayEnabled={false}
         wallMode={wallMode}
         wallBox={{ p: [-2.8, H / 2, -6.14], s: [26.16, H, 0.28] }}
         upperChildren={
@@ -820,12 +820,12 @@ function Floor2Envelope({
 
   return (
     <group>
-      {/* 1. TƯỜNG SAU TẦNG 2 (z = -6.14, normal [0,0,-1]) */}
+      {/* 1. TƯỜNG SAU TẦNG 2 (z = -6.14, normal [0,0,-1]: luôn giữ nguyên chiều cao làm phông tựa vòm LED & kệ sách) */}
       <CutawayWall
         normal={[0, 0, -1]}
         baseY={Y}
         fullHeight={H2}
-        cutawayEnabled={cutawayEnabled}
+        cutawayEnabled={false}
         wallMode={wallMode}
         wallBox={{ p: [0, H2 / 2, -6.14], s: [20.56, H2, 0.28] }}
         upperChildren={

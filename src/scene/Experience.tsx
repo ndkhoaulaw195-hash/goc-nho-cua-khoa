@@ -126,7 +126,10 @@ function BackgroundOptimizer({ isWindowFocused }: { isWindowFocused: boolean }) 
 export function Experience() {
   const mode = useStore((s) => s.mode)
   const graphicMode = useStore((s) => s.graphicMode)
+  const roofVisible = useStore((s) => s.roofVisible)
+  const wallMode = useStore((s) => s.wallMode)
   const controlsRef = useRef<OrbitControlsImpl>(null)
+  const allowFull360 = roofVisible && wallMode === 'full'
 
   // Quản lý trạng thái tab và focus để ngừng/giảm tải khi người dùng dùng các ứng dụng khác
   const [isPageVisible, setIsPageVisible] = useState(() =>
@@ -226,7 +229,10 @@ export function Experience() {
             minDistance={2.0}
             maxDistance={56}
             zoomSpeed={0.85}
+            minPolarAngle={0.18}
             maxPolarAngle={Math.PI / 2.02}
+            minAzimuthAngle={allowFull360 ? -Infinity : -Math.PI * 0.56}
+            maxAzimuthAngle={allowFull360 ? Infinity : Math.PI * 0.56}
           />
           <CameraRig controlsRef={controlsRef} />
         </>
