@@ -42,9 +42,9 @@ export function rng(seed: number) {
   return () => (s = (s * 16807) % 2147483647) / 2147483647
 }
 
-/** Sàn gỗ sồi vàng ấm (Warm Honey Oak Floor) cho Tầng 1 như hình ảnh mẫu mới nhất */
+/** Sàn gỗ sồi ấm tự nhiên đồng bộ cho cả Tầng 1 và Tầng 2 */
 export function woodFloor() {
-  return canvasTex('wood-honey-oak-v3', 1024, 1024, (g, w, h) => {
+  return canvasTex('wood-warm-oak-v4', 1024, 1024, (g, w, h) => {
     const r = rng(23)
     const rows = 14
     const rh = h / rows
@@ -52,16 +52,16 @@ export function woodFloor() {
       let x = -r() * 240
       while (x < w) {
         const len = 260 + r() * 260
-        // Tone vàng sồi tự nhiên ấm áp
-        const hue = 32 + r() * 6
-        const sat = 52 + r() * 14
-        const light = 50 + r() * 12
+        // Tone gỗ sồi ấm tự nhiên hài hòa cho cả 2 tầng
+        const hue = 33 + r() * 5
+        const sat = 44 + r() * 10
+        const light = 58 + r() * 10
         g.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`
         g.fillRect(x, i * rh, len, rh)
 
         // Thớ vân gỗ sồi mịn đẹp
         for (let k = 0; k < 8; k++) {
-          g.strokeStyle = k % 2 === 0 ? 'rgba(120, 75, 25, 0.12)' : 'rgba(255, 235, 195, 0.15)'
+          g.strokeStyle = k % 2 === 0 ? 'rgba(120, 78, 34, 0.10)' : 'rgba(255, 240, 210, 0.14)'
           g.lineWidth = 1 + r() * 1.2
           g.beginPath()
           const y = i * rh + 4 + r() * (rh - 8)
@@ -78,25 +78,25 @@ export function woodFloor() {
         }
 
         // Mắt gỗ nhỏ mờ tự nhiên
-        if (r() < 0.28) {
+        if (r() < 0.24) {
           const kx = x + 35 + r() * (len - 70)
           const ky = i * rh + 12 + r() * (rh - 24)
-          g.fillStyle = 'rgba(110, 65, 20, 0.18)'
+          g.fillStyle = 'rgba(110, 70, 28, 0.14)'
           g.beginPath()
           g.ellipse(kx, ky, 7 + r() * 6, 3.5 + r() * 2.5, 0, 0, Math.PI * 2)
           g.fill()
         }
 
         // Khe ghép dọc giữa các tấm ván
-        g.fillStyle = 'rgba(70, 42, 16, 0.45)'
-        g.fillRect(x, i * rh, 2.0, rh)
+        g.fillStyle = 'rgba(85, 55, 25, 0.32)'
+        g.fillRect(x, i * rh, 1.8, rh)
         x += len
       }
       // Khe ghép ngang + highlight mép ván
-      g.fillStyle = 'rgba(60, 36, 14, 0.52)'
-      g.fillRect(0, i * rh, w, 2.0)
-      g.fillStyle = 'rgba(255, 238, 205, 0.16)'
-      g.fillRect(0, i * rh + 2.0, w, 1.2)
+      g.fillStyle = 'rgba(75, 48, 22, 0.36)'
+      g.fillRect(0, i * rh, w, 1.8)
+      g.fillStyle = 'rgba(255, 242, 218, 0.16)'
+      g.fillRect(0, i * rh + 1.8, w, 1.1)
     }
   })
 }

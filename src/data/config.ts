@@ -421,3 +421,18 @@ export const STATIONS: Record<
     label: '📖 Đọc sách Tầng 1',
   },
 }
+
+/** Bảng màu kiến trúc đồng bộ giữa Tầng 1 và Tầng 2 */
+export function getHousePalette(darkMode: boolean) {
+  return {
+    extWall: darkMode ? '#3a342e' : '#dfd5c7',
+    subFloor: darkMode ? '#3d3228' : '#d6c1a7',
+    floorTint: darkMode ? '#a89480' : '#ffffff',
+    wallCream: darkMode ? '#52473d' : '#e5d7c6',
+    wallPartition: darkMode ? '#4e4339' : '#e1d3c2',
+    wallAccent: darkMode ? '#463f38' : '#d4c8b9',
+    wallBath: darkMode ? '#47423c' : '#f5f0e8',
+    crownMolding: darkMode ? '#5a5045' : '#f4ede4',
+    baseboard: darkMode ? '#3d2a1d' : '#6b4c35',
+  }
+}

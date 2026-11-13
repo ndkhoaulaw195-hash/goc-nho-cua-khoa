@@ -15,14 +15,15 @@ import {
   colorfulBedArt,
   fluffyCreamRug,
   girlPcScreen,
-  lightOakFloor,
   openBookPages,
   persianTerracottaRug,
   windowSky,
+  woodFloor,
 } from './textures'
 import { useStore, type Activity } from '../store'
 import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import {
+  getHousePalette,
   GIRL_OUTFITS,
   LIVE_ACTORS,
   type V3,
@@ -86,21 +87,22 @@ export function SecondFloor() {
  * ============================================================================ */
 function FloorAndBeams() {
   const darkMode = useStore((s) => s.darkMode)
+  const palette = getHousePalette(darkMode)
   const Y = FLOOR2_Y
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
 
   const oakMap1 = useMemo(() => {
-    const t = lightOakFloor().clone()
+    const t = woodFloor().clone()
     t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(4.5, 2.7)
+    t.repeat.set(4.5, 1.4)
     t.needsUpdate = true
     return t
   }, [])
 
   const oakMap2 = useMemo(() => {
-    const t = lightOakFloor().clone()
+    const t = woodFloor().clone()
     t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(2.2, 2.0)
+    t.repeat.set(1.46, 1.035)
     t.needsUpdate = true
     return t
   }, [])
@@ -117,11 +119,11 @@ function FloorAndBeams() {
 
   return (
     <group>
-      {/* 1. Mảng sàn chính Tầng 2 (x: -10 -> +10, z: -6.0 -> +0.18; mặt trên khối kết cấu hạ xuống Y - 0.03 chống Z-fighting tuyệt đối) */}
+      {/* 1. Mảng sàn chính Tầng 2 (x: -10 -> +10, z: -6.0 -> +0.18; đồng bộ màu & chất liệu sàn Tầng 1) */}
       <B
         p={[0, Y - 0.135, -2.91]}
         s={[20.0, 0.21, 6.18]}
-        c={darkMode ? '#3d3126' : '#d2b998'}
+        c={palette.subFloor}
         rough={0.75}
         shadow={false}
       />
@@ -137,15 +139,15 @@ function FloorAndBeams() {
           map={oakMap1}
           roughness={0.42}
           metalness={0.05}
-          color={darkMode ? '#cbb8a3' : '#ffffff'}
+          color={palette.floorTint}
         />
       </mesh>
 
-      {/* 2. Mảng sàn khu vực giường & ghế lười phía trước-trái (x: -7.7 -> -1.2, z: +0.22 -> +4.8; tách rời không chồng lấn) */}
+      {/* 2. Mảng sàn khu vực giường & ghế lười phía trước-trái (x: -7.7 -> -1.2, z: +0.22 -> +4.8; đồng bộ màu Tầng 1) */}
       <B
         p={[-4.45, Y - 0.135, 2.51]}
         s={[6.5, 0.21, 4.58]}
-        c={darkMode ? '#3d3126' : '#d2b998'}
+        c={palette.subFloor}
         rough={0.75}
         shadow={false}
       />
@@ -161,7 +163,7 @@ function FloorAndBeams() {
           map={oakMap2}
           roughness={0.42}
           metalness={0.05}
-          color={darkMode ? '#cbb8a3' : '#ffffff'}
+          color={palette.floorTint}
         />
       </mesh>
 
@@ -332,10 +334,11 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
  * ============================================================================ */
 function WallsAndDoor() {
   const darkMode = useStore((s) => s.darkMode)
+  const palette = getHousePalette(darkMode)
   const Y = FLOOR2_Y
   const H2 = 4.2
   const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
-  const extWallColor = darkMode ? '#3a342e' : '#dfd5c7'
+  const extWallColor = palette.extWall
 
   return (
     <group>
@@ -348,11 +351,11 @@ function WallsAndDoor() {
         shadow
       />
 
-      {/* Lớp sơn mặt trong cánh trái (Khu giường ngủ: x từ -10.0 đến -1.05) */}
+      {/* Lớp sơn mặt trong cánh trái (Khu giường ngủ: x từ -10.0 đến -1.05) đồng màu phòng ngủ Tầng 1 */}
       <B
         p={[-5.525, Y + H2 / 2, -6.01]}
         s={[8.95, H2, 0.04]}
-        c={darkMode ? '#4a3b36' : '#e2cfc2'}
+        c={palette.wallCream}
         rough={0.9}
         shadow={false}
         polyOffset
@@ -361,18 +364,20 @@ function WallsAndDoor() {
       {/* 2. Vách lam gỗ sồi thẳng đứng phân khu (ốp nổi mặt trong tại z = -5.96 - dùng chung Geometry/Material) */}
       <WoodSlatsWall H2={H2} />
 
-      {/* 3. Lớp sơn mặt trong cánh phải (Khu bàn học, bàn trang điểm & tủ đồ: x từ -1.05 đến +10.0) */}
+      {/* 3. Lớp sơn mặt trong cánh phải (Khu bàn học, bàn trang điểm & tủ đồ: x từ -1.05 đến +10.0) đồng màu Tầng 1 */}
       <B
         p={[4.475, Y + H2 / 2, -6.01]}
         s={[11.05, H2, 0.04]}
-        c={darkMode ? '#354337' : '#859683'}
+        c={palette.wallAccent}
         rough={0.9}
         shadow={false}
         polyOffset
       />
 
-      {/* Phào chỉ trần nhà màu trắng kem chạy dọc phía trên tường */}
-      <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c="#f8f5f0" shadow={false} polyOffset />
+      {/* Phào chỉ trần nhà & phào chân tường đồng bộ 2 tầng chạy dọc tường sau */}
+      <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[-5.9, Y + 0.07, -5.98]} s={[8.2, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
+      <B p={[4.85, Y + 0.07, -5.98]} s={[10.3, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
 
       {/* 4. Tường bên trái Tầng 2: Tấm tường bình thường đồng màu với căn phòng (luôn cố định khi xoay) */}
       <B
@@ -385,11 +390,15 @@ function WallsAndDoor() {
       <B
         p={[-10.01, Y + H2 / 2, -0.6]}
         s={[0.04, H2, 10.8]}
-        c={darkMode ? '#52443c' : '#e2cfc2'}
+        c={palette.wallCream}
         rough={0.9}
         shadow={false}
         polyOffset
       />
+      {/* Phào trần & phào chân tường bên trái đồng bộ */}
+      <B p={[-9.95, Y + H2 - 0.08, -0.6]} s={[0.08, 0.16, 10.8]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[-9.98, Y + 0.07, -5.3]} s={[0.03, 0.14, 1.4]} c={palette.baseboard} shadow={false} polyOffset />
+      <B p={[-9.98, Y + 0.07, 1.8]} s={[0.03, 0.14, 6.0]} c={palette.baseboard} shadow={false} polyOffset />
       {/* Cửa đôi màu trắng ốp mặt trong tường trái chạm sát sàn Y */}
       <G p={[-9.95, Y, -2.9]}>
         <BB p={[0, 0, 0]} s={[0.05, 3.45, 3.36]} c="#f8f6f2" rough={0.7} shadow={false} polyOffset />
@@ -431,13 +440,14 @@ function WallsAndDoor() {
       <B
         p={[10.01, Y + H2 / 2, -2.9]}
         s={[0.04, H2, 6.2]}
-        c={darkMode ? '#354337' : '#859683'}
+        c={palette.wallAccent}
         rough={0.9}
         shadow={false}
         polyOffset
       />
-      {/* Phào chỉ trần tường phải */}
-      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c="#f8f5f0" shadow={false} polyOffset />
+      {/* Phào chỉ trần & phào chân tường phải đồng bộ 2 tầng */}
+      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[9.98, Y + 0.07, -2.9]} s={[0.03, 0.14, 6.2]} c={palette.baseboard} shadow={false} polyOffset />
 
       {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm Tầng 2) */}
       <SecondFloorCurtains skyMap={skyMap} />
