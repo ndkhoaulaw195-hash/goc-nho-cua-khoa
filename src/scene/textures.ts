@@ -989,3 +989,73 @@ export function aoContactShadow() {
     g.restore()
   })
 }
+
+/** Sàn gỗ Teak ngoài trời ấm áp cho Sundeck hồ bơi & Sân thượng */
+export function outdoorWoodDeck() {
+  return canvasTex('outdoor-teak-deck-v1', 512, 512, (g, w, h) => {
+    const r = rng(109)
+    const planks = 12
+    const ph = h / planks
+    const tones = ['#9E6B43', '#92613B', '#A57249', '#8A5B37']
+    for (let i = 0; i < planks; i++) {
+      g.fillStyle = tones[Math.floor(r() * tones.length)]
+      g.fillRect(0, i * ph, w, ph - 3)
+      for (let v = 0; v < 7; v++) {
+        g.strokeStyle = v % 2 === 0 ? 'rgba(62, 36, 18, 0.22)' : 'rgba(235, 198, 160, 0.14)'
+        g.lineWidth = 1.1
+        g.beginPath()
+        const y = i * ph + 4 + r() * (ph - 10)
+        g.moveTo(0, y)
+        g.bezierCurveTo(w * 0.35, y + (r() - 0.5) * 4, w * 0.7, y + (r() - 0.5) * 4, w, y)
+        g.stroke()
+      }
+      g.fillStyle = '#2A221C'
+      g.fillRect(0, (i + 1) * ph - 3, w, 3)
+    }
+  })
+}
+
+/** Đá Travertine vân tự nhiên ấm áp cho đá bước dạo & viền hồ bơi */
+export function travertineStone() {
+  return canvasTex('travertine-stone-v1', 512, 512, (g, w, h) => {
+    const r = rng(131)
+    g.fillStyle = '#E8E2D7'
+    g.fillRect(0, 0, w, h)
+    for (let i = 0; i < 42; i++) {
+      const y = r() * h
+      const lw = 1 + r() * 4
+      g.fillStyle = i % 2 === 0 ? 'rgba(182, 170, 152, 0.22)' : 'rgba(246, 243, 237, 0.32)'
+      g.fillRect(0, y, w, lw)
+    }
+    for (let i = 0; i < 80; i++) {
+      g.fillStyle = 'rgba(155, 144, 128, 0.18)'
+      g.beginPath()
+      g.ellipse(r() * w, r() * h, 4 + r() * 14, 1 + r() * 2.5, 0, 0, Math.PI * 2)
+      g.fill()
+    }
+  })
+}
+
+/** Sỏi trắng tự nhiên rải viền hồ nước & sân vườn Zen */
+export function whitePebbles() {
+  return canvasTex('white-pebbles-v1', 512, 512, (g, w, h) => {
+    const r = rng(173)
+    g.fillStyle = '#CFCBC3'
+    g.fillRect(0, 0, w, h)
+    const pebbleColors = ['#F4F2ED', '#EAE7E0', '#DDD9D0', '#E4E0D8', '#C9C5BC']
+    for (let i = 0; i < 650; i++) {
+      const x = r() * w
+      const y = r() * h
+      const rx = 5 + r() * 9
+      const ry = 4 + r() * 7
+      g.fillStyle = 'rgba(40, 38, 35, 0.18)'
+      g.beginPath()
+      g.ellipse(x + 1.5, y + 1.5, rx, ry, r() * Math.PI, 0, Math.PI * 2)
+      g.fill()
+      g.fillStyle = pebbleColors[Math.floor(r() * pebbleColors.length)]
+      g.beginPath()
+      g.ellipse(x, y, rx, ry, r() * Math.PI, 0, Math.PI * 2)
+      g.fill()
+    }
+  })
+}

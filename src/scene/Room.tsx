@@ -208,22 +208,22 @@ export function Lights() {
   const pcState = useStore((s) => s.pcState)
   const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
 
-  // Ánh sáng studio đồng đều (không tia nắng hay sương mù che cửa sổ), giữ khối 3D hài hòa
+  // Ánh sáng studio ban ngày & giảm nhẹ AmbientLight ban đêm để nổi bật đèn nội thất, hồ bơi, firepit & uplights
   const hemiSky = darkMode
-    ? '#7C8FA6'
+    ? '#6E829B'
     : weather === 'rain'
       ? '#DCE0E4'
       : '#EFECE6'
   const hemiGround = darkMode
-    ? '#594E43'
+    ? '#413932'
     : '#9C968D'
-  const hemiIntensity = darkMode ? 0.56 : weather === 'rain' ? 0.52 : 0.6
+  const hemiIntensity = darkMode ? 0.32 : weather === 'rain' ? 0.52 : 0.6
 
   const sunColor = darkMode
-    ? '#C9D8E8'
+    ? '#AFC4DE'
     : '#FFFDF8'
   const sunIntensity = darkMode
-    ? 0.62
+    ? 0.38
     : weather === 'sunset'
       ? 1.42
       : weather === 'rain'
@@ -232,10 +232,10 @@ export function Lights() {
   const sunPos: [number, number, number] = weather === 'sunset' ? [15.5, 17.5, 14.5] : [13.5, 20.5, 13.5]
 
   const ambientColor = darkMode
-    ? '#5B606B'
+    ? '#3D4452'
     : '#EFECE6'
   const ambientIntensity = darkMode
-    ? 0.36
+    ? 0.14
     : 0.28
 
   return (
@@ -264,7 +264,7 @@ export function Lights() {
       {/* Ánh sáng viền (Rim Light) tách khối kiến trúc & giữ đường nét góc trái ở cả Night & Day Mode */}
       <directionalLight
         position={[-16, 13, -12]}
-        intensity={darkMode ? 0.52 : 0.46}
+        intensity={darkMode ? 0.42 : 0.46}
         color={darkMode ? '#9BB0C8' : '#EFECE6'}
       />
 

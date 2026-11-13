@@ -141,7 +141,7 @@ export const WALL_PHOTOS: WallPhoto[] = [
   },
 ]
 
-export const HOME_VIEW = { pos: [-2.0, 16.5, 35.5] as V3, target: [-2.2, 2.5, 0.5] as V3 }
+export const HOME_VIEW = { pos: [-2.0, 18.0, 39.2] as V3, target: [-2.4, 2.0, 2.4] as V3 }
 export const FLOOR1_VIEW = { pos: [-2.2, 9.5, 22.0] as V3, target: [-2.4, 1.4, -0.2] as V3 }
 export const FLOOR2_VIEW = { pos: [-0.8, 10.2, 16.8] as V3, target: [-0.8, 5.1, -1.2] as V3 }
 export const ATRIUM_VIEW = { pos: [-0.8, 6.8, 10.8] as V3, target: [2.3, 3.2, -1.8] as V3 }
@@ -445,17 +445,18 @@ export const STATIONS: Record<
   },
 }
 
-/** Bảng màu kiến trúc đồng bộ giữa Tầng 1 và Tầng 2 (Hệ màu Trung Tính Warm Greige & Stone) */
+/** Bảng màu kiến trúc đồng bộ giữa Tầng 1 và Tầng 2 (Ngoại thất Biệt thự Xám than #2B303A & Nội thất Warm Greige) */
 export function getHousePalette(darkMode: boolean) {
   return {
-    extWall: darkMode ? '#555B64' : '#D6D1C9',
-    subFloor: darkMode ? '#383C42' : '#D6D1C9',
+    extWall: darkMode ? '#303642' : '#2B303A',
+    facadeFrame: darkMode ? '#DDD7CD' : '#F4F1EA',
+    subFloor: darkMode ? '#383C42' : '#2B303A',
     floorTint: darkMode ? '#D4C8B8' : '#FFFFFF',
     wallCream: darkMode ? '#726E67' : '#EFECE6',
     wallPartition: darkMode ? '#6A6660' : '#EFECE6',
     wallAccent: darkMode ? '#4B6175' : '#5E7487',
     wallBath: darkMode ? '#6D6964' : '#D8D2C8',
-    crownMolding: darkMode ? '#6E747E' : '#D6D1C9',
+    crownMolding: darkMode ? '#464D5B' : '#3B414D',
     baseboard: darkMode ? '#2C2F34' : '#2B2D2F',
   }
 }
