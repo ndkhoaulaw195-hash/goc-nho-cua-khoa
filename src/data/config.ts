@@ -16,6 +16,19 @@ export const WEATHER_MODES = {
   night: { icon: '🌙', label: 'Đêm khuya ấm áp' },
 } as const
 
+export type WalkthroughSpaceId = 'living' | 'bedroom' | 'bathroom' | 'terrace' | 'pool'
+
+export const WALKTHROUGH_SPOTS: Record<
+  WalkthroughSpaceId,
+  { label: string; icon: string; pos: V3; yaw: number }
+> = {
+  living: { label: 'Phòng khách', icon: '🛋️', pos: [-0.8, 0, 2.2], yaw: 0.4 },
+  bedroom: { label: 'Phòng ngủ', icon: '🛏️', pos: [-5.0, 4.35, -0.4], yaw: 0.15 },
+  bathroom: { label: 'Phòng tắm', icon: '🚿', pos: [-12.2, 0, -2.2], yaw: 0.35 },
+  terrace: { label: 'Sân thượng', icon: '🪴', pos: [-12.5, 4.35, 1.0], yaw: -0.5 },
+  pool: { label: 'Hồ bơi', icon: '🏊', pos: [4.2, -0.15, 10.6], yaw: -1.1 },
+}
+
 // Vị trí trực tiếp theo thời gian thực của nhân vật và 2 bé chó để đồng bộ camera & tương tác vuốt ve
 export const LIVE_ACTORS: {
   khoaPos: [number, number]

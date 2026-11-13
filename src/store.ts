@@ -10,8 +10,10 @@ import {
   RANDOM_VIEWS,
   STATIONS,
   TV_CHANNELS,
+  WALKTHROUGH_SPOTS,
   WEATHER_MODES,
   type V3,
+  type WalkthroughSpaceId,
 } from './data/config'
 import {
   broadcastPlayerAction,
@@ -129,7 +131,14 @@ interface State {
   focus: CamFocus | null
   viewPreset: 'overview' | 'floor1' | 'floor2'
   roofVisible: boolean
-  wallMode: 'full' | 'ghost'
+  wallMode: 'full' | 'cutaway' | 'ghost'
+  nearInteriorOpen: boolean
+  setNearInteriorOpen: (v: boolean) => void
+  fpPerspective: 'eye' | 'third'
+  toggleFpPerspective: () => void
+  walkthroughSpace: WalkthroughSpaceId
+  walkthroughSpawn: { space: WalkthroughSpaceId; pos: V3; yaw: number; tick: number } | null
+  jumpToWalkthroughSpace: (space: WalkthroughSpaceId) => void
   cycleWallMode: () => void
   randomViewIdx: number
   setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
@@ -286,19 +295,37 @@ export const useStore = create<State>()(
 
       mode: 'orbit',
       setMode: (mode) =>
-        set((s) => ({
-          mode,
-          focus:
-            mode === 'orbit'
-              ? s.viewPreset === 'floor1'
+        set((s) => {
+          if (mode === 'fp') {
+            return {
+              mode: 'fp',
+              roofVisible: true,
+              wallMode: 'full',
+              nearInteriorOpen: false,
+              viewPreset: 'overview',
+              focus: null,
+              activePhoto: null,
+              walkthroughSpawn: null,
+              toastMessage: '🚶 Chế độ Vào nhà',
+            }
+          }
+          const isFloorPreset = s.viewPreset === 'floor1' || s.viewPreset === 'floor2'
+          return {
+            mode: 'orbit',
+            nearInteriorOpen: false,
+            roofVisible: !isFloorPreset,
+            wallMode: isFloorPreset ? 'cutaway' : 'full',
+            focus:
+              s.viewPreset === 'floor1'
                 ? FLOOR1_VIEW
                 : s.viewPreset === 'floor2'
                   ? FLOOR2_VIEW
-                  : HOME_VIEW
-              : null,
-          activePhoto: null,
-          toastMessage: mode === 'fp' ? '👁️ Góc nhìn thứ nhất' : '🏠 Góc nhìn toàn cảnh',
-        })),
+                  : HOME_VIEW,
+            activePhoto: null,
+            walkthroughSpawn: null,
+            toastMessage: '🏠 Góc nhìn toàn cảnh',
+          }
+        }),
       darkMode: false,
       toggleDarkMode: () =>
         set((s) => {
@@ -680,11 +707,59 @@ export const useStore = create<State>()(
       viewPreset: 'overview',
       roofVisible: true,
       wallMode: 'full',
+      nearInteriorOpen: false,
+      setNearInteriorOpen: (nearInteriorOpen) => set({ nearInteriorOpen }),
+      fpPerspective: 'third',
+      toggleFpPerspective: () =>
+        set((s) => {
+          const next: 'eye' | 'third' = s.fpPerspective === 'third' ? 'eye' : 'third'
+          return {
+            fpPerspective: next,
+            toastMessage: next === 'eye' ? '👁️ Góc nhìn tầm mắt' : '🎥 Góc nhìn sau lưng',
+          }
+        }),
+      walkthroughSpace: 'living',
+      walkthroughSpawn: null,
+      jumpToWalkthroughSpace: (space) =>
+        set((s) => {
+          const spot = WALKTHROUGH_SPOTS[space]
+          const char = s.userRole || s.activeChar || 'boy'
+          const nextTick = Math.max(Date.now(), (s.walkthroughSpawn?.tick ?? 0) + 1)
+          return {
+            mode: 'fp',
+            roofVisible: true,
+            wallMode: 'full',
+            nearInteriorOpen: false,
+            viewPreset: 'overview',
+            focus: null,
+            activePhoto: null,
+            avatarTarget: null,
+            wardrobeOpen: false,
+            girlWardrobeOpen: false,
+            boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
+            boyPhase: char === 'boy' ? 'active' : s.boyPhase,
+            girlActivity: char === 'girl' ? 'idle' : s.girlActivity,
+            girlPhase: char === 'girl' ? 'active' : s.girlPhase,
+            activity: 'idle',
+            activityPhase: 'active',
+            isUserInitiated: false,
+            walkthroughSpace: space,
+            walkthroughSpawn: {
+              space,
+              pos: [...spot.pos] as V3,
+              yaw: spot.yaw,
+              tick: nextTick,
+            },
+            toastMessage: `${spot.icon} ${spot.label}`,
+          }
+        }),
       cycleWallMode: () =>
         set((s) => {
-          const next: 'full' | 'ghost' = s.wallMode === 'full' ? 'ghost' : 'full'
+          const next: 'full' | 'cutaway' | 'ghost' =
+            s.wallMode === 'full' ? 'cutaway' : s.wallMode === 'cutaway' ? 'ghost' : 'full'
           const labels = {
             full: '🏛️ Đủ tường (Kiến trúc hoàn chỉnh)',
+            cutaway: '🧱 Tường lửng (Mở mặt tiền xem nội thất)',
             ghost: '🪟 Tường mờ (Xem xuyên nội thất)',
           }
           return {
@@ -698,15 +773,16 @@ export const useStore = create<State>()(
           focus,
           ...(preset ? { viewPreset: preset } : {}),
           ...(preset === 'floor1' || preset === 'floor2'
-            ? { roofVisible: false }
+            ? { roofVisible: false, wallMode: 'cutaway', nearInteriorOpen: false }
             : preset === 'overview'
-              ? { roofVisible: true }
+              ? { roofVisible: true, wallMode: 'full', nearInteriorOpen: false }
               : {}),
         })),
       returnOverview: () =>
         set((s) => {
           const char = s.userRole || s.activeChar || 'boy'
           return {
+            mode: 'orbit',
             boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
             boyPhase: char === 'boy' ? 'active' : s.boyPhase,
             girlActivity: char === 'girl' ? 'idle' : s.girlActivity,
@@ -719,7 +795,9 @@ export const useStore = create<State>()(
             activePhoto: null,
             viewPreset: 'overview',
             roofVisible: true,
-            focus: s.mode === 'orbit' ? { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] } : null,
+            wallMode: 'full',
+            nearInteriorOpen: false,
+            focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
           }
         }),
       resetCamera: () =>
@@ -730,6 +808,8 @@ export const useStore = create<State>()(
           girlWardrobeOpen: false,
           viewPreset: 'overview',
           roofVisible: true,
+          wallMode: 'full',
+          nearInteriorOpen: false,
           focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
           toastMessage: '↺ Đã đặt lại góc nhìn mặc định',
         })),
@@ -746,9 +826,9 @@ export const useStore = create<State>()(
             randomViewIdx: nextIdx,
             viewPreset: picked.preset,
             ...(picked.preset === 'floor1' || picked.preset === 'floor2'
-              ? { roofVisible: false }
+              ? { roofVisible: false, wallMode: 'cutaway', nearInteriorOpen: false }
               : picked.preset === 'overview'
-                ? { roofVisible: true }
+                ? { roofVisible: true, wallMode: 'full', nearInteriorOpen: false }
                 : {}),
             focus: { pos: [...picked.camera.pos], target: [...picked.camera.target] },
             toastMessage: `🎲 ${picked.label}`,
