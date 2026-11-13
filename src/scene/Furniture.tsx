@@ -1086,9 +1086,8 @@ function SmartTvUnit() {
             shadow={false}
           />
         )}
+        <SmartTvScreen tvOn={tvOn} tvChannel={tvChannel} onClick={handleTvClick} />
       </Interact>
-
-      <SmartTvScreen tvOn={tvOn} tvChannel={tvChannel} onClick={handleTvClick} />
     </G>
   )
 }
@@ -1492,6 +1491,11 @@ export const OUTDOOR_COLLIDERS: [number, number, number, number][] = [
   [14.66, -6.84, 15.54, -5.96],
   [-7.24, -8.64, -6.36, -7.76],
   [4.72, -8.88, 5.68, -7.92],
+
+  // Thác nước tràn mép Bắc hồ bơi & 2 trụ thép mảnh Pergola hiên phải (khớp ArchitectureShell.tsx)
+  [7.30, 6.70, 10.30, 7.15],
+  [1.12, 9.72, 1.38, 9.98],
+  [5.32, 9.72, 5.58, 9.98],
 
   // Đèn trụ sân vườn (BollardLight)
   [-3.40, 9.12, -3.24, 9.28],
