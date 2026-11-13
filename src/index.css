@@ -1,9 +1,9 @@
 :root {
   /* ---- Hệ thống màu 60-30-10 (Warm Sanctuary - Light Mode) ---- */
-  --bg: radial-gradient(ellipse at center, #fbf7f1 0%, #ede5d9 55%, #dfd5c5 100%);
-  --card: rgba(255, 252, 247, 0.86);
-  --card-solid: #fcfaf5;
-  --card-border: rgba(255, 255, 255, 0.85);
+  --bg: radial-gradient(ellipse at center, #dcd2c4 0%, #c6baaa 55%, #b1a494 100%);
+  --card: rgba(244, 238, 229, 0.88);
+  --card-solid: #f2ece3;
+  --card-border: rgba(255, 255, 255, 0.72);
   --ink: #1c1917;
   --muted: #57534e;
   --line: rgba(28, 25, 23, 0.09);
@@ -11,7 +11,7 @@
   --accent: #d97706;
   --accent-strong: #b45309;
   --accent-soft: rgba(217, 119, 6, 0.14);
-  --chip-bg: rgba(255, 255, 255, 0.72);
+  --chip-bg: rgba(255, 255, 255, 0.56);
   --chip-hover: rgba(255, 255, 255, 0.96);
   --shadow-sm: 0 2px 8px rgba(28, 25, 23, 0.06);
   --shadow-md: 0 10px 30px rgba(28, 25, 23, 0.12), 0 1px 3px rgba(28, 25, 23, 0.06);
@@ -29,7 +29,7 @@
 
 html.dark {
   /* ---- Hệ thống màu 60-30-10 (Cozy Night Slate - Dark Mode) ---- */
-  --bg: radial-gradient(ellipse at center, #181e2e 0%, #101420 55%, #090c14 100%);
+  --bg: radial-gradient(ellipse at center, #111522 0%, #090c14 55%, #05070c 100%);
   --card: rgba(20, 24, 36, 0.86);
   --card-solid: #161b28;
   --card-border: rgba(255, 255, 255, 0.12);

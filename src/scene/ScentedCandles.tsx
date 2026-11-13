@@ -8,10 +8,12 @@ type V3 = [number, number, number]
 interface CandleItemProps {
   position: V3
   scale?: number
+  castLight?: boolean
 }
 
-function CandleItem({ position, scale = 1 }: CandleItemProps) {
+function CandleItem({ position, scale = 1, castLight = false }: CandleItemProps) {
   const candlesLit = useStore((s) => s.candlesLit)
+  const darkMode = useStore((s) => s.darkMode)
   const toggleCandles = useStore((s) => s.toggleCandles)
 
   const flameRef = useRef<THREE.Mesh>(null)
@@ -28,7 +30,7 @@ function CandleItem({ position, scale = 1 }: CandleItemProps) {
     }
     if (lightRef.current) {
       const lightFlicker = Math.sin(t * 14) * 0.15 + Math.cos(t * 22) * 0.1
-      lightRef.current.intensity = 1.35 + lightFlicker
+      lightRef.current.intensity = 1.45 + lightFlicker
     }
   })
 
@@ -50,23 +52,27 @@ function CandleItem({ position, scale = 1 }: CandleItemProps) {
         useStore.getState().setHoverHint(null)
       }}
     >
-      {/* Cốc thủy tinh đựng nến màu hổ phách sang trọng */}
-      <mesh position={[0, 0.04, 0]} castShadow>
-        <cylinderGeometry args={[0.042, 0.038, 0.08, 16]} />
-        <meshPhysicalMaterial
-          color="#d97706"
-          roughness={0.15}
-          transmission={0.65}
-          thickness={0.05}
+      {/* Cốc thủy tinh đựng nến màu hổ phách (không dùng transmission để tránh render scene 2 lần mỗi frame) */}
+      <mesh position={[0, 0.04, 0]}>
+        <cylinderGeometry args={[0.042, 0.038, 0.08, 14]} />
+        <meshStandardMaterial
+          color="#c26308"
+          roughness={0.14}
+          metalness={0.08}
           transparent
-          opacity={0.85}
+          opacity={0.62}
         />
       </mesh>
 
       {/* Sáp nến hương hoa vani màu kem sữa bên trong */}
       <mesh position={[0, 0.035, 0]}>
-        <cylinderGeometry args={[0.038, 0.035, 0.065, 16]} />
-        <meshStandardMaterial color="#fef3c7" roughness={0.8} />
+        <cylinderGeometry args={[0.037, 0.034, 0.064, 14]} />
+        <meshStandardMaterial
+          color="#fef3c7"
+          roughness={0.75}
+          emissive={candlesLit ? '#f59e0b' : '#000000'}
+          emissiveIntensity={candlesLit ? 0.22 : 0}
+        />
       </mesh>
 
       {/* Bấc nến đen nhỏ */}
@@ -79,25 +85,28 @@ function CandleItem({ position, scale = 1 }: CandleItemProps) {
       {candlesLit && (
         <>
           <mesh ref={flameRef} position={[0, 0.085, 0]}>
-            <coneGeometry args={[0.012, 0.032, 12]} />
+            <coneGeometry args={[0.012, 0.032, 10]} />
             <meshBasicMaterial color="#fbbf24" />
           </mesh>
 
           {/* Hào quang đỏ cam bên ngoài ngọn lửa */}
           <mesh position={[0, 0.082, 0]}>
-            <sphereGeometry args={[0.018, 12, 12]} />
-            <meshBasicMaterial color="#f97316" transparent opacity={0.45} />
+            <sphereGeometry args={[0.02, 10, 10]} />
+            <meshBasicMaterial color="#f97316" transparent opacity={0.42} />
           </mesh>
 
-          {/* Nguồn sáng PointLight vàng ấm bập bùng nhẹ */}
-          <pointLight
-            ref={lightRef}
-            position={[0, 0.12, 0]}
-            color="#f59e0b"
-            intensity={1.35}
-            distance={3.2}
-            decay={2}
-          />
+          {/* Nguồn sáng PointLight vàng ấm bập bùng nhẹ (chỉ bật ban đêm ở nến chính để giữ 60fps) */}
+          {darkMode && castLight && (
+            <pointLight
+              ref={lightRef}
+              position={[0, 0.14, 0]}
+              color="#f59e0b"
+              intensity={1.45}
+              distance={3.6}
+              decay={2}
+              castShadow={false}
+            />
+          )}
         </>
       )}
     </group>
@@ -109,7 +118,7 @@ export function ScentedCandles() {
   return (
     <group>
       {/* 1. Cốc nến thơm trên bàn trà sofa Tầng 1 */}
-      <CandleItem position={[3.85, 0.445, 2.15]} scale={1.1} />
+      <CandleItem position={[3.85, 0.445, 2.15]} scale={1.1} castLight />
 
       {/* 2. Cốc nến thơm trên mặt bàn đá Lavabo phòng tắm Tầng 1 */}
       <CandleItem position={[-11.9, 0.87, -5.35]} scale={1.0} />

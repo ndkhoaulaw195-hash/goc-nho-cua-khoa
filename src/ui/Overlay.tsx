@@ -563,7 +563,7 @@ function TopRight() {
         <button
           className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
           onClick={toggleGraphicMode}
-          title={graphicMode === 'hd' ? 'Đồ họa Retina HD + Shadow 2K' : 'Đồ họa Mượt mà'}
+          title={graphicMode === 'hd' ? 'Đồ họa HD tối ưu (Retina 1.35x + Shadow 1.5K)' : 'Đồ họa Mượt mà'}
         >
           {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
         </button>

@@ -587,51 +587,31 @@ function GirlRoomFurniture() {
 
   return (
     <group>
-      {/* Nguồn sáng phản hồi thực tế khi người dùng bật/tắt từng đèn trên Tầng 2 (castShadow = false để giữ 60fps) */}
-      {floor2ArchLightOn && (
+      {/* Nguồn sáng phản hồi thực tế khi người dùng bật đèn Tầng 2 (gộp theo cụm & chỉ bật ban đêm để giữ 60fps; ban ngày dùng emissive) */}
+      {darkMode && (floor2ArchLightOn || girlLampOn) && (
         <pointLight
-          position={[-5.0, Y + 2.35, -5.2]}
-          intensity={darkMode ? 2.8 : 1.45}
-          distance={5.2}
+          position={[-5.0, Y + 1.8, -5.15]}
+          intensity={3.4}
+          distance={6.2}
           decay={2}
-          color="#ffaa28"
+          color="#ffad33"
           castShadow={false}
         />
       )}
-      {girlLampOn && (
+      {darkMode && (girlShelfLedOn || girlVanityLightOn) && (
         <pointLight
-          position={[-5.0, Y + 1.25, -5.1]}
-          intensity={darkMode ? 3.2 : 1.65}
-          distance={5.5}
+          position={[4.3, Y + 1.9, -4.9]}
+          intensity={3.2}
+          distance={5.8}
           decay={2}
-          color="#ffb13b"
+          color="#ffc875"
           castShadow={false}
         />
       )}
-      {girlShelfLedOn && (
-        <pointLight
-          position={[3.55, Y + 2.55, -5.2]}
-          intensity={darkMode ? 2.6 : 1.35}
-          distance={5.0}
-          decay={2}
-          color="#ffaa22"
-          castShadow={false}
-        />
-      )}
-      {girlVanityLightOn && (
-        <pointLight
-          position={[4.95, Y + 1.35, -4.6]}
-          intensity={darkMode ? 2.8 : 1.5}
-          distance={4.2}
-          decay={2}
-          color="#ffe0a0"
-          castShadow={false}
-        />
-      )}
-      {floor2ReadingLampOn && (
+      {darkMode && floor2ReadingLampOn && (
         <pointLight
           position={[8.4, Y + 1.65, -0.9]}
-          intensity={darkMode ? 3.5 : 1.85}
+          intensity={3.5}
           distance={5.5}
           decay={2}
           color="#ffaa2b"

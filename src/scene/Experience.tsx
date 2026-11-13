@@ -89,8 +89,8 @@ function SetupEnvironment() {
   }, [gl, scene])
 
   useEffect(() => {
-    scene.environmentIntensity = darkMode ? 0.04 : 0.28
-    gl.toneMappingExposure = darkMode ? 0.92 : 1.08
+    scene.environmentIntensity = darkMode ? 0.04 : 0.22
+    gl.toneMappingExposure = darkMode ? 0.88 : 0.96
   }, [gl, scene, darkMode])
 
   return null
@@ -168,9 +168,9 @@ export function Experience() {
     }
   }, [isWindowFocused])
 
-  // DPR ổn định: Chế độ HD dùng độ nét Retina sắc mịn (1.75 khi active, 1.0 khi nền), Chế độ Mượt dùng 1.0 chuẩn FPS cao.
+  // DPR tối ưu cho HD: 1.35x sắc nét chuẩn Retina mà nhẹ hơn 1.75x tới 41% pixel load, 1.0x khi ở chế độ Mượt hoặc mất focus.
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
-  const dpr = graphicMode === 'hd' ? (isWindowFocused ? Math.min(deviceDpr, 1.75) : 1.0) : 1.0
+  const dpr = graphicMode === 'hd' ? (isWindowFocused ? Math.min(deviceDpr, 1.35) : 1.0) : 1.0
 
   return (
     <Canvas
@@ -184,7 +184,7 @@ export function Experience() {
         stencil: false,
         depth: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.08,
+        toneMappingExposure: 0.96,
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       dpr={dpr}

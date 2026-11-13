@@ -314,7 +314,7 @@ export function Lights() {
   const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
   const tvOn = useStore((s) => s.tvOn)
   const pcState = useStore((s) => s.pcState)
-  const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
+  const shadowResolution = graphicMode === 'hd' ? 1536 : 1024
 
   // Tùy chỉnh màu sắc & cường độ theo chế độ thời tiết (Nắng ấm / Hoàng hôn / Mưa / Đêm)
   const hemiSky = darkMode
@@ -331,7 +331,7 @@ export function Lights() {
       : weather === 'rain'
         ? '#334155'
         : '#5c4532'
-  const hemiIntensity = darkMode ? 0.10 : weather === 'sunset' ? 0.72 : weather === 'rain' ? 0.48 : 0.62
+  const hemiIntensity = darkMode ? 0.10 : weather === 'sunset' ? 0.58 : weather === 'rain' ? 0.42 : 0.50
 
   const sunColor = darkMode
     ? '#5872a8'
@@ -343,10 +343,10 @@ export function Lights() {
   const sunIntensity = darkMode
     ? 0.12
     : weather === 'sunset'
-      ? 1.95
+      ? 1.62
       : weather === 'rain'
-        ? 0.78
-        : 1.75
+        ? 0.70
+        : 1.42
   const sunPos: [number, number, number] = weather === 'sunset' ? [-14, 16, 20] : [-10, 24, 17]
 
   const ambientColor = darkMode
@@ -359,10 +359,10 @@ export function Lights() {
   const ambientIntensity = darkMode
     ? 0.04
     : weather === 'sunset'
-      ? 0.32
+      ? 0.26
       : weather === 'rain'
-        ? 0.38
-        : 0.24
+        ? 0.30
+        : 0.20
 
   return (
     <>
@@ -397,7 +397,7 @@ export function Lights() {
       {/* 1. Vùng Tầng 1: phòng ngủ & phòng khách ấm áp */}
       <pointLight
         position={[-1.2, 3.3, -0.5]}
-        intensity={darkMode ? 0.45 : 1.12}
+        intensity={darkMode ? 0.45 : 0.92}
         distance={14}
         decay={2}
         color={darkMode ? '#92adff' : '#fff0da'}
@@ -407,7 +407,7 @@ export function Lights() {
       {/* 2. Vùng Tầng 2: phòng ngủ & góc làm việc trên gác (đồng bộ màu & cường độ sáng với Tầng 1) */}
       <pointLight
         position={[0.2, 7.6, -1.0]}
-        intensity={darkMode ? 0.45 : 1.12}
+        intensity={darkMode ? 0.45 : 0.92}
         distance={14}
         decay={2}
         color={darkMode ? '#92adff' : '#fff0da'}
@@ -417,48 +417,48 @@ export function Lights() {
       {/* 3. Vùng Phòng tắm Master: đá cẩm thạch trắng sáng trong trẻo */}
       <pointLight
         position={[-12.8, 3.3, -0.5]}
-        intensity={darkMode ? 0.35 : 1.1}
+        intensity={darkMode ? 0.35 : 0.85}
         distance={9}
         decay={2}
         color={darkMode ? '#a5b4fc' : '#fff5eb'}
         castShadow={false}
       />
 
-      {/* Đèn tương tác chủ động Tầng 1 (castShadow = false để không gây lag nhưng vẫn phản hồi ánh sáng chân thực khi bật/tắt) */}
-      {lampOn && (
+      {/* Đèn tương tác chủ động Tầng 1 (chỉ bật pointLight ban đêm để giữ 60fps; ban ngày dùng emissive) */}
+      {darkMode && lampOn && (
         <pointLight
           position={[8.75, 1.85, 0.95]}
-          intensity={darkMode ? 5.2 : 2.8}
+          intensity={5.2}
           distance={6.5}
           decay={2}
           color="#ffb155"
           castShadow={false}
         />
       )}
-      {floor1HeadboardLedOn && (
+      {darkMode && floor1HeadboardLedOn && (
         <pointLight
           position={[-3.25, 1.75, -5.2]}
-          intensity={darkMode ? 3.2 : 1.6}
+          intensity={3.2}
           distance={5.2}
           decay={2}
           color="#ffae42"
           castShadow={false}
         />
       )}
-      {tvOn && graphicMode === 'hd' && (
+      {darkMode && tvOn && graphicMode === 'hd' && (
         <pointLight
           position={[8.9, 1.65, 2.35]}
-          intensity={darkMode ? 1.8 : 0.85}
+          intensity={1.8}
           distance={4.2}
           decay={2}
           color="#7cc4ff"
           castShadow={false}
         />
       )}
-      {pcState !== 'off' && graphicMode === 'hd' && (
+      {darkMode && pcState !== 'off' && graphicMode === 'hd' && (
         <pointLight
           position={[2.85, 1.35, -5.1]}
-          intensity={darkMode ? 1.4 : 0.65}
+          intensity={1.4}
           distance={3.2}
           decay={2}
           color={pcState === 'rgb' ? '#c084fc' : '#60a5fa'}

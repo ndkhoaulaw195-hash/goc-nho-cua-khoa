@@ -42,9 +42,9 @@ export function rng(seed: number) {
   return () => (s = (s * 16807) % 2147483647) / 2147483647
 }
 
-/** Sàn gỗ sồi ấm tự nhiên đồng bộ cho cả Tầng 1 và Tầng 2 */
+/** Sàn gỗ sồi trầm ấm tự nhiên đồng bộ cho cả Tầng 1 và Tầng 2 */
 export function woodFloor() {
-  return canvasTex('wood-warm-oak-v4', 1024, 1024, (g, w, h) => {
+  return canvasTex('wood-smoked-oak-v5', 1024, 1024, (g, w, h) => {
     const r = rng(23)
     const rows = 14
     const rh = h / rows
@@ -52,10 +52,10 @@ export function woodFloor() {
       let x = -r() * 240
       while (x < w) {
         const len = 260 + r() * 260
-        // Tone gỗ sồi ấm tự nhiên hài hòa cho cả 2 tầng
-        const hue = 33 + r() * 5
-        const sat = 44 + r() * 10
-        const light = 58 + r() * 10
+        // Tone gỗ sồi trầm ấm dịu mắt hài hòa cho cả 2 tầng
+        const hue = 32 + r() * 5
+        const sat = 38 + r() * 10
+        const light = 49 + r() * 9
         g.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`
         g.fillRect(x, i * rh, len, rh)
 

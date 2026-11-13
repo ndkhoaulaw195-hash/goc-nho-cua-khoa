@@ -49,22 +49,12 @@ export function Bathroom() {
       <TowelWarmer />
       <MasterBathLounge />
 
-      {/* Ánh sáng phản hồi tương tác khi bật đèn gương trong phòng tắm (castShadow = false để giữ 60fps) */}
-      {bathMirrorLightOn && (
+      {/* Ánh sáng phản hồi tương tác khi bật đèn gương phòng tắm (gộp 1 pointLight ban đêm để giữ 60fps; ban ngày dùng emissive) */}
+      {darkMode && (bathMirrorLightOn || bathFullMirrorLightOn) && (
         <pointLight
-          position={[-12.4, 2.3, -5.0]}
-          intensity={darkMode ? 2.8 : 1.4}
-          distance={4.5}
-          decay={2}
-          color="#ffbe54"
-          castShadow={false}
-        />
-      )}
-      {bathFullMirrorLightOn && (
-        <pointLight
-          position={[-15.0, 1.8, 1.4]}
-          intensity={darkMode ? 2.8 : 1.4}
-          distance={4.5}
+          position={[-12.8, 2.1, -3.6]}
+          intensity={2.8}
+          distance={6.5}
           decay={2}
           color="#ffbe54"
           castShadow={false}
