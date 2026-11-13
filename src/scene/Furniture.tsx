@@ -1,7 +1,7 @@
-import { useMemo, useRef, type ReactNode } from 'react'
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph, RBB } from './prims'
+import { B, BB, Cyl, G, Interact, Sph, RBB } from './prims'
 import { dartboard, loadPhotoTexture, rng, screen, sunflowerArt, windowSky } from './textures'
 import { WALL_PHOTOS, type V3 } from '../data/config'
 import { useStore } from '../store'
@@ -16,33 +16,6 @@ const SLATE = '#5E7487'
 const SLATE_DARK = '#4A5E6F'
 const CAMEL = '#C4834E'
 const RUST = '#9E6338'
-
-function Interact({
-  onClick,
-  children,
-}: {
-  hint?: string
-  onClick: () => void
-  children: ReactNode
-}) {
-  return (
-    <group
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation()
-        onClick()
-      }}
-      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation()
-        document.body.style.cursor = 'pointer'
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = 'auto'
-      }}
-    >
-      {children}
-    </group>
-  )
-}
 
 export function Furniture() {
   return (

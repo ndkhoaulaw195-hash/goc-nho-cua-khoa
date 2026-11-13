@@ -57,11 +57,11 @@ export interface Outfit {
 export const OUTFITS: Outfit[] = [
   {
     id: 'casual',
-    name: 'Áo thun kem & Quần short cát',
-    shirt: '#f4f1ea',
-    pants: '#cfc7ba',
-    shoes: '#ece8e0',
-    collar: '#e2dcd2',
+    name: 'Áo thun cam đất & Quần short xám than',
+    shirt: '#9E6338',
+    pants: '#3A434C',
+    shoes: '#EFECE6',
+    collar: '#804E2A',
     longSleeve: false,
   },
   {
@@ -454,7 +454,7 @@ export function getHousePalette(darkMode: boolean) {
     wallCream: darkMode ? '#3A3B3D' : '#EFECE6',
     wallPartition: darkMode ? '#343638' : '#EFECE6',
     wallAccent: darkMode ? '#364552' : '#5E7487',
-    wallBath: darkMode ? '#38393B' : '#E5E4E0',
+    wallBath: darkMode ? '#38393B' : '#D8D2C8',
     crownMolding: darkMode ? '#444648' : '#D6D1C9',
     baseboard: darkMode ? '#1F2123' : '#2B2D2F',
   }

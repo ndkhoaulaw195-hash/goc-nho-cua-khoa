@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, Sph, RB, RBB } from './prims'
+import { B, BB, CharacterHoverHalo, Cyl, G, Interact, Sph, RB, RBB } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
@@ -32,45 +32,6 @@ import {
 } from '../data/config'
 
 export const FLOOR2_Y = 4.35
-
-function Interact({
-  onClick,
-  children,
-}: {
-  hint?: string
-  onClick?: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <group
-      onClick={
-        onClick
-          ? (e: ThreeEvent<MouseEvent>) => {
-              e.stopPropagation()
-              onClick()
-            }
-          : undefined
-      }
-      onPointerOver={
-        onClick
-          ? (e: ThreeEvent<PointerEvent>) => {
-              e.stopPropagation()
-              document.body.style.cursor = 'pointer'
-            }
-          : undefined
-      }
-      onPointerOut={
-        onClick
-          ? () => {
-              document.body.style.cursor = 'auto'
-            }
-          : undefined
-      }
-    >
-      {children}
-    </group>
-  )
-}
 
 export function SecondFloor() {
   return (
@@ -197,17 +158,45 @@ function FloorAndBeams() {
         ))}
       </G>
 
-      {/* 3. Lan can bảo vệ ô cầu thang (tại x = -7.72, z từ 0.45 đến 4.8) */}
-      <G p={[-7.72, Y, 2.62]}>
-        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.35]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.35]} c="#C4AF97" rough={0.52} />
+      {/* 3. Lan can bảo vệ ô cầu thang (tại x = -7.72, nối liền từ z = 0.18 đến 4.8) */}
+      <G p={[-7.72, Y, 2.49]}>
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.62]} c="#D8C7B2" rough={0.48} radius={0.015} />
+        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.62]} c="#C4AF97" rough={0.52} />
         <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[0.016, 0.82, 4.25]} />
+          <boxGeometry args={[0.016, 0.82, 4.52]} />
         </mesh>
-        {[-1.6, 0, 1.6].map((pz, i) => (
-          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        {[-2.26, -1.1, 0, 1.1, 2.26].map((pz, i) => (
+          <B key={i} p={[0, 0.14, pz]} s={[0.04, 0.24, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
         ))}
       </G>
+
+      {/* 3b. Lan can kính an toàn chiếu nghỉ đầu cầu thang Tầng 2 (chừa lối đi rộng ở giữa x = -9.37 -> -8.33) */}
+      <G p={[-9.685, Y, 0.18]}>
+        <RBB p={[0, 0.86, 0]} s={[0.65, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
+        <BB p={[0, 0.0, 0]} s={[0.65, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
+          <boxGeometry args={[0.58, 0.82, 0.016]} />
+        </mesh>
+        <B p={[-0.28, 0.43, 0]} s={[0.042, 0.86, 0.042]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        <B p={[0.305, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
+      </G>
+      <G p={[-8.025, Y, 0.18]}>
+        <RBB p={[0, 0.86, 0]} s={[0.63, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
+        <BB p={[0, 0.0, 0]} s={[0.63, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
+        <mesh position={[0, 0.44, 0]} material={glassMat}>
+          <boxGeometry args={[0.56, 0.82, 0.016]} />
+        </mesh>
+        <B p={[-0.305, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        <B p={[0.295, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
+      </G>
+
+      {/* 3c. Đèn LED hắt mép chiếu nghỉ & chân tường trái Tầng 2 ở Night Mode (#FFD7A3) */}
+      {darkMode && (
+        <group>
+          <B p={[-8.85, Y + 0.012, 0.18]} s={[1.02, 0.018, 0.022]} c="#FFD7A3" emissive="#FFD7A3" ei={1.1} shadow={false} />
+          <B p={[-9.96, Y + 0.155, -0.5]} s={[0.018, 0.022, 10.2]} c="#FFD7A3" emissive="#FFD7A3" ei={0.95} shadow={false} />
+        </group>
+      )}
 
       {/* 4. Lan can bảo vệ mép trước Tầng 2 ngăn rơi xuống Tầng 1 (x: -7.72 -> -1.2, tại z = 4.8) */}
       <G p={[-4.46, Y, 4.8]}>
@@ -602,20 +591,24 @@ function IndoorStaircase() {
           )
         })}
 
-        {/* Tay vịn cầu thang gỗ sồi & trụ Matte Charcoal */}
-        <mesh position={[0.52, totalH / 2 + 0.82, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
-          <boxGeometry args={[0.055, 0.055, 6.15]} />
-          <meshStandardMaterial color="#C4AF97" roughness={0.48} />
-        </mesh>
-        {[0.08, 0.35, 0.65, 0.92].map((t, idx) => (
-          <B
-            key={idx}
-            p={[0.52, t * totalH + 0.42, THREE.MathUtils.lerp(startZ, endZ, t)]}
-            s={[0.035, 0.85, 0.035]}
-            c="#2B2D2F"
-            metal={0.45}
-            rough={0.4}
-          />
+        {/* Tay vịn cầu thang gỗ sồi 2 bên & trụ Matte Charcoal */}
+        {[-0.52, 0.52].map((hx, sideIdx) => (
+          <group key={sideIdx}>
+            <mesh position={[hx, totalH / 2 + 0.82, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
+              <boxGeometry args={[0.055, 0.055, 6.15]} />
+              <meshStandardMaterial color="#C4AF97" roughness={0.48} />
+            </mesh>
+            {[0.08, 0.35, 0.65, 0.92].map((t, idx) => (
+              <B
+                key={idx}
+                p={[hx, t * totalH + 0.42, THREE.MathUtils.lerp(startZ, endZ, t)]}
+                s={[0.035, 0.85, 0.035]}
+                c="#2B2D2F"
+                metal={0.45}
+                rough={0.4}
+              />
+            ))}
+          </group>
         ))}
       </G>
     </Interact>
@@ -1868,6 +1861,7 @@ function SleepingCat({ p }: { p: V3 }) {
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
 function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?: boolean } = {}) {
+  const [hovered, setHovered] = useState(false)
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const leftArm = useRef<THREE.Group>(null)
@@ -2328,6 +2322,8 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
           ? (e) => {
               e.stopPropagation()
               document.body.style.cursor = 'pointer'
+              setHovered(true)
+              useStore.getState().setHoverHint('👩 Linh (Click để điều khiển)')
             }
           : undefined
       }
@@ -2335,10 +2331,14 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
         canControlGirl
           ? () => {
               document.body.style.cursor = 'auto'
+              setHovered(false)
+              useStore.getState().setHoverHint(null)
             }
           : undefined
       }
     >
+      <CharacterHoverHalo active={hovered && canControlGirl} radius={0.42} height={1.6} />
+
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
       <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} visible={!isGirlSleepingNow} />
 
@@ -2354,36 +2354,36 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
 
       {/* Hai chân có khớp gối để ngồi/quỳ mượt mà */}
       <group ref={leftLeg} position={[-0.08, 0.56, 0]}>
-        <Cyl p={[0, -0.14, 0]} rt={0.05} rb={0.044} h={0.26} c={SKIN} />
+        <Cyl p={[0, -0.14, 0]} rt={0.05} rb={0.044} h={0.26} c={SKIN} shadow />
         <group ref={leftKnee} position={[0, -0.28, 0]}>
-          <Cyl p={[0, -0.12, 0]} rt={0.044} rb={0.04} h={0.22} c={outfit.sock} />
-          <BB p={[0, -0.28, 0.03]} s={[0.095, 0.06, 0.16]} c="#f2ede4" />
+          <Cyl p={[0, -0.12, 0]} rt={0.044} rb={0.04} h={0.22} c={outfit.sock} shadow />
+          <BB p={[0, -0.28, 0.03]} s={[0.095, 0.06, 0.16]} c="#f2ede4" shadow />
         </group>
       </group>
       <group ref={rightLeg} position={[0.08, 0.56, 0]}>
-        <Cyl p={[0, -0.14, 0]} rt={0.05} rb={0.044} h={0.26} c={SKIN} />
+        <Cyl p={[0, -0.14, 0]} rt={0.05} rb={0.044} h={0.26} c={SKIN} shadow />
         <group ref={rightKnee} position={[0, -0.28, 0]}>
-          <Cyl p={[0, -0.12, 0]} rt={0.044} rb={0.04} h={0.22} c={outfit.sock} />
-          <BB p={[0, -0.28, 0.03]} s={[0.095, 0.06, 0.16]} c="#f2ede4" />
+          <Cyl p={[0, -0.12, 0]} rt={0.044} rb={0.04} h={0.22} c={outfit.sock} shadow />
+          <BB p={[0, -0.28, 0.03]} s={[0.095, 0.06, 0.16]} c="#f2ede4" shadow />
         </group>
       </group>
 
       {/* Chân váy / Đầm */}
-      <Cyl p={[0, 0.66, 0]} rt={0.14} rb={0.2} h={0.32} c={outfit.skirt} rough={0.85} />
+      <Cyl p={[0, 0.66, 0]} rt={0.14} rb={0.2} h={0.32} c={outfit.skirt} rough={0.85} shadow />
 
       {/* Thân áo */}
-      <Cyl p={[0, 0.96, 0]} rt={0.135} rb={0.14} h={0.38} c={outfit.jacket} rough={0.8} />
+      <Cyl p={[0, 0.96, 0]} rt={0.135} rb={0.14} h={0.38} c={outfit.jacket} rough={0.8} shadow />
       <B p={[0, 0.97, 0.115]} s={[0.1, 0.34, 0.05]} c={outfit.inner} />
 
       {/* Tay trái */}
       <group ref={leftArm} position={[-0.18, 1.1, 0]}>
-        <Cyl p={[0, -0.18, 0]} rt={0.042} rb={0.036} h={0.36} c={outfit.jacket} />
+        <Cyl p={[0, -0.18, 0]} rt={0.042} rb={0.036} h={0.36} c={outfit.jacket} shadow />
         <Sph p={[0, -0.38, 0]} s={[0.042, 0.042, 0.042]} c={SKIN} />
       </group>
 
       {/* Tay phải + Đạo cụ cốc nước / điều khiển TV */}
       <group ref={rightArm} position={[0.18, 1.1, 0]}>
-        <Cyl p={[0, -0.18, 0]} rt={0.042} rb={0.036} h={0.36} c={outfit.jacket} />
+        <Cyl p={[0, -0.18, 0]} rt={0.042} rb={0.036} h={0.36} c={outfit.jacket} shadow />
         <Sph p={[0, -0.38, 0]} s={[0.042, 0.042, 0.042]} c={SKIN} />
         <mesh ref={cupRef} position={[0.02, -0.41, 0.05]} rotation={[Math.PI / 2, 0, 0]} visible={false}>
           <cylinderGeometry args={[0.034, 0.028, 0.085, 14]} />
@@ -2410,8 +2410,8 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
       {/* Cổ & Đầu */}
       <Cyl p={[0, 1.18, 0]} rt={0.048} rb={0.052} h={0.09} c={SKIN} />
       <group ref={head} position={[0, 1.35, 0]}>
-        <Sph p={[0, 0, 0]} s={[0.175, 0.185, 0.175]} c={SKIN} rough={0.65} />
-        <Sph p={[0, 0.05, -0.02]} s={[0.19, 0.18, 0.19]} c={HAIR} />
+        <Sph p={[0, 0, 0]} s={[0.175, 0.185, 0.175]} c={SKIN} rough={0.65} shadow />
+        <Sph p={[0, 0.05, -0.02]} s={[0.19, 0.18, 0.19]} c={HAIR} shadow />
         <Sph p={[0, 0.11, 0.09]} s={[0.16, 0.075, 0.09]} c={HAIR} />
         <Cyl p={[-0.14, -0.1, -0.02]} rt={0.05} rb={0.035} h={0.36} c={HAIR} />
         <Cyl p={[0.14, -0.1, -0.02]} rt={0.05} rb={0.035} h={0.36} c={HAIR} />

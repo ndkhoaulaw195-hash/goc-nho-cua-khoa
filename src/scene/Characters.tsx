@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore, type Activity } from '../store'
@@ -6,6 +6,7 @@ import { isBlocked, isBlockedTier2 } from './Furniture'
 import { LIVE_ACTORS, OUTFITS, STATIONS, type V3 } from '../data/config'
 import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import { openBookPages } from './textures'
+import { CharacterHoverHalo } from './prims'
 
 function Capsule({
   p = [0, 0, 0],
@@ -1134,6 +1135,7 @@ export function CharacterRoleIndicator({
 
 /** Mô hình nhân vật Khoa – Hỗ trợ đi bộ đa tầng và dùng chung tất cả đồ đạc trong nhà (Tầng 1, Phòng tắm, Tầng 2) */
 export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
+  const [hovered, setHovered] = useState(false)
   const root = useRef<THREE.Group>(null)
   const torso = useRef<THREE.Mesh>(null)
   const head = useRef<THREE.Group>(null)
@@ -1582,6 +1584,8 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           ? (e: ThreeEvent<PointerEvent>) => {
               e.stopPropagation()
               document.body.style.cursor = 'pointer'
+              setHovered(true)
+              useStore.getState().setHoverHint('🧑 Khoa (Click để điều khiển)')
             }
           : undefined
       }
@@ -1589,10 +1593,14 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         canControlBoy
           ? () => {
               document.body.style.cursor = 'auto'
+              setHovered(false)
+              useStore.getState().setHoverHint(null)
             }
           : undefined
       }
     >
+      <CharacterHoverHalo active={hovered && canControlBoy} radius={0.44} height={1.68} />
+
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
       <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} visible={!isBoySleepingNow} />
 
@@ -1786,6 +1794,7 @@ export function Dog({
   look: DogLook
   s?: number
 }) {
+  const [hovered, setHovered] = useState(false)
   const root = useRef<THREE.Group>(null)
   const tail = useRef<THREE.Group>(null)
   const body = useRef<THREE.Group>(null)
@@ -2009,13 +2018,16 @@ export function Dog({
       onPointerOver={(e: ThreeEvent<PointerEvent>) => {
         e.stopPropagation()
         document.body.style.cursor = 'pointer'
+        setHovered(true)
         useStore.getState().setHoverHint(`🐶 ${name}`)
       }}
       onPointerOut={() => {
         document.body.style.cursor = 'auto'
+        setHovered(false)
         useStore.getState().setHoverHint(null)
       }}
     >
+      <CharacterHoverHalo active={hovered} radius={0.34} height={0.55} />
       <mesh ref={heartRef} geometry={heartGeo} position={[0, 0.62, 0.2]} visible={false}>
         <meshStandardMaterial color="#c98882" emissive="#c98882" emissiveIntensity={0.85} />
       </mesh>

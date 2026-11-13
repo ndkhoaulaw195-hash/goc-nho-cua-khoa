@@ -1,36 +1,9 @@
 import { useMemo, useRef } from 'react'
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, Cyl, G, RBB, Sph } from './prims'
+import { B, BB, Cyl, G, Interact, RBB, Sph } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { useStore } from '../store'
-
-function Interact({
-  onClick,
-  children,
-}: {
-  hint?: string
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <group
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation()
-        onClick()
-      }}
-      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation()
-        document.body.style.cursor = 'pointer'
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = 'auto'
-      }}
-    >
-      {children}
-    </group>
-  )
-}
 
 /** Khu vực Phòng tắm cao cấp & Khu giặt sấy thông minh */
 export function Bathroom() {
@@ -68,18 +41,34 @@ export function Bathroom() {
 function BathroomDoorway() {
   return (
     <G p={[-10.0, 0, -3.4]}>
-      {/* Khung nẹp cửa Matte Charcoal (#2B2D2F) */}
-      <BB p={[0, 0, -0.7]} s={[0.26, 2.58, 0.08]} c="#2B2D2F" rough={0.65} />
-      <BB p={[0, 0, 0.7]} s={[0.26, 2.58, 0.08]} c="#2B2D2F" rough={0.65} />
-      <BB p={[0, 2.54, 0]} s={[0.26, 0.08, 1.48]} c="#2B2D2F" rough={0.65} />
-      {/* Ngưỡng cửa đá (#D6D1C9) ngăn cách sàn gỗ & sàn gạch */}
-      <BB p={[0, 0.015, 0]} s={[0.22, 0.02, 1.4]} c="#D6D1C9" rough={0.4} metal={0.1} polyOffset />
+      {/* Khuôn bao cửa thông phòng liền mạch Matte Charcoal (#2B2D2F) ôm khít vách ngăn dày 0.22 */}
+      <BB p={[0, 0, -0.665]} s={[0.25, 2.56, 0.07]} c="#2B2D2F" rough={0.62} shadow />
+      <BB p={[0, 0, 0.665]} s={[0.25, 2.56, 0.07]} c="#2B2D2F" rough={0.62} shadow />
+      <BB p={[0, 2.53, 0]} s={[0.25, 0.07, 1.4]} c="#2B2D2F" rough={0.62} shadow />
+
+      {/* Nẹp viền khuôn cửa đối xứng 2 mặt (phía phòng sinh hoạt +0.12 & phía phòng tắm -0.12) */}
+      {[0.12, -0.12].map((fx, i) => (
+        <group key={i} position={[fx, 0, 0]}>
+          <BB p={[0, 0, -0.71]} s={[0.025, 2.6, 0.08]} c="#2B2D2F" rough={0.6} polyOffset />
+          <BB p={[0, 0, 0.71]} s={[0.025, 2.6, 0.08]} c="#2B2D2F" rough={0.6} polyOffset />
+          <BB p={[0, 2.56, 0]} s={[0.025, 0.08, 1.5]} c="#2B2D2F" rough={0.6} polyOffset />
+        </group>
+      ))}
+
+      {/* Ngưỡng cửa đá (#C8C0B4) chuyển tiếp liền mạch giữa sàn gỗ & sàn gạch phòng tắm */}
+      <BB p={[0, 0.014, 0]} s={[0.23, 0.022, 1.32]} c="#C8C0B4" rough={0.38} metal={0.08} polyOffset />
+
+      {/* Thanh ray trượt cửa âm trần phía phòng tắm */}
+      <B p={[-0.145, 2.61, -0.16]} s={[0.055, 0.045, 2.1]} c="#2B2D2F" metal={0.55} rough={0.35} />
+      <B p={[-0.145, 2.55, -0.66]} s={[0.03, 0.09, 0.05]} c="#2B2D2F" metal={0.6} rough={0.3} />
+      <B p={[-0.145, 2.55, -0.16]} s={[0.03, 0.09, 0.05]} c="#2B2D2F" metal={0.6} rough={0.3} />
 
       {/* Cánh cửa trượt khung Matte Charcoal & kính mờ */}
-      <G p={[-0.04, 0, -0.42]}>
-        <BB s={[0.05, 2.5, 0.78]} c="#2B2D2F" rough={0.65} />
-        <B p={[0.005, 1.25, 0]} s={[0.015, 2.1, 0.6]} c="#EFECE6" opacity={0.35} rough={0.12} metal={0.15} shadow={false} />
-        <B p={[0.038, 1.15, 0.32]} s={[0.02, 0.38, 0.02]} c="#2B2D2F" metal={0.65} rough={0.3} />
+      <G p={[-0.145, 0, -0.41]}>
+        <BB s={[0.048, 2.52, 0.8]} c="#2B2D2F" rough={0.62} shadow />
+        <B p={[0, 1.26, 0]} s={[0.016, 2.14, 0.62]} c="#EFECE6" opacity={0.36} rough={0.12} metal={0.12} shadow={false} />
+        <B p={[0.036, 1.15, 0.33]} s={[0.02, 0.38, 0.02]} c="#2B2D2F" metal={0.65} rough={0.3} />
+        <B p={[-0.036, 1.15, 0.33]} s={[0.02, 0.38, 0.02]} c="#2B2D2F" metal={0.65} rough={0.3} />
       </G>
     </G>
   )
@@ -111,10 +100,10 @@ function Bathtub() {
         {/* Thảm chùi chân mềm mại dưới sàn (#B6B7B5, lì roughness ~0.85) */}
         <BB p={[1.2, 0.016, 0]} s={[0.72, 0.02, 1.35]} c="#B6B7B5" rough={0.85} polyOffset />
 
-        {/* Thân bồn tắm oval màu trắng kem ấm (#EFECE6) */}
-        <Cyl p={[0, 0.35, 0]} rt={0.68} rb={0.58} h={0.65} c="#EFECE6" seg={36} rough={0.25} />
-        {/* Lòng bồn tắm khoét rỗng (#E5E4E0) */}
-        <Cyl p={[0, 0.38, 0]} rt={0.61} rb={0.51} h={0.62} c="#E5E4E0" seg={36} rough={0.3} />
+        {/* Thân bồn tắm oval sứ trắng sáng (#F7F5F0) nổi bật trên nền đá xám ấm */}
+        <Cyl p={[0, 0.35, 0]} rt={0.68} rb={0.58} h={0.65} c="#F7F5F0" seg={36} rough={0.22} shadow />
+        {/* Lòng bồn tắm khoét rỗng (#EAE7E0) */}
+        <Cyl p={[0, 0.38, 0]} rt={0.61} rb={0.51} h={0.62} c="#EAE7E0" seg={36} rough={0.28} />
 
         {/* Mặt nước ấm trong dịu trung tính */}
         <mesh position={[0, 0.52, 0]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -237,11 +226,11 @@ function VanityAndWasher() {
         <G p={[-12.4, 0, -5.5]}>
           {/* Tủ Lavabo Warm Taupe/Greige (#B7AFA5) */}
           <RBB p={[0, 0.28, 0]} s={[1.4, 0.54, 0.62]} c="#B7AFA5" rough={0.6} radius={0.03} shadow />
-          {/* Mặt bàn đá sáng (#EFECE6) */}
-          <RBB p={[0, 0.82, 0]} s={[1.44, 0.06, 0.66]} c="#EFECE6" rough={0.35} radius={0.02} shadow />
+          {/* Mặt bàn đá sứ trắng sáng (#F7F5F0) */}
+          <RBB p={[0, 0.82, 0]} s={[1.44, 0.06, 0.66]} c="#F7F5F0" rough={0.3} radius={0.02} shadow />
 
-          {/* Chậu rửa mặt Lavabo sứ tròn nổi */}
-          <Cyl p={[0, 0.94, 0.02]} rt={0.25} rb={0.22} h={0.14} c="#EFECE6" rough={0.22} />
+          {/* Chậu rửa mặt Lavabo sứ trắng nổi bật (#F7F5F0) */}
+          <Cyl p={[0, 0.94, 0.02]} rt={0.25} rb={0.22} h={0.14} c="#F7F5F0" rough={0.18} shadow />
           {/* Vòi nước Matte Charcoal (#2B2D2F) */}
           <Cyl p={[0, 0.95, -0.19]} rt={0.022} h={0.26} c="#2B2D2F" metal={0.65} rough={0.3} />
           <Cyl p={[0, 1.16, -0.12]} r={[Math.PI / 2, 0, 0]} rt={0.018} h={0.18} c="#2B2D2F" metal={0.65} rough={0.3} />

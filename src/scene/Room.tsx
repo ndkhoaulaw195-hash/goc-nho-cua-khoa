@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B } from './prims'
+import { B, Interact } from './prims'
 import {
   aoContactShadow,
   aoLinearFalloff,
@@ -16,36 +16,6 @@ import { getHousePalette } from '../data/config'
 import { useStore } from '../store'
 
 export const ROOM = { w: 20, d: 12, h: 4.35 }
-
-function Interact({
-  hint,
-  onClick,
-  children,
-}: {
-  hint: string
-  onClick: (e: ThreeEvent<MouseEvent>) => void
-  children: React.ReactNode
-}) {
-  return (
-    <group
-      onClick={(e) => {
-        e.stopPropagation()
-        onClick(e)
-      }}
-      onPointerOver={(e) => {
-        e.stopPropagation()
-        document.body.style.cursor = 'pointer'
-        useStore.setState({ hoverHint: hint })
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = 'default'
-        useStore.setState({ hoverHint: null })
-      }}
-    >
-      {children}
-    </group>
-  )
-}
 
 export function Room() {
   const darkMode = useStore((s) => s.darkMode)
@@ -140,9 +110,9 @@ export function Room() {
         <planeGeometry args={[5.6, 12.0]} />
         <meshStandardMaterial
           map={marbleMap}
-          roughness={0.36}
-          metalness={0.06}
-          color={darkMode ? '#9E9C98' : '#FFFFFF'}
+          roughness={0.38}
+          metalness={0.05}
+          color={darkMode ? '#8F8C88' : '#DCD5CB'}
         />
       </mesh>
 
@@ -190,10 +160,11 @@ export function Room() {
         polyOffset
       />
 
-      {/* Phào chân tường Matte Charcoal (#2B2D2F) dọc tường sau */}
+      {/* Phào chân tường Matte Charcoal (#2B2D2F) dọc tường sau phòng sinh hoạt & phòng tắm */}
       <B p={[0.0, 0.07, -5.98]} s={[20.0, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+      <B p={[-12.8, 0.07, -5.98]} s={[5.6, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
 
-      {/* 2. Tường bên trái phòng tắm (#D6D1C9 / #E5E4E0) */}
+      {/* 2. Tường bên trái phòng tắm (#D6D1C9 / #D8D2C8) */}
       <B
         p={[-15.72, h / 2, -0.12]}
         s={[0.24, h, 12.24]}
@@ -211,12 +182,25 @@ export function Room() {
       />
       <B p={[-15.54, 0.07, 0.0]} s={[0.04, 0.14, 11.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
 
-      {/* 3. Vách ngăn giữa phòng tắm và phòng ngủ (#EFECE6) */}
+      {/* 3. Vách ngăn giữa phòng tắm và phòng sinh hoạt (#EFECE6 & #D8D2C8) */}
       <B p={[-10.0, h / 2, -5.05]} s={[0.22, h, 1.9]} c={palette.wallPartition} rough={0.85} shadow />
       <B p={[-9.87, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+      <B p={[-10.12, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
       <B p={[-10.0, 3.45, -3.4]} s={[0.22, 1.8, 1.4]} c={palette.wallPartition} rough={0.85} shadow />
       <B p={[-10.0, h / 2, 1.65]} s={[0.22, h, 8.7]} c={palette.wallPartition} rough={0.85} shadow />
       <B p={[-9.87, 0.07, 1.65]} s={[0.03, 0.14, 8.7]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+      <B p={[-10.12, 0.07, 1.65]} s={[0.03, 0.14, 8.7]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
+
+      {/* Đèn LED hắt chân tường vàng ấm 3000K (#FFD7A3) dọc hành lang phòng vệ sinh & khu vực cầu thang ở Night Mode */}
+      {darkMode && (
+        <group>
+          <B p={[-15.51, 0.155, 0.0]} s={[0.018, 0.022, 11.6]} c="#FFD7A3" emissive="#FFD7A3" ei={1.15} shadow={false} />
+          <B p={[-12.8, 0.155, -5.96]} s={[5.3, 0.022, 0.018]} c="#FFD7A3" emissive="#FFD7A3" ei={1.15} shadow={false} />
+          <B p={[-10.13, 0.155, 1.65]} s={[0.018, 0.022, 8.4]} c="#FFD7A3" emissive="#FFD7A3" ei={1.05} shadow={false} />
+          <B p={[-9.85, 0.155, 2.55]} s={[0.018, 0.022, 6.4]} c="#FFD7A3" emissive="#FFD7A3" ei={1.25} shadow={false} />
+          <B p={[-9.85, 0.155, -5.05]} s={[0.018, 0.022, 1.75]} c="#FFD7A3" emissive="#FFD7A3" ei={1.0} shadow={false} />
+        </group>
+      )}
 
       {/* Ốp lam gỗ dọc Slate Blue (#5E7487 / #4A5E6F) đầu giường + Đèn LED vàng ấm 3000K (#FFD7A3) */}
       <mesh position={[-3.25, 0.72, -d / 2 + 0.06]} receiveShadow>
@@ -422,13 +406,13 @@ export function Lights() {
       : weather === 'rain'
         ? 0.96
         : 1.38
-  const sunPos: [number, number, number] = weather === 'sunset' ? [-13, 19, 19] : [-9, 24, 18]
+  const sunPos: [number, number, number] = weather === 'sunset' ? [15.5, 17.5, 14.5] : [13.5, 20.5, 13.5]
 
   const ambientColor = darkMode
     ? '#25282C'
     : '#EFECE6'
   const ambientIntensity = darkMode
-    ? 0.08
+    ? 0.12
     : 0.28
 
   return (
@@ -436,35 +420,35 @@ export function Lights() {
       <hemisphereLight args={[hemiSky, hemiGround, hemiIntensity]} />
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
-      {/* Directional Light studio chính tạo bóng đổ mềm rõ nét */}
+      {/* Directional Light chính chiếu xiên nhẹ từ cửa sổ bên phải tạo bóng đổ mềm rõ nét */}
       <directionalLight
         position={sunPos}
         intensity={sunIntensity}
         color={sunColor}
         castShadow
         shadow-mapSize={[shadowResolution, shadowResolution]}
-        shadow-camera-left={-16.5}
-        shadow-camera-right={11.5}
-        shadow-camera-top={13.5}
-        shadow-camera-bottom={-10.5}
-        shadow-camera-near={4}
-        shadow-camera-far={44}
-        shadow-radius={3.5}
+        shadow-camera-left={-18.5}
+        shadow-camera-right={15.5}
+        shadow-camera-top={15.5}
+        shadow-camera-bottom={-14.5}
+        shadow-camera-near={3}
+        shadow-camera-far={52}
+        shadow-radius={3.8}
         shadow-bias={-0.00025}
         shadow-normalBias={0.02}
       />
 
-      {/* Fill light studio đối xứng giúp mặt ngoài & các góc tường giữ chi tiết đồng đều */}
+      {/* Ánh sáng viền (Rim Light) tách khối kiến trúc & giữ đường nét góc trái ở cả Night & Day Mode */}
       <directionalLight
-        position={[12, 16, -16]}
-        intensity={darkMode ? 0.08 : 0.52}
-        color={darkMode ? '#7F8C99' : '#EFECE6'}
+        position={[-16, 13, -12]}
+        intensity={darkMode ? 0.42 : 0.46}
+        color={darkMode ? '#8EA2B8' : '#EFECE6'}
       />
 
-      {/* 3 PointLight phân vùng kiến trúc (castShadow = false để tối ưu hiệu năng) */}
+      {/* PointLight phân vùng kiến trúc (castShadow = false để tối ưu hiệu năng) */}
       <pointLight
         position={[-1.2, 3.3, -0.5]}
-        intensity={darkMode ? 0.45 : 0.78}
+        intensity={darkMode ? 0.48 : 0.72}
         distance={14}
         decay={2}
         color={darkMode ? '#B8C4D0' : '#FFF4E6'}
@@ -472,7 +456,7 @@ export function Lights() {
       />
       <pointLight
         position={[0.2, 7.6, -1.0]}
-        intensity={darkMode ? 0.45 : 0.78}
+        intensity={darkMode ? 0.48 : 0.72}
         distance={14}
         decay={2}
         color={darkMode ? '#B8C4D0' : '#FFF4E6'}
@@ -480,12 +464,22 @@ export function Lights() {
       />
       <pointLight
         position={[-12.8, 3.3, -0.5]}
-        intensity={darkMode ? 0.36 : 0.76}
-        distance={9}
+        intensity={darkMode ? 0.76 : 0.76}
+        distance={10.5}
         decay={2}
-        color={darkMode ? '#C4CDD6' : '#FAF8F4'}
+        color={darkMode ? '#FFD7A3' : '#FAF8F4'}
         castShadow={false}
       />
+      {darkMode && (
+        <pointLight
+          position={[-8.85, 2.75, 2.5]}
+          intensity={0.68}
+          distance={9}
+          decay={2}
+          color="#FFD7A3"
+          castShadow={false}
+        />
+      )}
 
       {/* Đèn trang trí vàng ấm 3000K (#FFD7A3) đồng bộ cho cả Tầng 1 */}
       {darkMode && lampOn && (
