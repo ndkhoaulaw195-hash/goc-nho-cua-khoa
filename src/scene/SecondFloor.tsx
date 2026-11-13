@@ -19,7 +19,6 @@ import {
   girlPcScreen,
   openBookPages,
   persianTerracottaRug,
-  windowSky,
   woodFloor,
 } from './textures'
 import { useStore, type Activity } from '../store'
@@ -407,8 +406,7 @@ function Floor2AmbientOcclusion({ darkMode }: { darkMode: boolean }) {
   )
 }
 
-function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
-  const darkMode = useStore((s) => s.darkMode)
+function SecondFloorCurtains() {
   const curtainsFloor2Open = useStore((s) => s.curtainsFloor2Open)
   const Y = FLOOR2_Y
   const leftRef = useRef<THREE.Group>(null)
@@ -446,29 +444,7 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
-        {/* Mặt kính bầu trời nắng ấm / đêm sao */}
-        <mesh position={[0, 2.08, 0.012]}>
-          <planeGeometry args={[3.5, 3.35]} />
-          <meshStandardMaterial
-            map={skyMap}
-            emissive="#f4efe6"
-            emissiveMap={skyMap}
-            emissiveIntensity={darkMode ? 0.85 : 1.35}
-            polygonOffset
-            polygonOffsetFactor={-1}
-            polygonOffsetUnits={-1}
-          />
-        </mesh>
-
-        {/* Khung cửa sổ kem-đá chia ô hiện đại */}
-        <B p={[0, 3.72, 0.03]} s={[3.65, 0.08, 0.06]} c="#EFECE6" shadow={false} polyOffset />
-        <B p={[0, 0.42, 0.03]} s={[3.65, 0.08, 0.09]} c="#EFECE6" shadow={false} polyOffset />
-        {[-1.78, -0.58, 0.58, 1.78].map((wx, i) => (
-          <B key={i} p={[wx, 2.08, 0.03]} s={[0.06, 3.35, 0.05]} c="#EFECE6" shadow={false} polyOffset />
-        ))}
-        <B p={[0, 2.25, 0.03]} s={[3.55, 0.055, 0.05]} c="#EFECE6" shadow={false} polyOffset />
-
-        {/* Thanh treo rèm chạy suốt chiều dài cửa sổ */}
+        {/* Thanh treo rèm chạy suốt chiều dài cửa sổ (khớp cửa sổ 3D trong suốt từ ArchitectureShell) */}
         <Cyl p={[0, 3.88, 0.12]} r={[0, 0, Math.PI / 2]} rt={0.022} h={4.1} c="#2B2D2F" metal={0.45} />
 
         {/* Lớp rèm voan mỏng xuyên sáng trong trẻo không tạo sương mù */}
@@ -521,27 +497,13 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
  * 2. VÁCH NGĂN NỘI THẤT 0.15, LAM GỖ PHÂN KHU & CỬA SỔ KÍNH RÈM VOAN (KHÔNG TRÙNG TƯỜNG BAO)
  * ============================================================================ */
 function WallsAndDoor() {
-  const darkMode = useStore((s) => s.darkMode)
-  const palette = getHousePalette(darkMode)
   const Y = FLOOR2_Y
   const H2 = 4.2
-  const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
 
   return (
     <group>
       {/* 1. Vách lam Slate Blue & vách ngăn nội thất Tầng 2 dày 0.15 units tại x = -1.05 */}
       <WoodSlatsWall H2={H2} />
-
-      {/* Phào chỉ trần nhà & phào chân tường đồng bộ 2 tầng chạy dọc mặt trong tường sau (z = -6.00) */}
-      <B p={[-5.88, Y + H2 - 0.08, -5.95]} s={[8.2, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[4.83, Y + H2 - 0.08, -5.95]} s={[10.3, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[-5.9, Y + 0.07, -5.98]} s={[8.16, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
-      <B p={[4.85, Y + 0.07, -5.98]} s={[10.26, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
-
-      {/* 2. Phào trần & phào chân tường mặt trong tường trái (x = -10.00) */}
-      <B p={[-9.95, Y + H2 - 0.08, -0.02]} s={[0.08, 0.16, 11.92]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[-9.98, Y + 0.07, -5.3]} s={[0.03, 0.14, 1.36]} c={palette.baseboard} shadow={false} polyOffset />
-      <B p={[-9.98, Y + 0.07, 2.38]} s={[0.03, 0.14, 7.16]} c={palette.baseboard} shadow={false} polyOffset />
 
       {/* Cửa đôi màu Slate Blue (#5E7487) viền Matte Charcoal (#2B2D2F) ốp tường trái */}
       <G p={[-9.95, Y, -2.9]}>
@@ -574,12 +536,8 @@ function WallsAndDoor() {
         ))}
       </G>
 
-      {/* 3. Phào chỉ trần & phào chân tường mặt trong tường phải (x = +10.00) */}
-      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.16]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[9.98, Y + 0.07, -2.9]} s={[0.03, 0.14, 6.16]} c={palette.baseboard} shadow={false} polyOffset />
-
-      {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm Tầng 2) */}
-      <SecondFloorCurtains skyMap={skyMap} />
+      {/* Rèm voan trắng rủ mềm xuống sàn bên cửa sổ Tầng 2 (click để đóng/mở rèm) */}
+      <SecondFloorCurtains />
     </group>
   )
 }
