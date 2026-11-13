@@ -11,39 +11,44 @@ import {
   STATIONS,
   TV_CHANNELS,
   WALL_PHOTOS,
+  WEATHER_MODES,
 } from '../data/config'
 
 const I = {
   music: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 18V5l12-2v13" />
       <circle cx="6" cy="18" r="3" />
       <circle cx="18" cy="16" r="3" />
     </svg>
   ),
   mute: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 18V5l12-2v13" />
       <circle cx="6" cy="18" r="3" />
       <circle cx="18" cy="16" r="3" />
       <path d="M2 2l20 20" />
     </svg>
   ),
-  moon: (
-    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  ),
-  sun: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-    </svg>
-  ),
   eye: (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
       <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  reset: (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  ),
+  shuffle: (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 3 21 3 21 8" />
+      <line x1="4" y1="20" x2="21" y2="3" />
+      <polyline points="21 16 21 21 16 21" />
+      <line x1="15" y1="15" x2="21" y2="21" />
+      <line x1="4" y1="4" x2="9" y2="9" />
     </svg>
   ),
   close: (
@@ -58,6 +63,9 @@ export function Overlay() {
   const toastMessage = useStore((s) => s.toastMessage)
   const hoverHint = useStore((s) => s.hoverHint)
   const mode = useStore((s) => s.mode)
+  const userRole = useStore((s) => s.userRole)
+  const activity = useStore((s) => s.activity)
+  const isUserInitiated = useStore((s) => s.isUserInitiated)
   const boyAutoLife = useStore((s) => s.boyAutoLife)
   const girlAutoLife = useStore((s) => s.girlAutoLife)
 
@@ -67,7 +75,7 @@ export function Overlay() {
 
   useEffect(() => {
     if (!toastMessage) return
-    const t = setTimeout(() => useStore.setState({ toastMessage: null }), 2200)
+    const t = setTimeout(() => useStore.setState({ toastMessage: null }), 2500)
     return () => clearTimeout(t)
   }, [toastMessage])
 
@@ -89,19 +97,23 @@ export function Overlay() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const showOnboarding = Boolean(userRole) && mode === 'orbit' && !(isUserInitiated && activity !== 'idle')
+
   return (
     <div className={`overlay ${darkMode ? 'is-dark' : ''}`}>
       <div className="hud-top-bar">
         <TopLeft boyAutoLife={boyAutoLife} girlAutoLife={girlAutoLife} />
-        <TopRight />
       </div>
 
+      <TopRight />
       <ContextualDock />
       <WardrobeModal />
       <GirlWardrobeModal />
       <PhotoModal />
       <PianoModal />
       <LoginLobby />
+
+      {showOnboarding && <OnboardingHint />}
 
       {mode === 'fp' && (
         <>
@@ -110,7 +122,59 @@ export function Overlay() {
         </>
       )}
       {hoverHint && <div className="hover-hint">{hoverHint}</div>}
-      {toastMessage && <div className="toast">{toastMessage}</div>}
+      {toastMessage && <div className="toast" role="status" aria-live="polite">{toastMessage}</div>}
+    </div>
+  )
+}
+
+/* ---------- Gợi ý thao tác nhỏ gọn ở cạnh dưới, tự mờ dần sau tương tác đầu tiên ---------- */
+function OnboardingHint() {
+  const [phase, setPhase] = useState<'visible' | 'fading' | 'hidden'>('visible')
+
+  useEffect(() => {
+    let hideTimer: ReturnType<typeof setTimeout> | null = null
+    const triggerFade = () => {
+      setPhase((prev) => {
+        if (prev !== 'visible') return prev
+        hideTimer = setTimeout(() => setPhase('hidden'), 550)
+        return 'fading'
+      })
+    }
+
+    const onInteract = (e: Event) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('canvas') || target.closest('.hud-top-right')) {
+        triggerFade()
+      }
+    }
+
+    window.addEventListener('pointerdown', onInteract, { passive: true })
+    window.addEventListener('wheel', onInteract, { passive: true })
+    window.addEventListener('touchstart', onInteract, { passive: true })
+
+    return () => {
+      window.removeEventListener('pointerdown', onInteract)
+      window.removeEventListener('wheel', onInteract)
+      window.removeEventListener('touchstart', onInteract)
+      if (hideTimer) clearTimeout(hideTimer)
+    }
+  }, [])
+
+  if (phase === 'hidden') return null
+
+  return (
+    <div
+      className={`onboarding-hint ${phase === 'fading' ? 'is-fading' : ''}`}
+      onClick={() => setPhase('hidden')}
+      role="note"
+    >
+      <span className="onboarding-desktop">
+        Kéo chuột để xoay • Cuộn để thu phóng • Chạm vào đồ vật để khám phá
+      </span>
+      <span className="onboarding-mobile">
+        Chạm kéo để xoay • Chụm để thu phóng • Chạm đồ vật khám phá
+      </span>
     </div>
   )
 }
@@ -224,7 +288,9 @@ function ContextualDock() {
       {activity === 'sleep' && (
         <>
           <button className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
-            {darkMode ? '☀️ Ban ngày' : '🌙 Ban đêm'}
+            {darkMode
+              ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
+              : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
           </button>
           <button className="dock-btn" onClick={() => useStore.getState().toggleFloor1BedLamp()}>
             {floor1BedLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
@@ -303,7 +369,9 @@ function ContextualDock() {
       {activity === 'girl_sleep' && (
         <>
           <button className="dock-btn" onClick={() => useStore.getState().toggleDarkMode()}>
-            {darkMode ? '☀️ Ban ngày' : '🌙 Ban đêm'}
+            {darkMode
+              ? `${WEATHER_MODES.clear.icon} ${WEATHER_MODES.clear.label}`
+              : `${WEATHER_MODES.night.icon} ${WEATHER_MODES.night.label}`}
           </button>
           <button className="dock-btn" onClick={() => useStore.getState().toggleGirlLamp()}>
             {girlLampOn ? '💡 Tắt đèn ngủ' : '💡 Bật đèn ngủ'}
@@ -356,7 +424,7 @@ function ContextualDock() {
   )
 }
 
-/* ---------- Cụm Phải Trên: 2 Thanh Glassmorphism Gọn Gàng (Điều hướng Góc nhìn & Tiện ích) ---------- */
+/* ---------- Cụm Phải Trên (Desktop) / Thanh Dock Dưới Đáy (Mobile): Điều hướng & Tiện ích ---------- */
 function TopRight() {
   const mode = useStore((s) => s.mode)
   const setMode = useStore((s) => s.setMode)
@@ -367,11 +435,12 @@ function TopRight() {
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
-  const activity = useStore((s) => s.activity)
+  const resetCamera = useStore((s) => s.resetCamera)
+  const randomCameraView = useStore((s) => s.randomCameraView)
 
-  const isFloor1 = mode === 'orbit' && viewPreset === 'floor1' && activity === 'idle'
-  const isFloor2 = mode === 'orbit' && viewPreset === 'floor2' && activity === 'idle'
-  const isOverview = mode === 'orbit' && viewPreset === 'overview' && activity === 'idle'
+  const isFloor1 = mode === 'orbit' && viewPreset === 'floor1'
+  const isFloor2 = mode === 'orbit' && viewPreset === 'floor2'
+  const isOverview = mode === 'orbit' && viewPreset === 'overview'
 
   const [playing, setPlaying] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
@@ -406,64 +475,88 @@ function TopRight() {
     }
   }
 
-  const weatherMeta =
-    weather === 'clear'
-      ? { icon: '☀️', label: 'Nắng ấm' }
-      : weather === 'sunset'
-        ? { icon: '🌇', label: 'Hoàng hôn' }
-        : weather === 'rain'
-          ? { icon: '🌧️', label: 'Mưa Lofi' }
-          : { icon: '🌙', label: 'Đêm ấm' }
+  const weatherMeta = WEATHER_MODES[weather]
 
   return (
     <div className="hud-top-right">
       {/* Hàng 1: Điều hướng góc nhìn 3D */}
       <div className="glass-dock">
-        {mode === 'orbit' && (
-          <div className="view-switcher">
-            <button
-              className={`dock-pill-btn ${isOverview ? 'active' : ''}`}
-              onClick={() => useStore.getState().returnOverview()}
-            >
-              🏠 <span className="hide-on-mobile">Toàn cảnh</span>
-            </button>
-            <button
-              className={`dock-pill-btn ${isFloor1 ? 'active' : ''}`}
-              onClick={() => {
-                useStore.getState().setFocus(FLOOR1_VIEW, 'floor1')
-                useStore.getState().notify('👦 Tầng 1 – Khoa')
-              }}
-            >
-              👦 Tầng 1
-            </button>
-            <button
-              className={`dock-pill-btn ${isFloor2 ? 'active' : ''}`}
-              onClick={() => {
-                useStore.getState().setFocus(FLOOR2_VIEW, 'floor2')
-                useStore.getState().notify('👧 Tầng 2 – Bạn Gái')
-              }}
-            >
-              👧 Tầng 2
-            </button>
-          </div>
-        )}
+        <div className="view-switcher">
+          <button
+            className={`dock-pill-btn ${isOverview ? 'active' : ''}`}
+            onClick={() => useStore.getState().returnOverview()}
+            data-tooltip="Đưa về toàn cảnh mặc định"
+            title="Đưa về toàn cảnh mặc định"
+            aria-label="Toàn cảnh"
+          >
+            🏠 <span className="pill-label">Toàn cảnh</span>
+          </button>
+          <button
+            className={`dock-pill-btn ${isFloor1 ? 'active' : ''}`}
+            onClick={() => {
+              useStore.getState().setMode('orbit')
+              useStore.getState().setFocus(FLOOR1_VIEW, 'floor1')
+              useStore.getState().notify('👦 Tầng 1 – Khoa')
+            }}
+            data-tooltip="Xem Tầng 1 – Khoa"
+            title="Xem Tầng 1 – Khoa"
+          >
+            👦 <span>Tầng 1</span>
+          </button>
+          <button
+            className={`dock-pill-btn ${isFloor2 ? 'active' : ''}`}
+            onClick={() => {
+              useStore.getState().setMode('orbit')
+              useStore.getState().setFocus(FLOOR2_VIEW, 'floor2')
+              useStore.getState().notify('👧 Tầng 2 – Bạn Gái')
+            }}
+            data-tooltip="Xem Tầng 2 – Bạn Gái"
+            title="Xem Tầng 2 – Bạn Gái"
+          >
+            👧 <span>Tầng 2</span>
+          </button>
+        </div>
 
         <button
           className={`dock-pill-btn ${mode === 'fp' ? 'active' : ''}`}
           onClick={() => setMode(mode === 'fp' ? 'orbit' : 'fp')}
-          title="Chuyển sang góc nhìn thứ nhất (WASD để đi bộ trong nhà)"
+          data-tooltip={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
+          title={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
         >
-          {I.eye} <span>{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
+          {I.eye} <span className="pill-label">{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
+        </button>
+
+        <span className="dock-sep" />
+
+        <button
+          className="dock-icon-btn"
+          onClick={resetCamera}
+          data-tooltip="Đặt lại góc nhìn mặc định"
+          title="Đặt lại góc nhìn mặc định"
+          aria-label="Đặt lại góc nhìn mặc định"
+        >
+          {I.reset}
+        </button>
+
+        <button
+          className="dock-icon-btn"
+          onClick={randomCameraView}
+          data-tooltip="Đổi góc nhìn ngẫu nhiên"
+          title="Đổi góc nhìn ngẫu nhiên"
+          aria-label="Đổi góc nhìn ngẫu nhiên"
+        >
+          {I.shuffle}
         </button>
       </div>
 
-      {/* Hàng 2: Không gian & Tiện ích ấm cúng */}
+      {/* Hàng 2: Ánh sáng, Âm thanh & Chất lượng đồ họa */}
       <div className="glass-dock">
         <button
           className={`dock-icon-btn ${playing ? 'active' : ''}`}
           onClick={toggleMusic}
-          title={playing ? 'Tắt nhạc nền Kiss The Rain' : 'Phát nhạc nền Kiss The Rain'}
-          aria-label="Phát hoặc tắt nhạc nền"
+          data-tooltip={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
+          title={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
+          aria-label={playing ? 'Tắt nhạc nền' : 'Phát nhạc nền'}
         >
           {playing ? I.music : I.mute}
           {playing && (
@@ -478,17 +571,20 @@ function TopRight() {
         <button
           className="dock-pill-btn"
           onClick={cycleWeather}
-          title={`Thời tiết: ${weatherMeta.label} (Bấm để chuyển)`}
+          data-tooltip={`Ánh sáng: ${weatherMeta.label} (Bấm để đổi)`}
+          title={`Ánh sáng: ${weatherMeta.label} (Bấm để đổi)`}
+          aria-label={`Chế độ ánh sáng: ${weatherMeta.label}`}
         >
           <span>{weatherMeta.icon}</span>
-          <span className="hide-on-mobile">{weatherMeta.label}</span>
+          <span>{weatherMeta.label}</span>
         </button>
 
         <button
           className={`dock-icon-btn ${candlesLit ? 'active' : ''}`}
           onClick={toggleCandles}
-          title={candlesLit ? 'Nến thơm: Đang thắp (Bấm để tắt)' : 'Nến thơm: Đang tắt (Bấm để thắp)'}
-          aria-label="Bật/tắt nến thơm"
+          data-tooltip={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
+          title={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
+          aria-label={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
         >
           🕯️
         </button>
@@ -498,7 +594,9 @@ function TopRight() {
         <button
           className={`dock-pill-btn ${graphicMode === 'hd' ? 'active' : ''}`}
           onClick={toggleGraphicMode}
-          title={graphicMode === 'hd' ? 'Đồ họa HD tối ưu (Retina 1.35x + Shadow 1.5K)' : 'Đồ họa Mượt mà'}
+          data-tooltip={graphicMode === 'hd' ? 'Chế độ HD sắc nét (Bấm chuyển Mượt)' : 'Chế độ Mượt tối ưu FPS (Bấm chuyển HD)'}
+          title={graphicMode === 'hd' ? 'Chế độ HD sắc nét (Bấm chuyển Mượt)' : 'Chế độ Mượt tối ưu FPS (Bấm chuyển HD)'}
+          aria-label={graphicMode === 'hd' ? 'Đồ họa HD' : 'Đồ họa Mượt'}
         >
           {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
         </button>

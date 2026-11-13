@@ -7,8 +7,10 @@ import {
   HOME_VIEW,
   LIVE_ACTORS,
   OUTFITS,
+  RANDOM_VIEWS,
   STATIONS,
   TV_CHANNELS,
+  WEATHER_MODES,
   type V3,
 } from './data/config'
 import {
@@ -126,8 +128,11 @@ interface State {
   // Camera & Góc nhìn
   focus: CamFocus | null
   viewPreset: 'overview' | 'floor1' | 'floor2'
+  randomViewIdx: number
   setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
   returnOverview: () => void
+  resetCamera: () => void
+  randomCameraView: () => void
   cutWalls: { back: boolean; left: boolean; right: boolean }
   setCutWalls: (cw: { back: boolean; left: boolean; right: boolean }) => void
 
@@ -295,10 +300,18 @@ export const useStore = create<State>()(
         })),
       darkMode: false,
       toggleDarkMode: () =>
-        set((s) => ({
-          darkMode: !s.darkMode,
-          toastMessage: !s.darkMode ? '🌙 Ban đêm' : '☀️ Ban ngày',
-        })),
+        set((s) => {
+          const nextDark = !s.darkMode
+          const nextWeather: WeatherMode = nextDark ? 'night' : 'clear'
+          broadcastWorldChange('darkMode', nextDark)
+          broadcastWorldChange('weather', nextWeather)
+          const meta = WEATHER_MODES[nextWeather]
+          return {
+            darkMode: nextDark,
+            weather: nextWeather,
+            toastMessage: `${meta.icon} ${meta.label}`,
+          }
+        }),
 
       graphicMode: 'hd',
       toggleGraphicMode: () =>
@@ -306,7 +319,7 @@ export const useStore = create<State>()(
           const next = s.graphicMode === 'hd' ? 'smooth' : 'hd'
           return {
             graphicMode: next,
-            toastMessage: next === 'hd' ? '✨ Chế độ HD (Siêu nét)' : '⚡ Chế độ Mượt (Tiết kiệm pin)',
+            toastMessage: next === 'hd' ? '✨ Đồ họa: HD' : '⚡ Đồ họa: Mượt',
           }
         }),
 
@@ -664,6 +677,7 @@ export const useStore = create<State>()(
 
       focus: null,
       viewPreset: 'overview',
+      randomViewIdx: -1,
       setFocus: (focus, preset) =>
         set(() => ({
           focus,
@@ -684,7 +698,33 @@ export const useStore = create<State>()(
             girlWardrobeOpen: false,
             activePhoto: null,
             viewPreset: 'overview',
-            focus: s.mode === 'orbit' ? HOME_VIEW : null,
+            focus: s.mode === 'orbit' ? { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] } : null,
+          }
+        }),
+      resetCamera: () =>
+        set(() => ({
+          mode: 'orbit',
+          activePhoto: null,
+          wardrobeOpen: false,
+          girlWardrobeOpen: false,
+          viewPreset: 'overview',
+          focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
+          toastMessage: '↺ Đã đặt lại góc nhìn mặc định',
+        })),
+      randomCameraView: () =>
+        set((s) => {
+          let nextIdx = Math.floor(Math.random() * RANDOM_VIEWS.length)
+          if (RANDOM_VIEWS.length > 1 && nextIdx === s.randomViewIdx) {
+            nextIdx = (nextIdx + 1) % RANDOM_VIEWS.length
+          }
+          const picked = RANDOM_VIEWS[nextIdx]
+          return {
+            mode: 'orbit',
+            activePhoto: null,
+            randomViewIdx: nextIdx,
+            viewPreset: picked.preset,
+            focus: { pos: [...picked.camera.pos], target: [...picked.camera.target] },
+            toastMessage: `🎲 ${picked.label}`,
           }
         }),
       cutWalls: { back: false, left: false, right: false },
@@ -1060,16 +1100,11 @@ export const useStore = create<State>()(
           const isNight = next === 'night'
           broadcastWorldChange('weather', next)
           broadcastWorldChange('darkMode', isNight)
-          const labels: Record<WeatherMode, string> = {
-            clear: '☀️ Ban ngày nắng ấm',
-            sunset: '🌇 Chiều hoàng hôn lãng mạn',
-            rain: '🌧️ Trời mưa rơi rả rích (Lofi Rain)',
-            night: '🌙 Đêm khuya ấm áp',
-          }
+          const meta = WEATHER_MODES[next]
           return {
             weather: next,
             darkMode: isNight,
-            toastMessage: labels[next],
+            toastMessage: `${meta.icon} ${meta.label}`,
           }
         }),
 

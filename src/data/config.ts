@@ -9,6 +9,13 @@ export const SITE = {
   },
 }
 
+export const WEATHER_MODES = {
+  clear: { icon: '☀️', label: 'Nắng ấm' },
+  sunset: { icon: '🌇', label: 'Hoàng hôn' },
+  rain: { icon: '🌧️', label: 'Mưa Lofi' },
+  night: { icon: '🌙', label: 'Đêm khuya ấm áp' },
+} as const
+
 // Vị trí trực tiếp theo thời gian thực của nhân vật và 2 bé chó để đồng bộ camera & tương tác vuốt ve
 export const LIVE_ACTORS: {
   khoaPos: [number, number]
@@ -157,6 +164,22 @@ export const GIRL_VANITY_VIEW = { pos: [4.95, 6.05, -2.5] as V3, target: [4.95, 
 export const GIRL_LOUNGE_VIEW = { pos: [-3.0, 7.2, 4.2] as V3, target: [-3.0, 4.9, 1.1] as V3 }
 export const GIRL_NOOK_VIEW = { pos: [4.2, 6.5, 0.6] as V3, target: [7.1, 4.95, -1.35] as V3 }
 export const GIRL_WARDROBE_VIEW = { pos: [7.65, 6.6, -1.2] as V3, target: [7.65, 5.6, -5.1] as V3 }
+
+export const RANDOM_VIEWS: {
+  id: string
+  label: string
+  preset: 'overview' | 'floor1' | 'floor2'
+  camera: { pos: V3; target: V3 }
+}[] = [
+  { id: 'atrium', label: 'Sảnh thông tầng', preset: 'overview', camera: ATRIUM_VIEW },
+  { id: 'tv', label: 'Phòng khách & Sofa', preset: 'floor1', camera: TV_VIEW },
+  { id: 'pc', label: 'Bàn làm việc Tầng 1', preset: 'floor1', camera: PC_VIEW },
+  { id: 'bed1', label: 'Phòng ngủ Tầng 1', preset: 'floor1', camera: BED_VIEW },
+  { id: 'bed2', label: 'Phòng ngủ Tầng 2', preset: 'floor2', camera: GIRL_BED_VIEW },
+  { id: 'nook', label: 'Góc đọc sách Tầng 2', preset: 'floor2', camera: GIRL_NOOK_VIEW },
+  { id: 'lounge', label: 'Ghế lười & Ban công', preset: 'floor2', camera: GIRL_LOUNGE_VIEW },
+  { id: 'pc2', label: 'Góc học tập Tầng 2', preset: 'floor2', camera: GIRL_PC_VIEW },
+]
 
 export interface GirlOutfit {
   id: string
