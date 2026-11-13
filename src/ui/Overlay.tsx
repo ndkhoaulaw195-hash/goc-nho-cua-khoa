@@ -430,8 +430,6 @@ function TopRight() {
   const setMode = useStore((s) => s.setMode)
   const weather = useStore((s) => s.weather)
   const cycleWeather = useStore((s) => s.cycleWeather)
-  const candlesLit = useStore((s) => s.candlesLit)
-  const toggleCandles = useStore((s) => s.toggleCandles)
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
@@ -577,16 +575,6 @@ function TopRight() {
         >
           <span>{weatherMeta.icon}</span>
           <span>{weatherMeta.label}</span>
-        </button>
-
-        <button
-          className={`dock-icon-btn ${candlesLit ? 'active' : ''}`}
-          onClick={toggleCandles}
-          data-tooltip={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
-          title={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
-          aria-label={candlesLit ? 'Tắt hiệu ứng nến thơm' : 'Bật hiệu ứng nến thơm'}
-        >
-          🕯️
         </button>
 
         <span className="dock-sep" />

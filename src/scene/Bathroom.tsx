@@ -137,9 +137,9 @@ function Bathtub() {
 
         {/* Khay gỗ sồi (#C4AF97) vắt ngang thành bồn tắm */}
         <BB p={[0, 0.67, 0.48]} s={[0.96, 0.025, 0.22]} c="#C4AF97" rough={0.5} />
-        {/* Nến thơm mini ánh vàng 3000K (#FFD7A3) */}
-        <Cyl p={[-0.26, 0.72, 0.48]} rt={0.035} h={0.06} c="#EFECE6" />
-        <Sph p={[-0.26, 0.765, 0.48]} s={[0.012, 0.02, 0.012]} c="#FFD7A3" emissive="#FFD7A3" ei={1.8} />
+        {/* Hũ gốm đựng muối tắm bên trái khay */}
+        <Cyl p={[-0.26, 0.72, 0.48]} rt={0.04} rb={0.036} h={0.07} c="#EFECE6" rough={0.55} />
+        <Cyl p={[-0.26, 0.76, 0.48]} rt={0.038} h={0.015} c="#C4AF97" rough={0.5} />
         {/* Khăn mặt mềm mại cuộn tròn trên khay (#D6D1C9) */}
         <Cyl p={[0.26, 0.71, 0.48]} r={[0, 0, Math.PI / 2]} rt={0.038} h={0.16} c="#D6D1C9" rough={0.85} />
         {/* Ly thủy tinh thư giãn bên cạnh */}
@@ -263,9 +263,9 @@ function VanityAndWasher() {
               <mesh position={[0, 0, -0.008]}>
                 <ringGeometry args={[0.55, 0.64, 40]} />
                 <meshStandardMaterial
-                  color="#FFD7A3"
-                  emissive="#FFD7A3"
-                  emissiveIntensity={bathMirrorLightOn ? 3.2 : 0.05}
+                  color="#F5C98B"
+                  emissive="#F5C98B"
+                  emissiveIntensity={bathMirrorLightOn ? 1.35 : 0.05}
                 />
               </mesh>
               <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#2B2D2F" metal={0.75} rough={0.25} />

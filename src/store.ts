@@ -199,8 +199,6 @@ interface State {
   nextBookPage: () => void
 
   // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
-  candlesLit: boolean
-  toggleCandles: () => void
   pianoModalOpen: boolean
   setPianoModalOpen: (v: boolean) => void
   drinkType: 'water' | 'tea' | 'coffee'
@@ -1109,17 +1107,6 @@ export const useStore = create<State>()(
         }),
 
       // Tiện ích Chữa Lành & Thư Giãn (Healing & Cozy Sanctuary)
-      candlesLit: true,
-      toggleCandles: () =>
-        set((s) => {
-          const next = !s.candlesLit
-          broadcastWorldChange('candlesLit', next)
-          return {
-            candlesLit: next,
-            toastMessage: next ? '🕯️ Đã thắp nến thơm tinh dầu lãng mạn' : '💨 Đã thổi tắt nến',
-          }
-        }),
-
       pianoModalOpen: false,
       setPianoModalOpen: (pianoModalOpen) => set({ pianoModalOpen }),
 

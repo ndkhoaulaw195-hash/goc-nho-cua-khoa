@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { B, BB, CharacterHoverHalo, Cyl, G, Interact, Sph, RB, RBB } from './prims'
+import { B, BB, Cyl, G, Interact, Sph, RB, RBB } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import {
   AUTO_DURATION,
@@ -189,14 +189,6 @@ function FloorAndBeams() {
         <B p={[-0.305, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
         <B p={[0.295, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
       </G>
-
-      {/* 3c. Đèn LED hắt mép chiếu nghỉ & chân tường trái Tầng 2 ở Night Mode (#FFD7A3) */}
-      {darkMode && (
-        <group>
-          <B p={[-8.85, Y + 0.012, 0.18]} s={[1.02, 0.018, 0.022]} c="#FFD7A3" emissive="#FFD7A3" ei={1.1} shadow={false} />
-          <B p={[-9.96, Y + 0.155, -0.5]} s={[0.018, 0.022, 10.2]} c="#FFD7A3" emissive="#FFD7A3" ei={0.95} shadow={false} />
-        </group>
-      )}
 
       {/* 4. Lan can bảo vệ mép trước Tầng 2 ngăn rơi xuống Tầng 1 (x: -7.72 -> -1.2, tại z = 4.8) */}
       <G p={[-4.46, Y, 4.8]}>
@@ -644,34 +636,34 @@ function GirlRoomFurniture() {
 
   return (
     <group>
-      {/* Nguồn sáng phản hồi thực tế khi người dùng bật đèn Tầng 2 (Vàng ấm 3000K #FFD7A3) */}
+      {/* Nguồn sáng phản hồi êm dịu khi bật đèn Tầng 2 (Vàng ấm dịu mắt) */}
       {darkMode && (floor2ArchLightOn || girlLampOn) && (
         <pointLight
-          position={[-5.0, Y + 1.8, -5.15]}
-          intensity={3.0}
-          distance={6.2}
+          position={[-5.0, Y + 1.9, -5.0]}
+          intensity={2.2}
+          distance={8.0}
           decay={2}
-          color="#FFD7A3"
+          color="#FFE0B8"
           castShadow={false}
         />
       )}
       {darkMode && (girlShelfLedOn || girlVanityLightOn) && (
         <pointLight
-          position={[4.3, Y + 1.9, -4.9]}
-          intensity={2.9}
-          distance={5.8}
+          position={[4.3, Y + 1.9, -4.8]}
+          intensity={2.1}
+          distance={7.5}
           decay={2}
-          color="#FFD7A3"
+          color="#FFE0B8"
           castShadow={false}
         />
       )}
       {darkMode && floor2ReadingLampOn && (
         <pointLight
           position={[8.4, Y + 1.65, -0.9]}
-          intensity={3.1}
-          distance={5.5}
+          intensity={2.2}
+          distance={7.0}
           decay={2}
-          color="#FFD7A3"
+          color="#FFE0B8"
           castShadow={false}
         />
       )}
@@ -751,25 +743,25 @@ function GirlRoomFurniture() {
           <mesh position={[0, 2.25, 0]}>
             <torusGeometry args={[1.62, 0.036, 16, 64, Math.PI]} />
             <meshStandardMaterial
-              color="#FFD7A3"
-              emissive="#FFD7A3"
-              emissiveIntensity={floor2ArchLightOn ? 2.6 : 0.18}
+              color="#F5C98B"
+              emissive="#F5C98B"
+              emissiveIntensity={floor2ArchLightOn ? 1.25 : 0.15}
             />
           </mesh>
           <B
             p={[-1.62, 1.42, 0]}
             s={[0.07, 1.68, 0.05]}
-            c="#FFD7A3"
-            emissive="#FFD7A3"
-            ei={floor2ArchLightOn ? 2.6 : 0.18}
+            c="#F5C98B"
+            emissive="#F5C98B"
+            ei={floor2ArchLightOn ? 1.25 : 0.15}
             shadow={false}
           />
           <B
             p={[1.62, 1.42, 0]}
             s={[0.07, 1.68, 0.05]}
-            c="#FFD7A3"
-            emissive="#FFD7A3"
-            ei={floor2ArchLightOn ? 2.6 : 0.18}
+            c="#F5C98B"
+            emissive="#F5C98B"
+            ei={floor2ArchLightOn ? 1.25 : 0.15}
             shadow={false}
           />
           {floor2ArchLightOn && (
@@ -1424,9 +1416,9 @@ function GirlRoomFurniture() {
               <mesh position={[0, 0, 0.028]}>
                 <torusGeometry args={[0.48, 0.032, 20, 64]} />
                 <meshStandardMaterial
-                  color="#FFD7A3"
-                  emissive="#FFD7A3"
-                  emissiveIntensity={girlVanityLightOn ? 2.6 : 0.25}
+                  color="#F5C98B"
+                  emissive="#F5C98B"
+                  emissiveIntensity={girlVanityLightOn ? 1.25 : 0.2}
                 />
               </mesh>
               {girlVanityLightOn && (
@@ -1861,7 +1853,6 @@ function SleepingCat({ p }: { p: V3 }) {
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
 function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?: boolean } = {}) {
-  const [hovered, setHovered] = useState(false)
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const leftArm = useRef<THREE.Group>(null)
@@ -2322,7 +2313,6 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
           ? (e) => {
               e.stopPropagation()
               document.body.style.cursor = 'pointer'
-              setHovered(true)
               useStore.getState().setHoverHint('👩 Linh (Click để điều khiển)')
             }
           : undefined
@@ -2331,14 +2321,11 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
         canControlGirl
           ? () => {
               document.body.style.cursor = 'auto'
-              setHovered(false)
               useStore.getState().setHoverHint(null)
             }
           : undefined
       }
     >
-      <CharacterHoverHalo active={hovered && canControlGirl} radius={0.42} height={1.6} />
-
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
       <CharacterRoleIndicator isControlled={isGirlClaimed} y={1.76} visible={!isGirlSleepingNow} />
 

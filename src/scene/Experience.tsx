@@ -7,7 +7,6 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
 import { Avatar, CORGI, Dog, PUG } from './Characters'
-import { ScentedCandles } from './ScentedCandles'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
 
@@ -88,9 +87,9 @@ function SetupEnvironment() {
   }, [gl, scene])
 
   useEffect(() => {
-    scene.background = new THREE.Color(darkMode ? '#1B1D1F' : '#B9B1A6')
-    scene.environmentIntensity = darkMode ? 0.06 : 0.34
-    gl.toneMappingExposure = darkMode ? 0.9 : 1.0
+    scene.background = new THREE.Color(darkMode ? '#2B313A' : '#B9B1A6')
+    scene.environmentIntensity = darkMode ? 0.24 : 0.34
+    gl.toneMappingExposure = 1.0
   }, [gl, scene, darkMode])
 
   return null
@@ -196,7 +195,6 @@ export function Experience() {
       <Room />
       <Furniture />
       <RainEffect />
-      <ScentedCandles />
       <Avatar p={[-1.1, 0, -1.2]} ry={0.15} />
       <Dog
         id="mochi"
