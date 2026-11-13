@@ -433,6 +433,8 @@ function TopRight() {
   const graphicMode = useStore((s) => s.graphicMode)
   const toggleGraphicMode = useStore((s) => s.toggleGraphicMode)
   const viewPreset = useStore((s) => s.viewPreset)
+  const roofVisible = useStore((s) => s.roofVisible)
+  const toggleRoof = useStore((s) => s.toggleRoof)
   const resetCamera = useStore((s) => s.resetCamera)
   const randomCameraView = useStore((s) => s.randomCameraView)
 
@@ -514,6 +516,16 @@ function TopRight() {
             👧 <span>Tầng 2</span>
           </button>
         </div>
+
+        <button
+          className={`dock-pill-btn ${roofVisible && isOverview ? 'active' : ''}`}
+          onClick={toggleRoof}
+          data-tooltip={roofVisible && isOverview ? 'Ẩn mái nhà để xem nội thất' : 'Hiện mái nhà & ngoại thất'}
+          title={roofVisible && isOverview ? 'Ẩn mái nhà để xem nội thất' : 'Hiện mái nhà & ngoại thất'}
+          aria-label="Bật tắt mái nhà"
+        >
+          🏠 <span>Mái nhà</span>
+        </button>
 
         <button
           className={`dock-pill-btn ${mode === 'fp' ? 'active' : ''}`}

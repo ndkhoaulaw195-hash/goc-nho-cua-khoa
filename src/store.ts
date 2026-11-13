@@ -125,9 +125,11 @@ interface State {
   activePhoto: number | null
   setActivePhoto: (id: number | null) => void
 
-  // Camera & Góc nhìn
+  // Camera & Góc nhìn & Kiến trúc
   focus: CamFocus | null
   viewPreset: 'overview' | 'floor1' | 'floor2'
+  roofVisible: boolean
+  toggleRoof: () => void
   randomViewIdx: number
   setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
   returnOverview: () => void
@@ -675,11 +677,30 @@ export const useStore = create<State>()(
 
       focus: null,
       viewPreset: 'overview',
+      roofVisible: false,
+      toggleRoof: () =>
+        set((s) => {
+          const next = !s.roofVisible
+          broadcastWorldChange('roofVisible', next)
+          const needsOverview = next && s.viewPreset !== 'overview'
+          return {
+            roofVisible: next,
+            ...(needsOverview
+              ? {
+                  mode: 'orbit' as const,
+                  viewPreset: 'overview' as const,
+                  focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
+                }
+              : {}),
+            toastMessage: next ? '🏠 Hiện mái nhà & ngoại thất' : '✨ Ẩn mái nhà',
+          }
+        }),
       randomViewIdx: -1,
       setFocus: (focus, preset) =>
         set(() => ({
           focus,
           ...(preset ? { viewPreset: preset } : {}),
+          ...(preset === 'floor1' || preset === 'floor2' ? { roofVisible: false } : {}),
         })),
       returnOverview: () =>
         set((s) => {
@@ -721,6 +742,7 @@ export const useStore = create<State>()(
             activePhoto: null,
             randomViewIdx: nextIdx,
             viewPreset: picked.preset,
+            ...(picked.preset === 'floor1' || picked.preset === 'floor2' ? { roofVisible: false } : {}),
             focus: { pos: [...picked.camera.pos], target: [...picked.camera.target] },
             toastMessage: `🎲 ${picked.label}`,
           }

@@ -187,7 +187,7 @@ export function Experience() {
         outputColorSpace: THREE.SRGBColorSpace,
       }}
       dpr={dpr}
-      camera={{ position: [-1.5, 17.5, 34.0], fov: 34, near: 0.2, far: 150 }}
+      camera={{ position: HOME_VIEW.pos, fov: 34, near: 0.2, far: 150 }}
     >
       <BackgroundOptimizer isWindowFocused={isWindowFocused} />
       <SetupEnvironment />
@@ -224,7 +224,7 @@ export function Experience() {
             enableDamping
             dampingFactor={0.08}
             minDistance={2.0}
-            maxDistance={44}
+            maxDistance={56}
             zoomSpeed={0.85}
             maxPolarAngle={Math.PI / 2.02}
           />
@@ -331,6 +331,20 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
         khoaFloorY: LIVE_ACTORS.khoaFloorY,
         girlPos: LIVE_ACTORS.girlPos,
         dogs: LIVE_ACTORS.dogs,
+      }
+    }
+    if (controls) {
+      // Khóa tâm camera (OrbitControls target) vào trung tâm Tầng 2 khi đang xem Tầng 2 ở chế độ Orbit
+      const isFloor2Orbit = st.mode === 'orbit' && st.viewPreset === 'floor2'
+      if (controls.enablePan !== !isFloor2Orbit) {
+        controls.enablePan = !isFloor2Orbit
+      }
+      if (isFloor2Orbit && !f) {
+        tt.set(...FLOOR2_VIEW.target)
+        if (controls.target.distanceToSquared(tt) > 1e-6) {
+          controls.target.copy(tt)
+          controls.update()
+        }
       }
     }
     if (!f || !controls) return

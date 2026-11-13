@@ -141,9 +141,9 @@ export const WALL_PHOTOS: WallPhoto[] = [
   },
 ]
 
-export const HOME_VIEW = { pos: [-1.5, 14.5, 30.5] as V3, target: [-1.5, 2.8, -0.5] as V3 }
-export const FLOOR1_VIEW = { pos: [-2.2, 9.2, 21.0] as V3, target: [-2.2, 1.4, -0.5] as V3 }
-export const FLOOR2_VIEW = { pos: [-0.6, 9.8, 15.2] as V3, target: [-0.6, 5.2, -1.8] as V3 }
+export const HOME_VIEW = { pos: [-2.0, 16.5, 35.5] as V3, target: [-2.2, 2.5, 0.5] as V3 }
+export const FLOOR1_VIEW = { pos: [-2.2, 9.5, 22.0] as V3, target: [-2.4, 1.4, -0.2] as V3 }
+export const FLOOR2_VIEW = { pos: [-0.8, 10.2, 16.8] as V3, target: [-0.8, 5.1, -1.2] as V3 }
 export const ATRIUM_VIEW = { pos: [-0.8, 6.8, 10.8] as V3, target: [2.3, 3.2, -1.8] as V3 }
 export const TV_VIEW = { pos: [2.6, 3.05, 6.4] as V3, target: [4.3, 1.05, 1.6] as V3 }
 export const PC_VIEW = { pos: [1.35, 2.45, -2.1] as V3, target: [2.85, 1.15, -5.2] as V3 }
