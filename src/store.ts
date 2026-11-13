@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware'
 import {
   FLOOR1_VIEW,
   FLOOR2_VIEW,
+  FP_DISTANCE_MAX,
+  FP_DISTANCE_MIN,
+  FP_DISTANCES,
   GIRL_OUTFITS,
   HOME_VIEW,
   LIVE_ACTORS,
@@ -12,9 +15,12 @@ import {
   TV_CHANNELS,
   WALKTHROUGH_SPOTS,
   WEATHER_MODES,
+  type FpDistPreset,
   type V3,
   type WalkthroughSpaceId,
 } from './data/config'
+export { FP_DISTANCES } from './data/config'
+export type { FpDistPreset } from './data/config'
 import {
   broadcastPlayerAction,
   claimRole,
@@ -134,8 +140,13 @@ interface State {
   wallMode: 'full' | 'cutaway' | 'ghost'
   nearInteriorOpen: boolean
   setNearInteriorOpen: (v: boolean) => void
-  fpPerspective: 'eye' | 'third'
+  fpPerspective: 'third' | 'eye'
   toggleFpPerspective: () => void
+  fpDistPreset: FpDistPreset
+  fpDistance: number
+  setFpDistPreset: (p: FpDistPreset) => void
+  cycleFpDistPreset: () => void
+  setFpDistance: (d: number) => void
   walkthroughSpace: WalkthroughSpaceId
   walkthroughSpawn: { space: WalkthroughSpaceId; pos: V3; yaw: number; tick: number } | null
   jumpToWalkthroughSpace: (space: WalkthroughSpaceId) => void
@@ -234,6 +245,12 @@ const getInitialRole = (): ActiveChar | null => {
   return r === 'boy' || r === 'girl' ? r : null
 }
 const initRole = getInitialRole()
+
+const FP_DIST_TOASTS: Record<FpDistPreset, string> = {
+  close: '🎥 Cự ly: Gần',
+  medium: '🎥 Cự ly: Trung bình',
+  far: '🎥 Cự ly: Toàn cảnh xa',
+}
 
 function broadcastWorldChange(key: string, val: any) {
   if (typeof window === 'undefined') return
@@ -706,13 +723,48 @@ export const useStore = create<State>()(
       wallMode: 'full',
       nearInteriorOpen: false,
       setNearInteriorOpen: (nearInteriorOpen) => set({ nearInteriorOpen }),
-      fpPerspective: 'eye',
+      fpPerspective: 'third',
       toggleFpPerspective: () =>
         set((s) => {
-          const next: 'eye' | 'third' = s.fpPerspective === 'third' ? 'eye' : 'third'
+          const next: 'third' | 'eye' = s.fpPerspective === 'third' ? 'eye' : 'third'
           return {
             fpPerspective: next,
             toastMessage: next === 'eye' ? '👁️ Góc nhìn tầm mắt' : '🎥 Góc nhìn sau lưng',
+          }
+        }),
+      fpDistPreset: 'medium',
+      fpDistance: FP_DISTANCES.medium,
+      setFpDistPreset: (p) =>
+        set({
+          fpPerspective: 'third',
+          fpDistPreset: p,
+          fpDistance: FP_DISTANCES[p],
+          toastMessage: FP_DIST_TOASTS[p],
+        }),
+      cycleFpDistPreset: () =>
+        set((s) => {
+          const order: FpDistPreset[] = ['close', 'medium', 'far']
+          const idx = order.indexOf(s.fpDistPreset)
+          const next = order[(idx + 1) % order.length]
+          return {
+            fpPerspective: 'third',
+            fpDistPreset: next,
+            fpDistance: FP_DISTANCES[next],
+            toastMessage: FP_DIST_TOASTS[next],
+          }
+        }),
+      setFpDistance: (d) =>
+        set(() => {
+          const clamped = Math.max(FP_DISTANCE_MIN, Math.min(FP_DISTANCE_MAX, d))
+          const preset: FpDistPreset =
+            clamped < (FP_DISTANCES.close + FP_DISTANCES.medium) / 2
+              ? 'close'
+              : clamped < (FP_DISTANCES.medium + FP_DISTANCES.far) / 2
+                ? 'medium'
+                : 'far'
+          return {
+            fpDistPreset: preset,
+            fpDistance: clamped,
           }
         }),
       walkthroughSpace: 'living',
