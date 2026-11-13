@@ -43,7 +43,7 @@ function Ball({ p, s, c, rough = 0.85 }: { p: V3; s: V3; c: string; rough?: numb
   )
 }
 
-// Mạng lưới điểm dẫn đường thông thoáng khắp căn phòng Tầng 1 & Phòng tắm
+// Mạng lưới điểm dẫn đường thông thoáng khắp Tầng 1, Phòng tắm & Sân vườn ngoài trời
 const NAV_NODES: [number, number][] = [
   [-8.5, -3.4],
   [-8.5, -2.0],
@@ -77,7 +77,91 @@ const NAV_NODES: [number, number][] = [
   [-10.6, -4.4],
   [-12.2, -1.6],
   [-12.2, 1.2],
+  // Hành lang cửa chính & Lối đá bước dạo ngoài sân
+  [-1.45, 5.2],
+  [-1.45, 6.14],
+  [-1.45, 7.1],
+  [-1.45, 9.5],
+  [-1.45, 11.8],
+  [-1.45, 13.8],
+  // Nhánh phải: Sundeck, mép hồ bơi & sàn gỗ hông phải
+  [1.2, 10.5],
+  [2.0, 12.0],
+  [1.6, 7.2],
+  [4.8, 6.7],
+  [4.65, 10.5],
+  [4.65, 13.2],
+  [11.8, 6.5],
+  [11.8, 0.5],
+  // Nhánh trái: Firepit Lounge & bãi cỏ
+  [-6.0, 13.5],
+  [-11.5, 13.5],
+  [-14.5, 13.5],
+  [-15.5, 10.5],
+  [-8.2, 11.2],
+  [-10.95, 12.6],
+  [-17.8, 4.0],
 ]
+
+/** Tính cao độ mặt sàn / sân vườn tại tọa độ (x, z) khớp chính xác LuxuryLandscaping.tsx */
+export function getGroundY(x: number, z: number): number {
+  // Bên trong nhà Tầng 1, Phòng tắm & ngưỡng cửa chính
+  if (x >= -15.88 && x <= 10.28 && z >= -6.28 && z <= 6.28) {
+    return 0
+  }
+
+  // Hiên cửa chính (Porch Landing: x -3.10..+0.30, z 6.28..7.84, top y = -0.01)
+  if (x >= -3.1 && x <= 0.3 && z > 6.28 && z <= 7.84) {
+    return -0.01
+  }
+
+  // 5 phiến đá bước dạo nổi trên mặt nước (giật cấp mượt từ -0.0525 -> -0.1405)
+  if (x >= -2.85 && x <= 0.05 && z > 7.84 && z <= 14.72) {
+    if (z < 7.98) {
+      return THREE.MathUtils.lerp(-0.01, -0.0525, (z - 7.84) / (7.98 - 7.84))
+    }
+    if (z <= 9.02) return -0.0525
+    if (z < 9.32) {
+      return THREE.MathUtils.lerp(-0.0525, -0.0825, (z - 9.02) / (9.32 - 9.02))
+    }
+    if (z <= 10.38) return -0.0825
+    if (z < 10.68) {
+      return THREE.MathUtils.lerp(-0.0825, -0.1075, (z - 10.38) / (10.68 - 10.38))
+    }
+    if (z <= 11.72) return -0.1075
+    if (z < 12.02) {
+      return THREE.MathUtils.lerp(-0.1075, -0.1275, (z - 11.72) / (12.02 - 11.72))
+    }
+    if (z <= 13.08) return -0.1275
+    if (z < 13.39) {
+      return THREE.MathUtils.lerp(-0.1275, -0.1405, (z - 13.08) / (13.39 - 13.08))
+    }
+    return -0.1405
+  }
+
+  // Sàn gỗ Sundeck cạnh hồ bơi (x: 1.10..5.60, z: 6.32..14.12, top y = -0.15)
+  if (x >= 1.1 && x <= 5.6 && z >= 6.32 && z <= 14.12) {
+    return -0.15
+  }
+
+  // Đường dạo gỗ sườn phải (x: 10.28..13.36, z: -6.30..7.20, top y = -0.175)
+  if (x >= 10.28 && x <= 13.36 && z >= -6.3 && z <= 7.2) {
+    return -0.175
+  }
+
+  // Đá bước dạo nối Firepit Lounge sang lối chính (x: -5.725..-4.575, z: 10.55..11.85, top y = -0.155)
+  if (x >= -5.725 && x <= -4.575 && z >= 10.55 && z <= 11.85) {
+    return -0.155
+  }
+
+  // Sân lát đá tối khu Firepit Lounge (x: -16.55..-6.05, z: 7.90..14.10, top y = -0.165)
+  if (x >= -16.55 && x <= -6.05 && z >= 7.9 && z <= 14.1) {
+    return -0.165
+  }
+
+  // Thảm cỏ & sỏi trắng ngoài trời (top y = -0.20)
+  return -0.2
+}
 
 // Mạng lưới điểm dẫn đường thông thoáng trên Tầng 2 (tránh giường ngủ, cầu thang & lan can giếng trời)
 const NAV_NODES_TIER2: [number, number][] = [
@@ -326,7 +410,8 @@ export function stepCharacterWalk(
     const dx = goalX - cx
     const dz = goalZ - cz
     const dist = Math.hypot(dx, dz)
-    const totalDist = Math.hypot(tx - cx, tz - cz) + Math.abs(ty - floorYRef.current)
+    const expectedTy = wantTier2 ? ty : getGroundY(tx, tz)
+    const totalDist = Math.hypot(tx - cx, tz - cz) + Math.abs(expectedTy - floorYRef.current)
     if (totalDist > 0.18 && dist > 0.02) {
       vx = (dx / dist) * walkSpeed
       vz = (dz / dist) * walkSpeed
@@ -366,7 +451,7 @@ export function stepCharacterWalk(
       if (posRef.current[1] <= -0.35) {
         floorYRef.current = 4.35
       } else if (posRef.current[1] >= 4.82) {
-        floorYRef.current = 0
+        floorYRef.current = getGroundY(posRef.current[0], posRef.current[1])
       } else {
         floorYRef.current = THREE.MathUtils.clamp(stairProgress * 4.35, 0.1, 4.25)
       }
@@ -438,7 +523,7 @@ export function stepCharacterWalk(
           posRef.current[1] = nz
         }
       }
-      floorYRef.current = 0
+      floorYRef.current = getGroundY(posRef.current[0], posRef.current[1])
     }
 
     const tYaw = Math.atan2(vx, vz)
@@ -1085,6 +1170,13 @@ export const AUTO_SEQUENCE_GIRL: Exclude<Activity, 'idle'>[] = [
   'wash',
 ]
 
+export const OUTDOOR_STROLL_SPOTS: { pos: V3; lookYaw: number }[] = [
+  { pos: [4.65, -0.15, 10.5], lookYaw: Math.PI / 2 },    // Sundeck ngắm hồ bơi vô cực
+  { pos: [-1.45, -0.14, 13.8], lookYaw: 0 },              // Lối đá bước dạo nổi trên mặt nước
+  { pos: [-10.95, -0.165, 12.6], lookYaw: Math.PI },      // Sân Firepit Lounge ấm áp
+  { pos: [11.8, -0.175, 6.5], lookYaw: Math.PI },         // Sàn gỗ hông phải hóng gió
+]
+
 export const AUTO_DURATION: Record<Exclude<Activity, 'idle'>, number> = {
   pc: 8.5,
   pet: 7.5,
@@ -1165,6 +1257,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const walkWatchdog = useRef(0)
   const autoIdleTimer = useRef(1.4)
   const autoSeqIdx = useRef(0)
+  const outdoorStrollTarget = useRef<V3 | null>(null)
+  const outdoorStrollYaw = useRef<number | null>(null)
+  const outdoorStrollPause = useRef(0)
+  const outdoorStrollIdx = useRef(0)
   const lastSpinTick = useRef(outfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
@@ -1252,12 +1348,15 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       return
     }
 
-    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2)
+    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2 <-> Sân vườn)
     if (st.boyActivity === 'idle') {
-      walkWatchdog.current = 0
       let moving = false
 
       if (isControllingBoy && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
+        walkWatchdog.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
         moving = stepCharacterWalk(
           walkPos,
           walkFloorY,
@@ -1274,19 +1373,65 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         )
         if (moving) autoIdleTimer.current = 4.0
       } else if (st.boyAutoLife) {
-        autoIdleTimer.current -= delta
-        if (autoIdleTimer.current <= 0) {
-          const nextAct = AUTO_SEQUENCE_BOY[autoSeqIdx.current % AUTO_SEQUENCE_BOY.length]
-          autoSeqIdx.current += 1
-          autoIdleTimer.current = 1.4
-          if (nextAct === 'pet') {
-            st.petDog(autoSeqIdx.current % 2 === 0 ? 'mochi' : 'bo', false, 'boy')
+        if (outdoorStrollTarget.current) {
+          walkWatchdog.current += delta
+          const [ox, , oz] = outdoorStrollTarget.current
+          const distOutdoor = Math.hypot(walkPos.current[0] - ox, walkPos.current[1] - oz)
+          if (distOutdoor > 0.25 && walkWatchdog.current < 28.0) {
+            moving = stepCharacterWalk(
+              walkPos,
+              walkFloorY,
+              walkYaw,
+              walkPhase,
+              0,
+              0,
+              false,
+              outdoorStrollTarget.current,
+              () => {
+                outdoorStrollTarget.current = null
+              },
+              delta,
+              [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
+              LIVE_ACTORS.girlFloorY,
+            )
           } else {
-            st.startActivity(nextAct, false, 'boy')
+            outdoorStrollTarget.current = null
+            walkWatchdog.current = 0
+            walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
           }
-          return
+        } else if (outdoorStrollPause.current > 0) {
+          walkWatchdog.current = 0
+          outdoorStrollPause.current -= delta
+          if (outdoorStrollYaw.current !== null) {
+            const diff = Math.atan2(
+              Math.sin(outdoorStrollYaw.current - walkYaw.current),
+              Math.cos(outdoorStrollYaw.current - walkYaw.current),
+            )
+            walkYaw.current += diff * Math.min(1, delta * 4)
+          }
+          headY = Math.sin(t * 0.85) * 0.28
+          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+        } else {
+          walkWatchdog.current = 0
+          outdoorStrollYaw.current = null
+          autoIdleTimer.current -= delta
+          if (autoIdleTimer.current <= 0) {
+            const nextAct = AUTO_SEQUENCE_BOY[autoSeqIdx.current % AUTO_SEQUENCE_BOY.length]
+            autoSeqIdx.current += 1
+            autoIdleTimer.current = 1.4
+            if (nextAct === 'pet') {
+              st.petDog(autoSeqIdx.current % 2 === 0 ? 'mochi' : 'bo', false, 'boy')
+            } else {
+              st.startActivity(nextAct, false, 'boy')
+            }
+            return
+          }
         }
       } else {
+        walkWatchdog.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
         walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
       }
 
@@ -1435,6 +1580,17 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
             st.returnOverview()
             return
           } else if (st.boyAutoLife) {
+            if (autoSeqIdx.current > 0 && autoSeqIdx.current % 3 === 0) {
+              const spot = OUTDOOR_STROLL_SPOTS[outdoorStrollIdx.current % OUTDOOR_STROLL_SPOTS.length]
+              outdoorStrollIdx.current += 1
+              outdoorStrollTarget.current = spot.pos
+              outdoorStrollYaw.current = spot.lookYaw
+              outdoorStrollPause.current = 5.0
+              walkWatchdog.current = 0
+              autoIdleTimer.current = 0.8
+              st.startActivity('idle', false, 'boy')
+              return
+            }
             const nextAct = AUTO_SEQUENCE_BOY[autoSeqIdx.current % AUTO_SEQUENCE_BOY.length]
             autoSeqIdx.current += 1
             if (nextAct === 'pet') {

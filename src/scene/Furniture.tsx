@@ -777,7 +777,7 @@ function PanoramicWindow() {
     if (groupRef.current) {
       const rightCut =
         st.mode === 'orbit' &&
-        st.wallMode === 'cutaway' &&
+        st.wallMode === 'ghost' &&
         !(st.viewPreset === 'overview' && st.roofVisible) &&
         isWallCutByCamera(camera.position, [1, 0, 0])
       groupRef.current.visible = !rightCut
@@ -1428,24 +1428,71 @@ export const COLLIDERS: [number, number, number, number][] = [
   [-15.6, 2.75, -14.9, 4.55], // Kệ tủ Master Bath Lounge áp sát tường trái
 ]
 
-export function isBlocked(x: number, z: number, r = 0.35) {
-  // Khoảng thông phòng tại cửa kết nối phòng ngủ và phòng tắm (x = -10, z từ -4.1 đến -2.7)
-  const inDoorway = Math.abs(x - -10.0) < 0.72 && z > -3.95 && z < -2.85
-  if (inDoorway) {
-    return false
-  }
+// Tường bao Tầng 1 & Phòng tắm (chừa trống Cửa Chính x: -2.05..-0.95 và Cửa Phòng Tắm z: -3.95..-2.85)
+export const HOUSE_WALL_COLLIDERS: [number, number, number, number][] = [
+  [-15.88, -6.28, 10.28, -5.60],   // Tường sau Tầng 1 & Phòng tắm
+  [-15.88, -6.28, -15.45, 6.32],   // Tường trái Phòng tắm
+  [9.45, -6.28, 10.28, 6.32],      // Tường phải Phòng khách
+  [-15.88, 5.55, -2.05, 6.32],     // Tường mặt tiền bên trái Cửa Chính
+  [-0.95, 5.55, 10.28, 6.32],      // Tường mặt tiền bên phải Cửa Chính
+  [-10.15, -6.28, -9.75, -3.95],   // Vách ngăn Phòng tắm đoạn Bắc
+  [-10.15, -2.85, -9.75, 6.32],    // Vách ngăn Phòng tắm đoạn Nam
+]
 
-  // Nếu đang ở trong phòng tắm (x < -10.0):
-  if (x < -10.0) {
-    if (x < -15.45 + r || x > -10.05 - r || z < -5.7 + r || z > 5.6 - r) return true
-  } else {
-    // Nếu đang ở trong phòng ngủ & phòng khách Tầng 1:
-    if (x < -9.75 + r || x > 9.35 - r || z < -5.6 + r || z > 5.55 - r) return true
-    // Vách ngăn bên trái phòng ngủ chạy suốt chiều dài (ngoại trừ ô cửa)
-    if (Math.abs(x - -10.0) < 0.18 + r && (z <= -3.95 || z >= -2.85)) return true
+// Vật cản ngoài sân vườn khớp tọa độ LuxuryLandscaping.tsx
+export const OUTDOOR_COLLIDERS: [number, number, number, number][] = [
+  // Lòng hồ bơi vô cực mini (x: +5.75..+14.85, z: +7.1..+13.95 + thành/rãnh tràn)
+  [5.65, 7.12, 15.05, 14.08],
+
+  // Phần mặt nước hồ cạn 2 bên lối đá bước dạo (vẫn đi dọc các phiến đá ở giữa x: -2.55..-0.25)
+  [-2.96, 7.85, -2.55, 13.10],
+  [-0.25, 7.85, 0.16, 12.60],
+  [-2.96, 14.75, 0.16, 15.55], // Mép nước phía Nam trước phiến đá bước dạo cuối
+
+  // 2 Ghế tắm nắng & Bàn trà nhỏ trên Sundeck
+  [2.75, 7.98, 3.66, 12.48],
+
+  // Bộ sofa chữ L & Bàn lửa Firepit Lounge
+  [-13.55, 8.78, -8.95, 9.72],    // Nhánh sofa Bắc
+  [-13.54, 9.70, -12.62, 13.00],  // Nhánh sofa Tây
+  [-11.81, 10.58, -10.09, 11.82], // Bàn lửa Firepit
+
+  // Bồn cây mặt tiền cánh trái
+  [-15.70, 6.30, -5.10, 7.14],
+
+  // Thân cây to kiến trúc (ArchitecturalTree)
+  [-20.12, 10.88, -19.08, 11.92],
+  [-19.86, -5.06, -18.94, -4.14],
+  [14.80, 3.70, 15.80, 4.70],
+  [14.66, -6.84, 15.54, -5.96],
+  [-7.24, -8.64, -6.36, -7.76],
+  [4.72, -8.88, 5.68, -7.92],
+
+  // Đèn trụ sân vườn (BollardLight)
+  [-3.40, 9.12, -3.24, 9.28],
+  [0.44, 9.12, 0.60, 9.28],
+  [-3.40, 12.02, -3.24, 12.18],
+  [0.44, 12.02, 0.60, 12.18],
+  [-3.40, 14.82, -3.24, 14.98],
+  [0.44, 14.82, 0.60, 14.98],
+  [-6.28, 13.72, -6.12, 13.88],
+  [-16.18, 13.72, -16.02, 13.88],
+  [1.72, 13.52, 1.88, 13.68],
+]
+
+export function isBlocked(x: number, z: number, r = 0.35) {
+  // Phạm vi tường rào khuôn viên sân vườn
+  if (x < -21.2 + r || x > 16.2 - r || z < -9.2 + r || z > 15.1 - r) return true
+
+  for (const [x1, z1, x2, z2] of HOUSE_WALL_COLLIDERS) {
+    if (x + r > x1 && x - r < x2 && z + r > z1 && z - r < z2) return true
   }
 
   for (const [x1, z1, x2, z2] of COLLIDERS) {
+    if (x + r > x1 && x - r < x2 && z + r > z1 && z - r < z2) return true
+  }
+
+  for (const [x1, z1, x2, z2] of OUTDOOR_COLLIDERS) {
     if (x + r > x1 && x - r < x2 && z + r > z1 && z - r < z2) return true
   }
   return false
