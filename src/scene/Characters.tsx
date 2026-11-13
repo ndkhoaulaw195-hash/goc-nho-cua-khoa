@@ -163,7 +163,7 @@ export function getGroundY(x: number, z: number): number {
   return -0.2
 }
 
-// Mạng lưới điểm dẫn đường thông thoáng trên Tầng 2 (tránh giường ngủ, cầu thang & lan can giếng trời)
+// Mạng lưới điểm dẫn đường thông thoáng trên Tầng 2 & Sân thượng (tránh giường ngủ, cầu thang, lan can giếng trời & ghế Lounge)
 const NAV_NODES_TIER2: [number, number][] = [
   [-8.85, -0.45],
   [-8.2, -1.6],
@@ -172,6 +172,12 @@ const NAV_NODES_TIER2: [number, number][] = [
   [-3.2, -1.6],
   [-6.2, 0.0],
   [-6.2, 2.4],
+  [-10.14, 3.1],
+  [-11.1, 3.1],
+  [-11.1, 0.8],
+  [-12.5, 3.1],
+  [-12.5, 0.5],
+  [-12.5, -2.5],
   [-1.8, 0.0],
   [-1.8, 2.4],
   [-1.5, -1.6],
@@ -1264,6 +1270,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const lastSpinTick = useRef(outfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
+  const lastSpawnTick = useRef(0)
 
   const outfit = useMemo(() => OUTFITS.find((o) => o.id === outfitId) || OUTFITS[0], [outfitId])
   const bookTex = useMemo(() => openBookPages(readBookPage), [readBookPage])
@@ -1285,8 +1292,45 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   }, [])
 
   useFrame(({ clock }, dt) => {
-    const st = useStore.getState()
+    const st = useStore.getState() as ReturnType<typeof useStore.getState> & {
+      fpPerspective?: 'eye' | 'third'
+      walkthroughSpawn?: { space: string; pos: V3; yaw: number; tick: number } | null
+    }
     if (!root.current) return
+
+    const isControllingBoyNow = (st.userRole || st.activeChar) === 'boy'
+    const isFpEyeNow = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
+    const spawn = st.walkthroughSpawn
+    if (spawn && spawn.tick !== lastSpawnTick.current) {
+      lastSpawnTick.current = spawn.tick
+      if (isControllingBoyNow) {
+        walkPos.current = [spawn.pos[0], spawn.pos[2]]
+        walkFloorY.current = spawn.pos[1]
+        walkYaw.current = spawn.yaw
+        walkPhase.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
+        walkWatchdog.current = 0
+        phaseTimer.current = 0
+        prevActivity.current = 'idle'
+        root.current.position.set(spawn.pos[0], spawn.pos[1], spawn.pos[2])
+        root.current.rotation.set(0, spawn.yaw, 0)
+        root.current.visible = !(isFpEyeNow && st.userRole === 'boy')
+        if (head.current) head.current.visible = !isFpEyeNow
+        LIVE_ACTORS.khoaPos = [spawn.pos[0], spawn.pos[2]]
+        LIVE_ACTORS.khoaFloorY = spawn.pos[1]
+        LIVE_ACTORS.khoaYaw = spawn.yaw
+        LIVE_ACTORS.khoaWorldPos = [spawn.pos[0], spawn.pos[1], spawn.pos[2]]
+        if (st.boyActivity !== 'idle') {
+          st.startActivity('idle', true, 'boy')
+        }
+        if (st.avatarTarget) {
+          st.setAvatarTarget(null)
+        }
+        return
+      }
+    }
 
     const delta = Math.min(dt, 0.05)
     const t = clock.elapsedTime
@@ -1681,11 +1725,13 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, rArmX, k)
       rightArm.current.rotation.z = THREE.MathUtils.lerp(rightArm.current.rotation.z, rArmZ, k)
     }
+    const isFpEye = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
     if (head.current) {
       head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, headY, k)
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
-      head.current.visible = !(st.mode === 'fp' && isControllingBoy)
+      head.current.visible = !(isFpEye && isControllingBoy)
     }
+    root.current.visible = !(isFpEye && st.userRole === 'boy')
 
     if (cupRef.current) cupRef.current.visible = showCup
     if (remoteRef.current) remoteRef.current.visible = showRemote
@@ -1711,10 +1757,11 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const sleeping = boyActivity === 'sleep' || boyActivity === 'girl_sleep'
   const userRole = useStore((s) => s.userRole)
   const roleOccupancy = useStore((s) => s.roleOccupancy)
+  const fpPerspective = useStore((s) => (s as ReturnType<typeof useStore.getState> & { fpPerspective?: 'eye' | 'third' }).fpPerspective ?? 'third')
   const isBoyClaimed = userRole === 'boy' || Boolean(roleOccupancy?.boy)
   const canControlBoy = !userRole || userRole === 'boy'
-  // Nhân vật Khoa chỉ ẩn thân xác khi chính người chơi này đang vào vai Khoa và ở góc nhìn thứ nhất (FP)
-  const hideInFp = useStore((s) => s.mode === 'fp') && userRole === 'boy'
+  // Nhân vật Khoa chỉ ẩn thân xác khi chính người chơi này đang vào vai Khoa và ở góc nhìn tầm mắt ('eye')
+  const hideInFp = useStore((s) => s.mode === 'fp') && fpPerspective === 'eye' && userRole === 'boy'
 
   const isBoySleepingNow =
     (boyActivity === 'sleep' || boyActivity === 'girl_sleep') && boyPhase === 'active'

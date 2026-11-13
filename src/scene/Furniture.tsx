@@ -771,16 +771,31 @@ function PanoramicWindow() {
   const groupRef = useRef<THREE.Group>(null)
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
+  const sheerLeftRef = useRef<THREE.Group>(null)
+  const sheerRightRef = useRef<THREE.Group>(null)
 
   useFrame(({ camera }, dt) => {
-    const st = useStore.getState()
+    const st = useStore.getState() as Omit<ReturnType<typeof useStore.getState>, 'wallMode'> & {
+      wallMode: 'full' | 'cutaway' | 'ghost'
+      nearInteriorOpen?: boolean
+    }
     if (groupRef.current) {
       const rightCut =
         st.mode === 'orbit' &&
-        st.wallMode === 'ghost' &&
+        (st.wallMode === 'cutaway' ||
+          st.wallMode === 'ghost' ||
+          Boolean(st.nearInteriorOpen) ||
+          st.viewPreset === 'floor1' ||
+          st.viewPreset === 'floor2') &&
         isWallCutByCamera(camera.position, [1, 0, 0])
       groupRef.current.visible = !rightCut
     }
+    const keepSheerClosed =
+      st.mode === 'fp' ||
+      (st.mode === 'orbit' &&
+        st.viewPreset === 'overview' &&
+        st.wallMode === 'full' &&
+        !st.nearInteriorOpen)
     const k = 1 - Math.exp(-dt * 7)
     if (leftRef.current) {
       leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor1Open ? -2.35 : -1.15, k)
@@ -789,6 +804,13 @@ function PanoramicWindow() {
     if (rightRef.current) {
       rightRef.current.position.x = THREE.MathUtils.lerp(rightRef.current.position.x, curtainsFloor1Open ? 2.35 : 1.15, k)
       rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsFloor1Open ? 1 : 2.1, k)
+    }
+    const sheerScale = keepSheerClosed ? 1 : curtainsFloor1Open ? 0.45 : 1
+    if (sheerLeftRef.current) {
+      sheerLeftRef.current.scale.x = THREE.MathUtils.lerp(sheerLeftRef.current.scale.x, sheerScale, k)
+    }
+    if (sheerRightRef.current) {
+      sheerRightRef.current.scale.x = THREE.MathUtils.lerp(sheerRightRef.current.scale.x, sheerScale, k)
     }
   })
 
@@ -805,9 +827,13 @@ function PanoramicWindow() {
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
           </mesh>
 
-          {/* Lớp rèm voan mỏng xuyên sáng không sương mù */}
-        <BB p={[-1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#EFECE6" opacity={0.35} rough={0.85} shadow={false} />
-        <BB p={[1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#EFECE6" opacity={0.35} rough={0.85} shadow={false} />
+          {/* Lớp rèm voan mỏng xuyên sáng phủ kín toàn khung cửa sổ */}
+          <group ref={sheerLeftRef} position={[-2.66, 0, 0.1]}>
+            <BB p={[1.33, 0.08, 0]} s={[2.68, 3.92, 0.025]} c="#F4F0E8" opacity={0.44} rough={0.92} shadow={false} />
+          </group>
+          <group ref={sheerRightRef} position={[2.66, 0, 0.1]}>
+            <BB p={[-1.33, 0.08, 0]} s={[2.68, 3.92, 0.025]} c="#F4F0E8" opacity={0.44} rough={0.92} shadow={false} />
+          </group>
 
         {/* Thanh treo rèm Matte Charcoal (#2B2D2F) */}
         <Cyl p={[0, 3.96, 0.18]} r={[0, 0, Math.PI / 2]} rt={0.025} h={5.8} c={DARK} metal={0.5} />
@@ -1498,11 +1524,35 @@ export function isBlocked(x: number, z: number, r = 0.35) {
 }
 
 export function isBlockedTier2(x: number, z: number, r = 0.35) {
-  // Tường bao quanh Tầng 2
-  if (x < -9.75 + r || x > 9.75 - r || z < -5.7 + r) return true
+  const inTerraceDoorZ = z >= 2.1 + r && z <= 4.1 - r
 
-  // Ô cầu thang & lan can kính bảo vệ cầu thang (x < -7.65, z > 0.22): chỉ lên/xuống tại đỉnh thang [-8.85, -0.35]
-  if (x - r < -7.62 && z + r > 0.22) return true
+  // 1. Sân thượng bên trái Tầng 2 (x: -15.45..-10.15, z: -5.65..5.65, y = 4.35)
+  if (x < -10.15) {
+    if (x < -15.45 + r || z < -5.65 + r || z > 5.65 - r) return true
+    // Phần tường trái Tầng 2 ngoài ô cửa lùa Sân thượng (x: -10.25..-9.65, cửa z: 2.1..4.1)
+    if (x > -10.25 && !inTerraceDoorZ) return true
+
+    // Bồn cây dọc lan can trái & lan can sau (khớp RooftopTerrace.tsx)
+    if (x + r > -15.8 && x - r < -15.16 && z + r > -6.0 && z - r < -2.4) return true
+    if (x + r > -15.2 && x - r < -11.0 && z + r > -5.96 && z - r < -5.34) return true
+    // Hai chậu cây kiến trúc đối xứng góc trước Sân thượng
+    if (Math.hypot(x - -15.32, z - 5.45) < 0.42 + r) return true
+    if (Math.hypot(x - -10.85, z - 5.45) < 0.38 + r) return true
+    // 2 Ghế Lounge Thư Giãn (-14.05, 1.95) & (-12.05, 1.88)
+    if (x + r > -14.52 && x - r < -13.58 && z + r > 1.48 && z - r < 2.42) return true
+    if (x + r > -12.48 && x - r < -11.6 && z + r > 1.44 && z - r < 2.32) return true
+    // Bàn trà tròn đá Travertine (-13.05, 3.05)
+    if (Math.hypot(x - -13.05, z - 3.05) < 0.36 + r) return true
+
+    return false
+  }
+
+  // 2. Tường bao quanh Tầng 2 (mở cửa kính lùa ra Sân thượng tại x: -10.25..-9.65, z: 2.1..4.1)
+  if (x < -9.75 + r && !inTerraceDoorZ) return true
+  if (x > 9.75 - r || z < -5.7 + r) return true
+
+  // Ô cầu thang & lan can kính bảo vệ cầu thang (x < -7.65, z > 0.22): chỉ lên/xuống tại đỉnh thang [-8.85, -0.35] hoặc đi qua cầu nối ra cửa Sân thượng (z: 2.1..4.1)
+  if (x - r < -7.62 && z + r > 0.22 && !inTerraceDoorZ) return true
 
   // Ô giếng trời thông tầng (Atrium void): chỉ có sàn ở x < -1.2 khi z > 0.16
   if (z > 0.14 - r) {

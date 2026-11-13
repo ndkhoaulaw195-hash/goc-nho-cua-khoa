@@ -176,10 +176,10 @@ function FloorAndBeams({ showFloor2 }: { showFloor2: boolean }) {
 
   const handleFloor2Click = (e: ThreeEvent<MouseEvent>) => {
     const st = useStore.getState()
-    if (st.mode !== 'orbit' || st.viewPreset === 'floor1') return
+    if (st.viewPreset === 'floor1' || (st.mode === 'fp' && e.delta > 6)) return
     e.stopPropagation()
     const p = e.point
-    const x = THREE.MathUtils.clamp(p.x, -9.2, 9.2)
+    const x = THREE.MathUtils.clamp(p.x, -10.2, 9.2)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 4.3)
     st.setAvatarTarget([x, Y, z])
   }
@@ -258,15 +258,51 @@ function FloorAndBeams({ showFloor2 }: { showFloor2: boolean }) {
         ))}
       </G>
 
-      {/* 3. Lan can bảo vệ ô cầu thang (x = -7.72, z: 0.18 -> 5.95 nối khít ban công mặt tiền) */}
-      <G p={[-7.72, Y, 3.065]}>
-        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 5.77]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
-        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 5.77]} c="#C4AF97" rough={0.52} shadow />
+      {/* 3. Lan can bảo vệ ô cầu thang (x = -7.72, chia 2 đoạn chừa lối mở z: 2.10..4.10 nối cầu kính ra Sân thượng) */}
+      <G p={[-7.72, Y, 1.14]}>
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 1.92]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 1.92]} c="#C4AF97" rough={0.52} shadow />
         <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
-          <boxGeometry args={[0.016, 0.82, 5.66]} />
+          <boxGeometry args={[0.016, 0.82, 1.84]} />
         </mesh>
-        {[-2.85, -1.42, 0, 1.42, 2.85].map((pz, i) => (
+        {[-0.92, 0.0, 0.92].map((pz, i) => (
           <B key={i} p={[0, 0.43, pz]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+        ))}
+      </G>
+      <G p={[-7.72, Y, 5.025]}>
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 1.85]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 1.85]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[0.016, 0.82, 1.77]} />
+        </mesh>
+        {[-0.88, 0.0, 0.88].map((pz, i) => (
+          <B key={i} p={[0, 0.43, pz]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+        ))}
+      </G>
+
+      {/* Cầu kính cường lực bắc ngang ô thang nối phòng ngủ Tầng 2 ra cửa lùa Sân thượng (x: -10.02..-7.72, z: 2.10..4.10) */}
+      <G p={[-8.87, Y, 3.1]}>
+        <mesh
+          position={[0, -0.028, 0]}
+          material={glassMat}
+          receiveShadow
+          onClick={showFloor2 ? handleFloor2Click : undefined}
+          onDoubleClick={showFloor2 ? handleFloor2Click : undefined}
+        >
+          <boxGeometry args={[2.3, 0.055, 2.0]} />
+        </mesh>
+        <B p={[0, -0.03, -0.99]} s={[2.32, 0.065, 0.05]} c="#2B2D2F" metal={0.45} rough={0.38} shadow />
+        <B p={[0, -0.03, 0.99]} s={[2.32, 0.065, 0.05]} c="#2B2D2F" metal={0.45} rough={0.38} shadow />
+        <B p={[1.13, 0.005, 0]} s={[0.06, 0.012, 2.0]} c="#C4AF97" rough={0.48} />
+        <B p={[-1.13, 0.005, 0]} s={[0.06, 0.012, 2.0]} c="#C4AF97" rough={0.48} />
+        {[-1.0, 1.0].map((lz, idx) => (
+          <G key={idx} p={[0, 0, lz]}>
+            <RBB p={[0, 0.86, 0]} s={[2.3, 0.045, 0.06]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+            <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+              <boxGeometry args={[2.22, 0.82, 0.016]} />
+            </mesh>
+            <B p={[0, 0.43, 0]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+          </G>
         ))}
       </G>
 
@@ -413,18 +449,31 @@ function SecondFloorCurtains() {
   const groupRef = useRef<THREE.Group>(null)
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
-  const sheerLeftRef = useRef<THREE.Mesh>(null)
-  const sheerRightRef = useRef<THREE.Mesh>(null)
+  const sheerLeftRef = useRef<THREE.Group>(null)
+  const sheerRightRef = useRef<THREE.Group>(null)
 
   useFrame(({ camera }, dt) => {
-    const st = useStore.getState()
+    const st = useStore.getState() as Omit<ReturnType<typeof useStore.getState>, 'wallMode'> & {
+      wallMode: 'full' | 'cutaway' | 'ghost'
+      nearInteriorOpen?: boolean
+    }
     if (groupRef.current) {
       const rightCut =
         st.mode === 'orbit' &&
-        st.wallMode === 'ghost' &&
+        (st.wallMode === 'cutaway' ||
+          st.wallMode === 'ghost' ||
+          Boolean(st.nearInteriorOpen) ||
+          st.viewPreset === 'floor1' ||
+          st.viewPreset === 'floor2') &&
         isWallCutByCamera(camera.position, [1, 0, 0])
       groupRef.current.visible = !rightCut
     }
+    const keepSheerClosed =
+      st.mode === 'fp' ||
+      (st.mode === 'orbit' &&
+        st.viewPreset === 'overview' &&
+        st.wallMode === 'full' &&
+        !st.nearInteriorOpen)
     const k = 1 - Math.exp(-dt * 7)
     if (leftRef.current) {
       leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor2Open ? -1.45 : -0.75, k)
@@ -434,11 +483,12 @@ function SecondFloorCurtains() {
       rightRef.current.position.x = THREE.MathUtils.lerp(rightRef.current.position.x, curtainsFloor2Open ? 1.45 : 0.75, k)
       rightRef.current.scale.x = THREE.MathUtils.lerp(rightRef.current.scale.x, curtainsFloor2Open ? 1.0 : 2.0, k)
     }
+    const sheerScale = keepSheerClosed ? 1.0 : curtainsFloor2Open ? 0.35 : 1.0
     if (sheerLeftRef.current) {
-      sheerLeftRef.current.scale.x = THREE.MathUtils.lerp(sheerLeftRef.current.scale.x, curtainsFloor2Open ? 0.25 : 1.0, k)
+      sheerLeftRef.current.scale.x = THREE.MathUtils.lerp(sheerLeftRef.current.scale.x, sheerScale, k)
     }
     if (sheerRightRef.current) {
-      sheerRightRef.current.scale.x = THREE.MathUtils.lerp(sheerRightRef.current.scale.x, curtainsFloor2Open ? 0.25 : 1.0, k)
+      sheerRightRef.current.scale.x = THREE.MathUtils.lerp(sheerRightRef.current.scale.x, sheerScale, k)
     }
   })
 
@@ -458,15 +508,19 @@ function SecondFloorCurtains() {
         {/* Thanh treo rèm chạy suốt chiều dài cửa sổ (khớp cửa sổ 3D trong suốt từ ArchitectureShell) */}
         <Cyl p={[0, 3.88, 0.12]} r={[0, 0, Math.PI / 2]} rt={0.022} h={4.1} c="#2B2D2F" metal={0.45} />
 
-        {/* Lớp rèm voan mỏng xuyên sáng trong trẻo không tạo sương mù */}
-        <mesh ref={sheerLeftRef} position={[-0.85, 1.91, 0.06]}>
-          <boxGeometry args={[1.65, 3.82, 0.02]} />
-          <meshStandardMaterial color="#EFECE6" transparent opacity={0.32} roughness={0.85} />
-        </mesh>
-        <mesh ref={sheerRightRef} position={[0.85, 1.91, 0.06]}>
-          <boxGeometry args={[1.65, 3.82, 0.02]} />
-          <meshStandardMaterial color="#EFECE6" transparent opacity={0.32} roughness={0.85} />
-        </mesh>
+        {/* Lớp rèm voan mỏng xuyên sáng phủ kín 100% khung kính */}
+        <group ref={sheerLeftRef} position={[-1.84, 0, 0.06]}>
+          <mesh position={[0.93, 1.94, 0]}>
+            <boxGeometry args={[1.88, 3.88, 0.02]} />
+            <meshStandardMaterial color="#F4F0E8" transparent opacity={0.44} roughness={0.92} />
+          </mesh>
+        </group>
+        <group ref={sheerRightRef} position={[1.84, 0, 0.06]}>
+          <mesh position={[-0.93, 1.94, 0]}>
+            <boxGeometry args={[1.88, 3.88, 0.02]} />
+            <meshStandardMaterial color="#F4F0E8" transparent opacity={0.44} roughness={0.92} />
+          </mesh>
+        </group>
 
         {/* Các nếp rèm vải xếp ly lì ở hai bên */}
         <group ref={leftRef} position={[-1.45, 0, 0.12]}>
@@ -2089,6 +2143,7 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
   const lastSpinTick = useRef(girlOutfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
+  const lastSpawnTick = useRef(0)
 
   const outfit = useMemo(
     () => GIRL_OUTFITS.find((o) => o.id === girlOutfitId) || GIRL_OUTFITS[0],
@@ -2114,7 +2169,43 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
 
   useFrame(({ clock }, dt) => {
     if (!root.current) return
-    const st = useStore.getState()
+    const st = useStore.getState() as ReturnType<typeof useStore.getState> & {
+      fpPerspective?: 'eye' | 'third'
+      walkthroughSpawn?: { space: string; pos: V3; yaw: number; tick: number } | null
+    }
+
+    const isControllingGirlNow = (st.userRole || st.activeChar) === 'girl'
+    const isFpEyeNow = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
+    const spawn = st.walkthroughSpawn
+    if (spawn && spawn.tick !== lastSpawnTick.current) {
+      lastSpawnTick.current = spawn.tick
+      if (isControllingGirlNow) {
+        walkPos.current = [spawn.pos[0], spawn.pos[2]]
+        walkFloorY.current = spawn.pos[1]
+        walkYaw.current = spawn.yaw
+        walkPhase.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
+        walkWatchdog.current = 0
+        phaseTimer.current = 0
+        prevGirlAct.current = 'idle'
+        root.current.position.set(spawn.pos[0], spawn.pos[1], spawn.pos[2])
+        root.current.rotation.set(0, spawn.yaw, 0)
+        root.current.visible = !(isFpEyeNow && st.userRole === 'girl') && !Boolean(hideIfUpstairsRef.current && spawn.pos[1] > 2.0)
+        if (head.current) head.current.visible = !isFpEyeNow
+        LIVE_ACTORS.girlPos = [spawn.pos[0], spawn.pos[1], spawn.pos[2]]
+        LIVE_ACTORS.girlYaw = spawn.yaw
+        LIVE_ACTORS.girlWorldPos = [spawn.pos[0], spawn.pos[1], spawn.pos[2]]
+        if (st.girlActivity !== 'idle') {
+          st.startActivity('idle', true, 'girl')
+        }
+        if (st.avatarTarget) {
+          st.setAvatarTarget(null)
+        }
+        return
+      }
+    }
 
     const t = clock.elapsedTime
     const delta = Math.min(dt, 0.05)
@@ -2504,10 +2595,11 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
       }
     }
 
+    const isFpEye = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
     if (head.current) {
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
       head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, headY, k)
-      head.current.visible = !(st.mode === 'fp' && isControllingGirl)
+      head.current.visible = !(isFpEye && isControllingGirl)
     }
     if (leftArm.current) {
       leftArm.current.rotation.x = THREE.MathUtils.lerp(leftArm.current.rotation.x, lArmX, k)
@@ -2544,7 +2636,7 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
       }
     }
 
-    const hideInFpNow = st.mode === 'fp' && st.userRole === 'girl'
+    const hideInFpNow = isFpEye && st.userRole === 'girl'
     const hideUpstairsNow = Boolean(hideIfUpstairsRef.current && walkFloorY.current > 2.0)
     root.current.visible = !hideInFpNow && !hideUpstairsNow
   })
