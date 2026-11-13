@@ -32,23 +32,39 @@ import {
 } from '../data/config'
 
 export const FLOOR2_Y = 4.35
+const NOOP_RAYCAST = () => {}
 
 export function SecondFloor() {
+  const viewPreset = useStore((s) => s.viewPreset)
+  const showFloor2 = viewPreset !== 'floor1'
+  const floor2Ref = useRef<THREE.Group>(null)
+
+  useEffect(() => {
+    if (!floor2Ref.current) return
+    floor2Ref.current.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        ;(obj as THREE.Mesh).raycast = showFloor2 ? THREE.Mesh.prototype.raycast : NOOP_RAYCAST
+      }
+    })
+  }, [showFloor2])
+
   return (
     <group>
-      <FloorAndBeams />
-      <WallsAndDoor />
-      <GirlRoomFurniture />
-      <IndoorStaircase />
-      <GirlfriendAvatar />
+      <group ref={floor2Ref} visible={showFloor2}>
+        <FloorAndBeams showFloor2={showFloor2} />
+        <WallsAndDoor />
+        <GirlRoomFurniture />
+        <IndoorStaircase />
+      </group>
+      <GirlfriendAvatar hideIfUpstairs={!showFloor2} />
     </group>
   )
 }
 
 /* ============================================================================
- * 1. SÀN GỖ SỒI THẲNG, HỆ DẦM & LAN CAN KÍNH TAY VỊN SỒI (HỖ TRỢ CLICK ĐI BỘ)
+ * 1. SÀN KHỐI ĐẶC TẦNG 2 (0.3 UNITS), HỆ PHÀO CHỈ & BAN CÔNG KÍNH MẶT TIỀN
  * ============================================================================ */
-function FloorAndBeams() {
+function FloorAndBeams({ showFloor2 }: { showFloor2: boolean }) {
   const darkMode = useStore((s) => s.darkMode)
   const palette = getHousePalette(darkMode)
   const Y = FLOOR2_Y
@@ -70,10 +86,98 @@ function FloorAndBeams() {
     return t
   }, [])
 
+  const oakMapBalcony = useMemo(() => {
+    const t = woodFloor().clone()
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(1.46, 0.28)
+    t.needsUpdate = true
+    return t
+  }, [])
+
+  const slabEdgeMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: palette.subFloor,
+        roughness: 0.78,
+        metalness: 0.02,
+      }),
+    [palette.subFloor],
+  )
+
+  const slabBottomMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: palette.wallCream,
+        roughness: 0.88,
+        metalness: 0.0,
+      }),
+    [palette.wallCream],
+  )
+
+  const oakTopMat1 = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: oakMap1,
+        roughness: 0.48,
+        metalness: 0.04,
+        color: palette.floorTint,
+      }),
+    [oakMap1, palette.floorTint],
+  )
+
+  const oakTopMat2 = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: oakMap2,
+        roughness: 0.48,
+        metalness: 0.04,
+        color: palette.floorTint,
+      }),
+    [oakMap2, palette.floorTint],
+  )
+
+  const balconyTopMat = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        map: oakMapBalcony,
+        roughness: 0.54,
+        metalness: 0.03,
+        color: darkMode ? '#B8AE9E' : '#EAE2D6',
+      }),
+    [oakMapBalcony, darkMode],
+  )
+
+  useEffect(() => {
+    return () => {
+      oakMap1.dispose()
+      oakMap2.dispose()
+      oakMapBalcony.dispose()
+    }
+  }, [oakMap1, oakMap2, oakMapBalcony])
+
+  useEffect(() => () => slabEdgeMat.dispose(), [slabEdgeMat])
+  useEffect(() => () => slabBottomMat.dispose(), [slabBottomMat])
+  useEffect(() => () => oakTopMat1.dispose(), [oakTopMat1])
+  useEffect(() => () => oakTopMat2.dispose(), [oakTopMat2])
+  useEffect(() => () => balconyTopMat.dispose(), [balconyTopMat])
+
+  const slabMats1 = useMemo(
+    () => [slabEdgeMat, slabEdgeMat, oakTopMat1, slabBottomMat, slabEdgeMat, slabEdgeMat],
+    [slabEdgeMat, oakTopMat1, slabBottomMat],
+  )
+  const slabMats2 = useMemo(
+    () => [slabEdgeMat, slabEdgeMat, oakTopMat2, slabBottomMat, slabEdgeMat, slabEdgeMat],
+    [slabEdgeMat, oakTopMat2, slabBottomMat],
+  )
+  const slabMatsBalcony = useMemo(
+    () => [slabEdgeMat, slabEdgeMat, balconyTopMat, slabBottomMat, slabEdgeMat, slabEdgeMat],
+    [slabEdgeMat, balconyTopMat, slabBottomMat],
+  )
+
   const handleFloor2Click = (e: ThreeEvent<MouseEvent>) => {
-    e.stopPropagation()
     const st = useStore.getState()
-    if (st.mode !== 'orbit') return
+    if (st.mode !== 'orbit' || st.viewPreset === 'floor1') return
+    e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -9.2, 9.2)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 4.3)
@@ -82,125 +186,166 @@ function FloorAndBeams() {
 
   return (
     <group>
-      {/* 1. Mảng sàn chính Tầng 2 (x: -10 -> +10, z: -6.0 -> +0.18; đồng bộ màu & chất liệu sàn Tầng 1) */}
-      <B
-        p={[0, Y - 0.135, -2.91]}
-        s={[20.0, 0.21, 6.18]}
-        c={palette.subFloor}
-        rough={0.75}
-        shadow={false}
-      />
+      {/* 1. Sàn khối đặc chính Tầng 2 (BoxGeometry dày 0.3: y = FLOOR2_Y - 0.30 .. FLOOR2_Y, x: -10..+10, z: -6.0..+0.18) */}
       <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, Y, -2.9]}
+        position={[0, Y - 0.15, -2.91]}
+        material={slabMats1}
+        castShadow
         receiveShadow
-        onClick={handleFloor2Click}
-        onDoubleClick={handleFloor2Click}
+        onClick={showFloor2 ? handleFloor2Click : undefined}
+        onDoubleClick={showFloor2 ? handleFloor2Click : undefined}
       >
-        <planeGeometry args={[20.0, 6.2]} />
-        <meshStandardMaterial
-          map={oakMap1}
-          roughness={0.48}
-          metalness={0.04}
-          color={palette.floorTint}
-        />
+        <boxGeometry args={[20.0, 0.3, 6.18]} />
       </mesh>
 
-      {/* 2. Mảng sàn khu vực giường & ghế lười phía trước-trái (x: -7.7 -> -1.2, z: +0.22 -> +4.8; đồng bộ màu Tầng 1) */}
-      <B
-        p={[-4.45, Y - 0.135, 2.51]}
-        s={[6.5, 0.21, 4.58]}
-        c={palette.subFloor}
-        rough={0.8}
-        shadow={false}
-      />
+      {/* 2. Sàn khối đặc khu vực giường & ghế lười phía trước-trái (BoxGeometry dày 0.3: x: -7.7..-1.2, z: +0.18..+4.80) */}
       <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[-4.45, Y, 2.5]}
+        position={[-4.45, Y - 0.15, 2.49]}
+        material={slabMats2}
+        castShadow
         receiveShadow
-        onClick={handleFloor2Click}
-        onDoubleClick={handleFloor2Click}
+        onClick={showFloor2 ? handleFloor2Click : undefined}
+        onDoubleClick={showFloor2 ? handleFloor2Click : undefined}
       >
-        <planeGeometry args={[6.5, 4.6]} />
-        <meshStandardMaterial
-          map={oakMap2}
-          roughness={0.48}
-          metalness={0.04}
-          color={palette.floorTint}
-        />
+        <boxGeometry args={[6.5, 0.3, 4.62]} />
       </mesh>
+
+      {/* 3. Sàn khối đặc Ban công kính Tầng 2 mặt tiền (BoxGeometry dày 0.3: x: -7.7..-1.2, z: +4.80..+5.98) */}
+      <mesh
+        position={[-4.45, Y - 0.15, 5.39]}
+        material={slabMatsBalcony}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[6.5, 0.3, 1.18]} />
+      </mesh>
+
+      {/* Nẹp ngưỡng gỗ sồi chuyển tiếp ra Ban công mặt tiền tại z = 4.80 */}
+      <B p={[-4.45, Y + 0.006, 4.8]} s={[6.5, 0.012, 0.08]} c="#C4AF97" rough={0.48} shadow />
+
+      {/* Phào chỉ kiến trúc bọc mép dầm sàn Tầng 2 hướng thông tầng & cầu thang */}
+      <B p={[4.39, Y - 0.15, 0.193]} s={[11.18, 0.28, 0.026]} c={palette.crownMolding} rough={0.75} shadow />
+      <B p={[-8.84, Y - 0.15, 0.193]} s={[2.28, 0.28, 0.026]} c={palette.crownMolding} rough={0.75} shadow />
+      <B p={[-1.187, Y - 0.15, 3.08]} s={[0.026, 0.28, 5.8]} c={palette.crownMolding} rough={0.75} shadow />
+      <B p={[-7.713, Y - 0.15, 3.08]} s={[0.026, 0.28, 5.8]} c={palette.crownMolding} rough={0.75} shadow />
+      <B p={[-4.45, Y - 0.15, 5.985]} s={[6.52, 0.28, 0.024]} c={palette.crownMolding} rough={0.75} shadow />
 
       {/* Ambient Occlusion (AO) Tầng 2 tại các góc tường, gầm giường, tủ & góc đọc sách */}
       <Floor2AmbientOcclusion darkMode={darkMode} />
 
-      {/* --- LAN CAN KÍNH TRONG SUỐT TAY VỊN GỖ SỒI & KẸP CHARCOAL --- */}
-      {/* 1. Lan can ngang mép hành lang thông tầng (x từ -1.2 đến +9.9, tại z = 0.18) */}
-      <G p={[4.35, Y, 0.18]}>
-        <RBB p={[0, 0.86, 0]} s={[11.1, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[11.1, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[10.95, 0.82, 0.016]} />
+      {/* --- LAN CAN KÍNH CƯỜNG LỰC TAY VỊN GỖ SỒI & TRỤ CHARCOAL (#2B2D2F) --- */}
+      {/* 1. Lan can ngang mép hành lang thông tầng (x: -1.20 -> +9.98, tại z = 0.18 nối khít tường phải) */}
+      <G p={[4.39, Y, 0.18]}>
+        <RBB p={[0, 0.86, 0]} s={[11.18, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[11.18, 0.035, 0.05]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[11.06, 0.82, 0.016]} />
         </mesh>
-        {[-5.4, -3.2, -1.0, 1.2, 3.4, 5.4].map((px, i) => (
-          <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        {[-5.45, -3.25, -1.05, 1.15, 3.35, 5.54].map((px, i) => (
+          <B key={i} p={[px, 0.43, 0]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
         ))}
       </G>
 
-      {/* 2. Lan can dọc mép thông tầng bên trái (x = -1.2, z từ 0.18 đến 4.8) */}
-      <G p={[-1.2, Y, 2.5]}>
-        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.6]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.6]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[0.016, 0.82, 4.5]} />
+      {/* 2. Lan can dọc mép thông tầng bên phải ban công (x = -1.2, z: 0.18 -> 5.95 nối khít tường trước) */}
+      <G p={[-1.2, Y, 3.065]}>
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 5.77]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 5.77]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[0.016, 0.82, 5.66]} />
         </mesh>
-        {[-1.8, 0, 1.8].map((pz, i) => (
-          <B key={i} p={[0, 0.12, pz]} s={[0.04, 0.2, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        {[-2.85, -1.42, 0, 1.42, 2.85].map((pz, i) => (
+          <B key={i} p={[0, 0.43, pz]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
         ))}
       </G>
 
-      {/* 3. Lan can bảo vệ ô cầu thang (tại x = -7.72, nối liền từ z = 0.18 đến 4.8) */}
-      <G p={[-7.72, Y, 2.49]}>
-        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 4.62]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 4.62]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[0.016, 0.82, 4.52]} />
+      {/* 3. Lan can bảo vệ ô cầu thang (x = -7.72, z: 0.18 -> 5.95 nối khít ban công mặt tiền) */}
+      <G p={[-7.72, Y, 3.065]}>
+        <RBB p={[0, 0.86, 0]} s={[0.065, 0.045, 5.77]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.05, 0.035, 5.77]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[0.016, 0.82, 5.66]} />
         </mesh>
-        {[-2.26, -1.1, 0, 1.1, 2.26].map((pz, i) => (
-          <B key={i} p={[0, 0.14, pz]} s={[0.04, 0.24, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        {[-2.85, -1.42, 0, 1.42, 2.85].map((pz, i) => (
+          <B key={i} p={[0, 0.43, pz]} s={[0.04, 0.86, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
         ))}
       </G>
 
-      {/* 3b. Lan can kính an toàn chiếu nghỉ đầu cầu thang Tầng 2 (chừa lối đi rộng ở giữa x = -9.37 -> -8.33) */}
-      <G p={[-9.685, Y, 0.18]}>
-        <RBB p={[0, 0.86, 0]} s={[0.65, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[0.65, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[0.58, 0.82, 0.016]} />
+      {/* 3b. Lan can kính an toàn chiếu nghỉ đầu cầu thang Tầng 2 (nối liền tay vịn cầu thang tại x = -9.41 & -8.29) */}
+      <G p={[-9.695, Y, 0.18]}>
+        <RBB p={[0, 0.86, 0]} s={[0.57, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.57, 0.035, 0.05]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[0.51, 0.82, 0.016]} />
         </mesh>
-        <B p={[-0.28, 0.43, 0]} s={[0.042, 0.86, 0.042]} c="#2B2D2F" metal={0.5} rough={0.35} />
-        <B p={[0.305, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        <B p={[-0.265, 0.43, 0]} s={[0.042, 0.86, 0.042]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+        <B p={[0.285, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
       </G>
-      <G p={[-8.025, Y, 0.18]}>
-        <RBB p={[0, 0.86, 0]} s={[0.63, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[0.63, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[0.56, 0.82, 0.016]} />
+      <G p={[-8.005, Y, 0.18]}>
+        <RBB p={[0, 0.86, 0]} s={[0.57, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[0.57, 0.035, 0.05]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[0.51, 0.82, 0.016]} />
         </mesh>
-        <B p={[-0.305, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
-        <B p={[0.295, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        <B p={[-0.285, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+        <B p={[0.265, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
       </G>
 
-      {/* 4. Lan can bảo vệ mép trước Tầng 2 ngăn rơi xuống Tầng 1 (x: -7.72 -> -1.2, tại z = 4.8) */}
-      <G p={[-4.46, Y, 4.8]}>
-        <RBB p={[0, 0.86, 0]} s={[6.52, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} />
-        <BB p={[0, 0.0, 0]} s={[6.52, 0.035, 0.05]} c="#C4AF97" rough={0.52} />
-        <mesh position={[0, 0.44, 0]} material={glassMat}>
-          <boxGeometry args={[6.38, 0.82, 0.016]} />
+      {/* 4. Cổng kính ngăn khu lửng & lối mở rộng bước ra Ban công tại z = 4.80 */}
+      <G p={[-6.785, Y, 4.8]}>
+        <RBB p={[0, 0.86, 0]} s={[1.87, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[1.87, 0.035, 0.05]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[1.78, 0.82, 0.016]} />
         </mesh>
-        {[-2.6, -1.3, 0, 1.3, 2.6].map((px, i) => (
-          <B key={i} p={[px, 0.12, 0]} s={[0.04, 0.2, 0.04]} c="#2B2D2F" metal={0.5} rough={0.35} />
+        <B p={[0.91, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+      </G>
+      <G p={[-2.125, Y, 4.8]}>
+        <RBB p={[0, 0.86, 0]} s={[1.85, 0.045, 0.065]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[1.85, 0.035, 0.05]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[1.76, 0.82, 0.016]} />
+        </mesh>
+        <B p={[-0.9, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+      </G>
+
+      {/* 5. Lan can kính chính Ban công Tầng 2 mặt tiền (x: -7.72 -> -1.20, tại z = 5.93 sát tường bao z = +6.0) */}
+      <G p={[-4.46, Y, 5.93]}>
+        <RBB p={[0, 0.86, 0]} s={[6.54, 0.05, 0.07]} c="#D8C7B2" rough={0.48} radius={0.015} shadow />
+        <BB p={[0, 0.0, 0]} s={[6.54, 0.04, 0.055]} c="#C4AF97" rough={0.52} shadow />
+        <mesh position={[0, 0.44, 0]} material={glassMat} receiveShadow>
+          <boxGeometry args={[6.42, 0.82, 0.016]} />
+        </mesh>
+        {[-3.24, -1.62, 0, 1.62, 3.24].map((px, i) => (
+          <B key={i} p={[px, 0.43, 0]} s={[0.045, 0.86, 0.045]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
         ))}
       </G>
+
+      {/* Bồn cây kiến trúc & đèn lồng ấm trên Ban công Tầng 2 */}
+      {[-7.08, -1.84].map((bx, idx) => (
+        <G key={idx} p={[bx, Y, 5.45]}>
+          <BB p={[0, 0, 0]} s={[0.88, 0.34, 0.42]} c="#2B2D2F" rough={0.55} shadow />
+          <BB p={[0, 0.34, 0]} s={[0.82, 0.03, 0.36]} c="#4A423B" rough={0.85} />
+          {[-0.24, 0, 0.24].map((lx, j) => (
+            <Sph
+              key={j}
+              p={[lx, 0.46 + (j % 2) * 0.07, 0]}
+              s={[0.17, 0.16, 0.15]}
+              c={j % 2 === 0 ? '#566E4C' : '#6F8763'}
+              rough={0.72}
+              shadow
+            />
+          ))}
+          <B p={[idx === 0 ? 0.56 : -0.56, 0.14, 0.16]} s={[0.14, 0.28, 0.14]} c="#2B2D2F" metal={0.45} rough={0.35} shadow />
+          <B
+            p={[idx === 0 ? 0.56 : -0.56, 0.15, 0.16]}
+            s={[0.09, 0.16, 0.09]}
+            c="#FFD7A3"
+            emissive="#FFD7A3"
+            ei={darkMode ? 1.5 : 0.35}
+            shadow={false}
+          />
+        </G>
+      ))}
     </group>
   )
 }
@@ -373,7 +518,7 @@ function SecondFloorCurtains({ skyMap }: { skyMap: THREE.Texture }) {
 }
 
 /* ============================================================================
- * 2. VÁCH TƯỜNG, LAM GỖ PHÂN KHU & CỬA SỔ KÍNH RÈM VOAN TRẮNG RỦ MỀM XUỐNG SÀN
+ * 2. VÁCH NGĂN NỘI THẤT 0.15, LAM GỖ PHÂN KHU & CỬA SỔ KÍNH RÈM VOAN (KHÔNG TRÙNG TƯỜNG BAO)
  * ============================================================================ */
 function WallsAndDoor() {
   const darkMode = useStore((s) => s.darkMode)
@@ -381,67 +526,23 @@ function WallsAndDoor() {
   const Y = FLOOR2_Y
   const H2 = 4.2
   const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
-  const extWallColor = palette.extWall
 
   return (
     <group>
-      {/* 1. Tường sau Tầng 2: Tấm tường bình thường đồng màu với căn phòng (luôn cố định khi xoay) */}
-      <B
-        p={[0, Y - 0.12 + (H2 + 0.12) / 2, -6.14]}
-        s={[20.48, H2 + 0.12, 0.2]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-
-      {/* Lớp sơn mặt trong cánh trái (Khu giường ngủ: x từ -10.0 đến -1.05) */}
-      <B
-        p={[-5.525, Y + H2 / 2, -6.01]}
-        s={[8.95, H2, 0.04]}
-        c={palette.wallCream}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-
-      {/* 2. Vách lam Slate Blue thẳng đứng phân khu */}
+      {/* 1. Vách lam Slate Blue & vách ngăn nội thất Tầng 2 dày 0.15 units tại x = -1.05 */}
       <WoodSlatsWall H2={H2} />
 
-      {/* 3. Lớp sơn mặt trong cánh phải (Slate Blue #5E7487) */}
-      <B
-        p={[4.475, Y + H2 / 2, -6.01]}
-        s={[11.05, H2, 0.04]}
-        c={palette.wallAccent}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
+      {/* Phào chỉ trần nhà & phào chân tường đồng bộ 2 tầng chạy dọc mặt trong tường sau (z = -6.00) */}
+      <B p={[-5.88, Y + H2 - 0.08, -5.95]} s={[8.2, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[4.83, Y + H2 - 0.08, -5.95]} s={[10.3, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[-5.9, Y + 0.07, -5.98]} s={[8.16, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
+      <B p={[4.85, Y + 0.07, -5.98]} s={[10.26, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
 
-      {/* Phào chỉ trần nhà & phào chân tường đồng bộ 2 tầng chạy dọc tường sau */}
-      <B p={[0, Y + H2 - 0.08, -5.95]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[-5.9, Y + 0.07, -5.98]} s={[8.2, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
-      <B p={[4.85, Y + 0.07, -5.98]} s={[10.3, 0.14, 0.03]} c={palette.baseboard} shadow={false} polyOffset />
+      {/* 2. Phào trần & phào chân tường mặt trong tường trái (x = -10.00) */}
+      <B p={[-9.95, Y + H2 - 0.08, -0.02]} s={[0.08, 0.16, 11.92]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[-9.98, Y + 0.07, -5.3]} s={[0.03, 0.14, 1.36]} c={palette.baseboard} shadow={false} polyOffset />
+      <B p={[-9.98, Y + 0.07, 2.38]} s={[0.03, 0.14, 7.16]} c={palette.baseboard} shadow={false} polyOffset />
 
-      {/* 4. Tường bên trái Tầng 2 */}
-      <B
-        p={[-10.14, Y - 0.12 + (H2 + 0.12) / 2, -0.66]}
-        s={[0.2, H2 + 0.12, 11.16]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-      <B
-        p={[-10.01, Y + H2 / 2, -0.6]}
-        s={[0.04, H2, 10.8]}
-        c={palette.wallCream}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      {/* Phào trần & phào chân tường bên trái đồng bộ */}
-      <B p={[-9.95, Y + H2 - 0.08, -0.6]} s={[0.08, 0.16, 10.8]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[-9.98, Y + 0.07, -5.3]} s={[0.03, 0.14, 1.4]} c={palette.baseboard} shadow={false} polyOffset />
-      <B p={[-9.98, Y + 0.07, 1.8]} s={[0.03, 0.14, 6.0]} c={palette.baseboard} shadow={false} polyOffset />
       {/* Cửa đôi màu Slate Blue (#5E7487) viền Matte Charcoal (#2B2D2F) ốp tường trái */}
       <G p={[-9.95, Y, -2.9]}>
         <BB p={[0, 0, 0]} s={[0.05, 3.55, 3.44]} c="#2B2D2F" rough={0.6} shadow={false} polyOffset />
@@ -473,25 +574,9 @@ function WallsAndDoor() {
         ))}
       </G>
 
-      {/* 5. TƯỜNG BÊN PHẢI TẦNG 2 */}
-      <B
-        p={[10.14, Y - 0.12 + (H2 + 0.12) / 2, -2.96]}
-        s={[0.2, H2 + 0.12, 6.56]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-      <B
-        p={[10.01, Y + H2 / 2, -2.9]}
-        s={[0.04, H2, 6.2]}
-        c={palette.wallAccent}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      {/* Phào chỉ trần & phào chân tường phải đồng bộ 2 tầng */}
-      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.2]} c={palette.crownMolding} shadow={false} polyOffset />
-      <B p={[9.98, Y + 0.07, -2.9]} s={[0.03, 0.14, 6.2]} c={palette.baseboard} shadow={false} polyOffset />
+      {/* 3. Phào chỉ trần & phào chân tường mặt trong tường phải (x = +10.00) */}
+      <B p={[9.95, Y + H2 - 0.08, -2.9]} s={[0.08, 0.16, 6.16]} c={palette.crownMolding} shadow={false} polyOffset />
+      <B p={[9.98, Y + 0.07, -2.9]} s={[0.03, 0.14, 6.16]} c={palette.baseboard} shadow={false} polyOffset />
 
       {/* Cửa sổ kính lớn & Rèm voan trắng rủ mềm xuống sàn (click để đóng/mở rèm Tầng 2) */}
       <SecondFloorCurtains skyMap={skyMap} />
@@ -500,47 +585,143 @@ function WallsAndDoor() {
 }
 
 function WoodSlatsWall({ H2 }: { H2: number }) {
+  const darkMode = useStore((s) => s.darkMode)
+  const palette = getHousePalette(darkMode)
   const slatGeom = useMemo(() => new THREE.BoxGeometry(0.048, H2 - 0.04, 0.045), [H2])
+  const partitionLouverGeom = useMemo(() => new THREE.BoxGeometry(0.11, H2 - 1.56, 0.048), [H2])
   const slatMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#5E7487', roughness: 0.58, metalness: 0.05 }),
     [],
   )
+  const oakLouverMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#C4AF97', roughness: 0.52, metalness: 0.04 }),
+    [],
+  )
+
+  useEffect(() => () => slatGeom.dispose(), [slatGeom])
+  useEffect(() => () => partitionLouverGeom.dispose(), [partitionLouverGeom])
+  useEffect(() => () => slatMat.dispose(), [slatMat])
+  useEffect(() => () => oakLouverMat.dispose(), [oakLouverMat])
 
   return (
-    <G p={[-1.05, FLOOR2_Y, -5.96]}>
-      <B p={[0, H2 / 2, 0]} s={[1.45, H2, 0.05]} c="#4A5E6F" rough={0.65} shadow={false} polyOffset />
-      {Array.from({ length: 15 }, (_, i) => {
-        const lx = -0.64 + (i / 14) * 1.28
-        return <mesh key={i} position={[lx, H2 / 2, 0.035]} geometry={slatGeom} material={slatMat} />
-      })}
-    </G>
+    <group>
+      {/* 1. Mảng lam gỗ ốp tường sau dày 0.15 tại x = -1.05, z = -5.92 (sát mặt trong -6.00) */}
+      <G p={[-1.05, FLOOR2_Y, -5.92]}>
+        <B p={[0, H2 / 2, 0]} s={[1.45, H2, 0.15]} c="#4A5E6F" rough={0.65} shadow />
+        {Array.from({ length: 15 }, (_, i) => {
+          const lx = -0.64 + (i / 14) * 1.28
+          return <mesh key={i} position={[lx, H2 / 2, 0.082]} geometry={slatGeom} material={slatMat} castShadow receiveShadow />
+        })}
+      </G>
+
+      {/* 2. Vách ngăn lửng nội thất Tầng 2 dày 0.15 units tại x = -1.05 (z: -4.90..-3.90, nằm gọn trong vùng nội thất không chắn NAV_NODES_TIER2) */}
+      <G p={[-1.05, FLOOR2_Y, -4.4]}>
+        {/* Thân vách dưới đặc 0.15 units (y: 0..1.35) */}
+        <BB p={[0, 0, 0]} s={[0.15, 1.35, 1.0]} c="#4A5E6F" rough={0.72} shadow />
+        <BB p={[-0.072, 0, 0]} s={[0.012, 1.35, 0.99]} c={palette.wallCream} rough={0.85} shadow={false} />
+        <BB p={[0.072, 0, 0]} s={[0.012, 1.35, 0.99]} c={palette.wallAccent} rough={0.85} shadow={false} />
+        {/* Nẹp gỗ sồi mặt trên vách lửng */}
+        <BB p={[0, 1.35, 0]} s={[0.18, 0.045, 1.02]} c="#D8C7B2" rough={0.48} shadow />
+        {/* Len chân tường 2 mặt vách ngăn */}
+        <B p={[-0.082, 0.07, 0]} s={[0.02, 0.14, 1.0]} c={palette.baseboard} shadow={false} polyOffset />
+        <B p={[0.082, 0.07, 0]} s={[0.02, 0.14, 1.0]} c={palette.baseboard} shadow={false} polyOffset />
+        {/* Hệ lam gỗ thông thoáng phía trên vách lửng (y: 1.40 .. H2 - 0.16) */}
+        {Array.from({ length: 7 }, (_, i) => {
+          const lz = -0.42 + (i / 6) * 0.84
+          return (
+            <mesh
+              key={i}
+              position={[0, 1.4 + (H2 - 1.56) / 2, lz]}
+              geometry={partitionLouverGeom}
+              material={i % 2 === 0 ? slatMat : oakLouverMat}
+              castShadow
+              receiveShadow
+            />
+          )
+        })}
+        {/* Dầm đỉnh & phào trần vách ngăn */}
+        <B p={[0, H2 - 0.08, 0]} s={[0.15, 0.16, 1.0]} c="#4A5E6F" rough={0.68} shadow />
+      </G>
+
+      {/* 3. Khung cổng thông thoáng dày 0.15 units (z: -3.90 .. +0.18) nối vách ngăn ra mép thông tầng */}
+      <G p={[-1.05, FLOOR2_Y, 0]}>
+        {/* Dầm cổng trên cao (y: H2 - 0.42 .. H2), giữ thông thoáng hoàn toàn lối đi bên dưới */}
+        <B p={[0, H2 - 0.21, -1.86]} s={[0.15, 0.42, 4.08]} c="#4A5E6F" rough={0.68} shadow />
+        <B p={[-0.082, H2 - 0.08, -1.86]} s={[0.02, 0.16, 4.08]} c={palette.crownMolding} shadow={false} />
+        <B p={[0.082, H2 - 0.08, -1.86]} s={[0.02, 0.16, 4.08]} c={palette.crownMolding} shadow={false} />
+        <B p={[0, H2 - 0.425, -1.86]} s={[0.16, 0.03, 4.08]} c="#D8C7B2" rough={0.48} shadow />
+        <B p={[0, H2 - 0.445, -1.86]} s={[0.04, 0.015, 3.85]} c="#FFD7A3" emissive="#FFD7A3" ei={darkMode ? 1.15 : 0.35} shadow={false} />
+        {/* Trụ cổng 0.15 x 0.15 neo gọn ngay mép lan can thông tầng z = +0.105 (không vướng NAV_NODES_TIER2) */}
+        <BB p={[0, 0, 0.105]} s={[0.15, H2 - 0.42, 0.15]} c="#2B2D2F" rough={0.55} metal={0.25} shadow />
+        <B p={[0, 0.07, 0.105]} s={[0.165, 0.14, 0.165]} c={palette.baseboard} shadow={false} />
+      </G>
+    </group>
   )
 }
 
 /* ============================================================================
- * 3. CẦU THANG GỖ - THÉP TRONG NHÀ (NHẤP CHUỘT ĐỂ ĐI BỘ LÊN / XUỐNG TỰ NHIÊN)
+ * 3. CẦU THANG GỖ - THÉP & LAN CAN KÍNH LIỀN MẠCH (NHẤP CHUỘT ĐỂ ĐI BỘ LÊN / XUỐNG)
  * ============================================================================ */
 function IndoorStaircase() {
+  const darkMode = useStore((s) => s.darkMode)
+  const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const steps = 14
   const startZ = 4.7
-  const endZ = 0.45
+  const endZ = 0.18
   const totalH = FLOOR2_Y
 
-  // Tái sử dụng chung Geometry & Material cho toàn bộ 14 bậc cầu thang để giảm Draw Calls tối đa
-  const stepGeom = useMemo(() => new THREE.BoxGeometry(1.08, 0.065, 0.32), [])
+  // Hình học dầm stringer nối khít từ sàn Tầng 1 (y = 0.06, z = 4.70) lên mép dầm sàn Tầng 2 (y = FLOOR2_Y - 0.15, z = 0.18)
+  const stringerY0 = 0.06
+  const stringerY1 = FLOOR2_Y - 0.15
+  const stringerDy = stringerY1 - stringerY0
+  const stringerDz = startZ - endZ
+  const stringerLen = Math.hypot(stringerDy, stringerDz)
+  const stringerPitch = Math.atan2(stringerDy, stringerDz)
+  const stringerMidY = (stringerY0 + stringerY1) / 2
+  const stringerMidZ = (startZ + endZ) / 2
+
+  // Hình học tay vịn & lan can kính dốc nối khít lên lan can chiếu nghỉ Tầng 2 (y = FLOOR2_Y + 0.86, z = 0.18)
+  const railY0 = 0.92
+  const railY1 = FLOOR2_Y + 0.86
+  const railDy = railY1 - railY0
+  const railLen = Math.hypot(railDy, stringerDz)
+  const railPitch = Math.atan2(railDy, stringerDz)
+  const railMidY = (railY0 + railY1) / 2
+
+  // Tái sử dụng Geometry & Material cho 14 bậc thang dày 0.075 có gân nổi chống trượt
+  const stepGeom = useMemo(() => new THREE.BoxGeometry(1.06, 0.075, 0.36), [])
   const stepMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#D8C7B2', roughness: 0.48, metalness: 0.04 }),
     [],
   )
-  const ledGeom = useMemo(() => new THREE.BoxGeometry(1.04, 0.018, 0.02), [])
+  const cleatGeom = useMemo(() => new THREE.BoxGeometry(1.08, 0.032, 0.14), [])
+  const cleatMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#2B2D2F', roughness: 0.4, metalness: 0.45 }),
+    [],
+  )
+  const ribGeom = useMemo(() => new THREE.BoxGeometry(0.98, 0.012, 0.016), [])
+  const ribMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#2B2D2F', roughness: 0.45, metalness: 0.35 }),
+    [],
+  )
+  const ledGeom = useMemo(() => new THREE.BoxGeometry(1.02, 0.016, 0.02), [])
   const ledMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: '#FFD7A3', emissive: '#FFD7A3', emissiveIntensity: 1.05 }),
     [],
   )
 
+  useEffect(() => () => stepGeom.dispose(), [stepGeom])
+  useEffect(() => () => stepMat.dispose(), [stepMat])
+  useEffect(() => () => cleatGeom.dispose(), [cleatGeom])
+  useEffect(() => () => cleatMat.dispose(), [cleatMat])
+  useEffect(() => () => ribGeom.dispose(), [ribGeom])
+  useEffect(() => () => ribMat.dispose(), [ribMat])
+  useEffect(() => () => ledGeom.dispose(), [ledGeom])
+  useEffect(() => () => ledMat.dispose(), [ledMat])
+
   const handleStairClick = () => {
     const st = useStore.getState()
-    if (st.mode !== 'orbit') return
+    if (st.mode !== 'orbit' || st.viewPreset === 'floor1') return
     // Nếu nhân vật đang điều khiển ở Tầng 2 thì đi xuống Tầng 1, ngược lại đi lên Tầng 2
     const charFloorY =
       st.activeChar === 'girl' ? LIVE_ACTORS.girlPos[1] : LIVE_ACTORS.khoaFloorY
@@ -560,46 +741,80 @@ function IndoorStaircase() {
       onClick={handleStairClick}
     >
       <G p={[-8.85, 0, 0]}>
-        {/* 2 dầm thép Matte Charcoal chịu lực chạy chéo */}
-        <mesh position={[-0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
-          <boxGeometry args={[0.07, 0.14, 6.1]} />
-          <meshStandardMaterial color="#2B2D2F" metalness={0.45} roughness={0.4} />
-        </mesh>
-        <mesh position={[0.45, totalH / 2 - 0.1, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
-          <boxGeometry args={[0.07, 0.14, 6.1]} />
-          <meshStandardMaterial color="#2B2D2F" metalness={0.45} roughness={0.4} />
-        </mesh>
+        {/* 2 dầm đỡ chéo (stringer) thép Matte Charcoal ốp gỗ sồi nối khít từ sàn Tầng 1 (y=0) lên mép dầm sàn Tầng 2 (y=FLOOR2_Y-0.15) */}
+        {[-0.56, 0.56].map((sx, sIdx) => (
+          <group key={sIdx}>
+            <mesh position={[sx, stringerMidY, stringerMidZ]} rotation={[stringerPitch, 0, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.06, 0.18, stringerLen]} />
+              <meshStandardMaterial color="#2B2D2F" metalness={0.45} roughness={0.4} />
+            </mesh>
+            {/* Chỉ gỗ sồi trang trí dọc má ngoài dầm */}
+            <mesh
+              position={[sx + (sIdx === 0 ? -0.036 : 0.036), stringerMidY, stringerMidZ]}
+              rotation={[stringerPitch, 0, 0]}
+              castShadow
+              receiveShadow
+            >
+              <boxGeometry args={[0.014, 0.085, stringerLen]} />
+              <meshStandardMaterial color="#C4AF97" roughness={0.48} />
+            </mesh>
+            {/* Bản mã thép neo khít chân dầm trên sàn Tầng 1 (y = 0) */}
+            <B p={[sx, 0.02, startZ]} s={[0.12, 0.04, 0.22]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+            {/* Bản mã thép neo khít đầu dầm vào mép dầm sàn Tầng 2 (y = FLOOR2_Y - 0.15, z = 0.18) */}
+            <B p={[sx, stringerY1, endZ]} s={[0.1, 0.24, 0.08]} c="#2B2D2F" metal={0.5} rough={0.35} shadow />
+          </group>
+        ))}
 
-        {/* 14 Bậc thang gỗ sồi sáng #D8C7B2 dùng chung Geometry & Material */}
+        {/* 14 Bậc thang gỗ sồi dày 0.075 có 2 gân nổi chống trượt & đèn LED dưới mũi bậc */}
         {Array.from({ length: steps }, (_, i) => {
-          const t = (i + 0.5) / steps
-          const sy = t * totalH
+          const t = (i + 1) / (steps + 1)
+          const syTop = t * totalH
           const sz = THREE.MathUtils.lerp(startZ, endZ, t)
           return (
-            <group key={i} position={[0, sy, sz]}>
-              <mesh position={[0, 0, 0]} geometry={stepGeom} material={stepMat} receiveShadow />
-              <mesh position={[0, -0.04, 0.14]} geometry={ledGeom} material={ledMat} />
+            <group key={i} position={[0, syTop - 0.0375, sz]}>
+              <mesh position={[0, 0, 0]} geometry={stepGeom} material={stepMat} castShadow receiveShadow />
+              <mesh position={[0, -0.052, 0]} geometry={cleatGeom} material={cleatMat} castShadow receiveShadow />
+              {/* 2 gân nổi chống trượt trên mặt bậc */}
+              <mesh position={[0, 0.043, 0.11]} geometry={ribGeom} material={ribMat} castShadow receiveShadow />
+              <mesh position={[0, 0.043, 0.145]} geometry={ribGeom} material={ribMat} castShadow receiveShadow />
+              <mesh position={[0, -0.044, 0.155]} geometry={ledGeom} material={ledMat} />
             </group>
           )
         })}
 
-        {/* Tay vịn cầu thang gỗ sồi 2 bên & trụ Matte Charcoal */}
-        {[-0.52, 0.52].map((hx, sideIdx) => (
+        {/* Tay vịn gỗ sồi & lan can kính cường lực 2 bên nối liền mạch lên lan can kính chiếu nghỉ Tầng 2 tại z = 0.18 */}
+        {[-0.56, 0.56].map((hx, sideIdx) => (
           <group key={sideIdx}>
-            <mesh position={[hx, totalH / 2 + 0.82, (startZ + endZ) / 2]} rotation={[0.76, 0, 0]}>
-              <boxGeometry args={[0.055, 0.055, 6.15]} />
-              <meshStandardMaterial color="#C4AF97" roughness={0.48} />
+            {/* Tay vịn gỗ sồi dốc nối khít (y=0.92 -> y=FLOOR2_Y+0.86) */}
+            <mesh position={[hx, railMidY, stringerMidZ]} rotation={[railPitch, 0, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.06, 0.045, railLen]} />
+              <meshStandardMaterial color="#D8C7B2" roughness={0.48} />
             </mesh>
-            {[0.08, 0.35, 0.65, 0.92].map((t, idx) => (
-              <B
-                key={idx}
-                p={[hx, t * totalH + 0.42, THREE.MathUtils.lerp(startZ, endZ, t)]}
-                s={[0.035, 0.85, 0.035]}
-                c="#2B2D2F"
-                metal={0.45}
-                rough={0.4}
-              />
-            ))}
+            {/* Thanh nẹp kẹp kính dưới */}
+            <mesh position={[hx, railMidY - 0.74, stringerMidZ]} rotation={[railPitch, 0, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.045, 0.035, railLen]} />
+              <meshStandardMaterial color="#C4AF97" roughness={0.52} />
+            </mesh>
+            {/* Tấm kính cường lực dốc dọc cầu thang */}
+            <mesh position={[hx, railMidY - 0.37, stringerMidZ]} rotation={[railPitch, 0, 0]} material={glassMat} receiveShadow>
+              <boxGeometry args={[0.016, 0.7, railLen - 0.1]} />
+            </mesh>
+            {/* Các trụ thép Matte Charcoal nối từ dầm stringer lên tay vịn */}
+            {[0, 0.25, 0.5, 0.75, 1].map((t, idx) => {
+              const pyBot = stringerY0 + t * stringerDy
+              const pyTop = railY0 + t * railDy
+              return (
+                <B
+                  key={idx}
+                  p={[hx, (pyBot + pyTop) / 2, THREE.MathUtils.lerp(startZ, endZ, t)]}
+                  s={[0.04, pyTop - pyBot, 0.04]}
+                  c="#2B2D2F"
+                  metal={0.5}
+                  rough={0.35}
+                  shadow
+                />
+              )
+            })}
           </group>
         ))}
       </G>
@@ -1198,7 +1413,7 @@ function GirlRoomFurniture() {
         hint="✨ Đèn LED kệ sách"
         onClick={() => useStore.getState().toggleGirlShelfLed()}
       >
-        <G p={[3.55, Y, -5.88]}>
+        <G p={[3.55, Y, -5.85]}>
           <BB p={[0, 2.38, 0]} s={[5.2, 0.055, 0.28]} c="#B7AFA5" rough={0.5} />
           <B
             p={[0, 2.34, 0.05]}
@@ -1852,8 +2067,10 @@ function SleepingCat({ p }: { p: V3 }) {
 /* ============================================================================
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
-function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?: boolean } = {}) {
+function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean } = {}) {
   const root = useRef<THREE.Group>(null)
+  const hideIfUpstairsRef = useRef(hideIfUpstairs)
+  hideIfUpstairsRef.current = hideIfUpstairs
   const head = useRef<THREE.Group>(null)
   const leftArm = useRef<THREE.Group>(null)
   const rightArm = useRef<THREE.Group>(null)
@@ -2283,6 +2500,10 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
         })
       }
     }
+
+    const hideInFpNow = st.mode === 'fp' && st.userRole === 'girl'
+    const hideUpstairsNow = Boolean(hideIfUpstairsRef.current && walkFloorY.current > 2.0)
+    root.current.visible = !hideInFpNow && !hideUpstairsNow
   })
 
   const userRole = useStore((s) => s.userRole)
@@ -2291,6 +2512,7 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
   const canControlGirl = !userRole || userRole === 'girl'
   // Bạn Gái chỉ ẩn thân xác khi chính người chơi này đang vào vai Bạn Gái và ở góc nhìn thứ nhất (FP)
   const hideInFp = useStore((s) => s.mode === 'fp') && userRole === 'girl'
+  const hideUpstairs = Boolean(hideIfUpstairs && walkFloorY.current > 2.0)
   const girlPhase = useStore((s) => s.girlPhase)
   const sleeping = girlActivity === 'sleep' || girlActivity === 'girl_sleep'
   const isGirlSleepingNow = sleeping && girlPhase === 'active'
@@ -2299,10 +2521,11 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
     <group
       ref={root}
       position={[-3.9, Y, -0.35]}
-      visible={!hideInFp}
+      visible={!hideInFp && !hideUpstairs}
       onClick={
         canControlGirl
           ? (e) => {
+              if (hideIfUpstairsRef.current && walkFloorY.current > 2.0) return
               e.stopPropagation()
               useStore.getState().setActiveChar('girl')
             }
@@ -2311,6 +2534,7 @@ function GirlfriendAvatar({ hideIfUpstairs: _hideIfUpstairs }: { hideIfUpstairs?
       onPointerOver={
         canControlGirl
           ? (e) => {
+              if (hideIfUpstairsRef.current && walkFloorY.current > 2.0) return
               e.stopPropagation()
               document.body.style.cursor = 'pointer'
               useStore.getState().setHoverHint('👩 Linh (Click để điều khiển)')
