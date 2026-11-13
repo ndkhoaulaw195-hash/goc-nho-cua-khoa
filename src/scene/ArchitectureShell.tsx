@@ -5,6 +5,7 @@ import { B, BB, Interact } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { LuxuryLandscaping } from './LuxuryLandscaping'
 import { RooftopTerrace } from './RooftopTerrace'
+import { isHouseClosedOverview, isValidClick, registerOccluderMesh } from './raycastRegistry'
 import { marbleTiles, rng, woodFloor } from './textures'
 import { getHousePalette, LIVE_ACTORS, type V3 } from '../data/config'
 import { useStore } from '../store'
@@ -13,6 +14,65 @@ export const TRIM_BLACK = '#1E2229'
 export const TEAK_WARM = '#C68642'
 export const TEAK_DEEP = '#B87333'
 export const WARM_LED = '#FFAE52'
+
+const UNIT_BOX_GEOM = new THREE.BoxGeometry(1, 1, 1)
+const noopRaycast = () => null
+const _shellObj = new THREE.Object3D()
+const _shellColor = new THREE.Color()
+
+const travRepeatCache = new Map<string, THREE.CanvasTexture>()
+const teakRepeatCache = new Map<string, THREE.CanvasTexture>()
+let floorWoodCache: THREE.CanvasTexture | null = null
+let floorMarbleCache: THREE.CanvasTexture | null = null
+
+function getCachedTravTex(rx: number, ry: number): THREE.CanvasTexture {
+  const key = `${rx}_${ry}`
+  let tex = travRepeatCache.get(key)
+  if (!tex) {
+    tex = getBrightTravertineTexture().clone()
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(rx, ry)
+    tex.needsUpdate = true
+    travRepeatCache.set(key, tex)
+  }
+  return tex
+}
+
+function getCachedTeakTex(rx: number, ry: number, rot = 0): THREE.CanvasTexture {
+  const key = `${rx}_${ry}_${rot.toFixed(3)}`
+  let tex = teakRepeatCache.get(key)
+  if (!tex) {
+    tex = getTeakPlankTexture().clone()
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+    if (rot !== 0) tex.rotation = rot
+    tex.repeat.set(rx, ry)
+    tex.needsUpdate = true
+    teakRepeatCache.set(key, tex)
+  }
+  return tex
+}
+
+function getCachedFloorWoodMap(): THREE.CanvasTexture {
+  if (!floorWoodCache) {
+    const t = woodFloor().clone()
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(4.5, 2.7)
+    t.needsUpdate = true
+    floorWoodCache = t
+  }
+  return floorWoodCache
+}
+
+function getCachedFloorMarbleMap(): THREE.CanvasTexture {
+  if (!floorMarbleCache) {
+    const t = marbleTiles().clone()
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(2.4, 2.8)
+    t.needsUpdate = true
+    floorMarbleCache = t
+  }
+  return floorMarbleCache
+}
 
 let brightTravertineCache: THREE.CanvasTexture | null = null
 export function getBrightTravertineTexture(): THREE.CanvasTexture {
@@ -250,34 +310,65 @@ export function ArchitectureShell({ onFloorClick, onYardClick }: ArchitectureShe
 const SCONCE_CONE_GEOM = new THREE.ConeGeometry(0.42, 0.96, 16, 1, true)
 const BALCONY_LEAF_ICO = new THREE.IcosahedronGeometry(1, 1)
 
+const SCONCE_CONE_MAT_DAY = new THREE.MeshBasicMaterial({
+  color: WARM_LED,
+  transparent: true,
+  opacity: 0.14,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+})
+const SCONCE_CONE_MAT_NIGHT = new THREE.MeshBasicMaterial({
+  color: WARM_LED,
+  transparent: true,
+  opacity: 0.25,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+})
+
+const BALCONY_LEAF_INST_MAT = new THREE.MeshStandardMaterial({
+  color: '#ffffff',
+  roughness: 0.75,
+  flatShading: true,
+})
+
+let rightPergolaMatDay: THREE.MeshStandardMaterial | null = null
+let rightPergolaMatNight: THREE.MeshStandardMaterial | null = null
+function getRightPergolaSlatMat(darkMode: boolean): THREE.MeshStandardMaterial {
+  if (darkMode) {
+    if (!rightPergolaMatNight) {
+      rightPergolaMatNight = new THREE.MeshStandardMaterial({
+        map: getCachedTeakTex(2.4, 0.25),
+        color: '#DFCBB2',
+        roughness: 0.48,
+      })
+    }
+    return rightPergolaMatNight
+  }
+  if (!rightPergolaMatDay) {
+    rightPergolaMatDay = new THREE.MeshStandardMaterial({
+      map: getCachedTeakTex(2.4, 0.25),
+      color: '#FFFFFF',
+      roughness: 0.48,
+    })
+  }
+  return rightPergolaMatDay
+}
+
 /** Đèn hắt tường 2 chiều (Up + Down Wall Sconce #1E2229 / #FFAE52) phát sáng ấm cả Ban ngày lẫn Ban đêm */
 function WallSconce({
   pos,
   darkMode,
-  includeLight = true,
-  lightIntensity,
 }: {
   pos: V3
   darkMode: boolean
   includeLight?: boolean
   lightIntensity?: number
 }) {
-  const coneMat = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: WARM_LED,
-        transparent: true,
-        opacity: darkMode ? 0.25 : 0.14,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      }),
-    [darkMode],
-  )
-  useEffect(() => () => coneMat.dispose(), [coneMat])
+  const coneMat = darkMode ? SCONCE_CONE_MAT_NIGHT : SCONCE_CONE_MAT_DAY
 
   return (
     <group position={pos}>
-      <B p={[0, 0, -0.012]} s={[0.095, 0.32, 0.068]} c={TRIM_BLACK} metal={0.62} rough={0.32} shadow />
+      <B p={[0, 0, -0.012]} s={[0.095, 0.32, 0.068]} c={TRIM_BLACK} metal={0.62} rough={0.32} shadow={false} />
       <B p={[0, 0, 0.023]} s={[0.072, 0.25, 0.008]} c="#2B303A" metal={0.68} rough={0.3} />
       <B
         p={[0, 0.148, 0.004]}
@@ -302,23 +393,15 @@ function WallSconce({
         scale={[1, 1, 0.08]}
         geometry={SCONCE_CONE_GEOM}
         material={coneMat}
+        raycast={noopRaycast}
       />
       <mesh
         position={[0, -0.64, -0.016]}
         scale={[1, 1, 0.08]}
         geometry={SCONCE_CONE_GEOM}
         material={coneMat}
+        raycast={noopRaycast}
       />
-      {includeLight && (
-        <pointLight
-          position={[0, 0, 0.36]}
-          intensity={lightIntensity ?? (darkMode ? 2.15 : 1.15)}
-          distance={5.8}
-          decay={2}
-          color={WARM_LED}
-          castShadow={false}
-        />
-      )}
     </group>
   )
 }
@@ -333,146 +416,142 @@ function HangingBalconyPlanter({
   darkMode: boolean
   variant?: number
 }) {
-  const leafDark = darkMode ? '#2F462A' : '#3E5A36'
-  const leafMid = darkMode ? '#3D5935' : '#537349'
-  const leafLight = darkMode ? '#4E6E44' : '#6A8B5E'
+  const leafInstRef = useRef<THREE.InstancedMesh>(null)
 
-  const matDark = useMemo(() => new THREE.MeshStandardMaterial({ color: leafDark, roughness: 0.78, flatShading: true }), [leafDark])
-  const matMid = useMemo(() => new THREE.MeshStandardMaterial({ color: leafMid, roughness: 0.75, flatShading: true }), [leafMid])
-  const matLight = useMemo(() => new THREE.MeshStandardMaterial({ color: leafLight, roughness: 0.72, flatShading: true }), [leafLight])
+  const leafInstances = useMemo(() => {
+    const leafDark = darkMode ? '#2F462A' : '#3E5A36'
+    const leafMid = darkMode ? '#3D5935' : '#537349'
+    const leafLight = darkMode ? '#4E6E44' : '#6A8B5E'
 
-  useEffect(
-    () => () => {
-      matDark.dispose()
-      matMid.dispose()
-      matLight.dispose()
-    },
-    [matDark, matMid, matLight],
-  )
+    const items: { p: V3; r: V3; s: V3; color: string }[] = [
+      { p: [-0.28, 0.31, 0.02], r: [0, 0, 0], s: [0.22, 0.13, 0.16], color: leafDark },
+      { p: [-0.04, 0.34, -0.01], r: [0, 0, 0], s: [0.24, 0.15, 0.17], color: leafMid },
+      { p: [0.24, 0.31, 0.02], r: [0, 0, 0], s: [0.22, 0.13, 0.16], color: leafLight },
+      { p: [-0.14, 0.28, 0.09], r: [0, 0, 0], s: [0.16, 0.1, 0.14], color: leafLight },
+      { p: [0.14, 0.28, 0.09], r: [0, 0, 0], s: [0.17, 0.1, 0.14], color: leafMid },
+    ]
 
-  const vineStrands = [
-    { x: -0.35, len: 0.56 + (variant % 2) * 0.08, zOff: 0.135 },
-    { x: -0.24, len: 0.72 - (variant % 3) * 0.06, zOff: 0.145 },
-    { x: -0.12, len: 0.48 + ((variant + 1) % 3) * 0.09, zOff: 0.14 },
-    { x: 0.02, len: 0.78 - (variant % 2) * 0.1, zOff: 0.15 },
-    { x: 0.15, len: 0.62 + (variant % 3) * 0.07, zOff: 0.14 },
-    { x: 0.27, len: 0.68 - ((variant + 1) % 2) * 0.12, zOff: 0.145 },
-    { x: 0.37, len: 0.52 + (variant % 2) * 0.09, zOff: 0.135 },
-  ]
+    const vineStrands = [
+      { x: -0.35, len: 0.56 + (variant % 2) * 0.08, zOff: 0.135 },
+      { x: -0.24, len: 0.72 - (variant % 3) * 0.06, zOff: 0.145 },
+      { x: -0.12, len: 0.48 + ((variant + 1) % 3) * 0.09, zOff: 0.14 },
+      { x: 0.02, len: 0.78 - (variant % 2) * 0.1, zOff: 0.15 },
+      { x: 0.15, len: 0.62 + (variant % 3) * 0.07, zOff: 0.14 },
+      { x: 0.27, len: 0.68 - ((variant + 1) % 2) * 0.12, zOff: 0.145 },
+      { x: 0.37, len: 0.52 + (variant % 2) * 0.09, zOff: 0.135 },
+    ]
+
+    const steps = 5
+    vineStrands.forEach((st, sIdx) => {
+      for (let k = 0; k < steps; k++) {
+        const t = k / (steps - 1)
+        const vy = 0.21 - t * st.len
+        const vz = st.zOff + Math.sin(t * 2.2 + sIdx) * 0.025
+        const vx = st.x + Math.sin(t * 3.1 + sIdx * 1.4) * 0.022
+        const rad = 0.068 * (1 - t * 0.42)
+        const color = (sIdx + k) % 3 === 0 ? leafLight : (sIdx + k) % 2 === 0 ? leafMid : leafDark
+        items.push({
+          p: [vx, vy, vz],
+          r: [0.3 * t, k * 0.7, 0.25],
+          s: [rad * 1.05, rad * 1.35, rad * 0.85],
+          color,
+        })
+      }
+    })
+    return items
+  }, [darkMode, variant])
+
+  useLayoutEffect(() => {
+    const inst = leafInstRef.current
+    if (!inst) return
+    leafInstances.forEach((item, idx) => {
+      _shellObj.position.set(item.p[0], item.p[1], item.p[2])
+      _shellObj.rotation.set(item.r[0], item.r[1], item.r[2])
+      _shellObj.scale.set(item.s[0], item.s[1], item.s[2])
+      _shellObj.updateMatrix()
+      inst.setMatrixAt(idx, _shellObj.matrix)
+      _shellColor.set(item.color)
+      inst.setColorAt(idx, _shellColor)
+    })
+    inst.instanceMatrix.needsUpdate = true
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true
+    inst.computeBoundingSphere()
+  }, [leafInstances])
 
   return (
     <group position={pos}>
       {/* Thân chậu chữ nhật viền đen mờ #1E2229 & ngàm thép treo vào mép ban công */}
-      <B p={[0, 0.12, 0]} s={[0.92, 0.24, 0.24]} c={TRIM_BLACK} rough={0.42} metal={0.35} shadow />
-      <B p={[0, 0.235, 0]} s={[0.96, 0.024, 0.27]} c={TRIM_BLACK} rough={0.34} metal={0.55} />
-      <B p={[0, 0.228, 0]} s={[0.84, 0.02, 0.18]} c="#3A3027" rough={0.94} />
+      <B p={[0, 0.12, 0]} s={[0.92, 0.24, 0.24]} c={TRIM_BLACK} rough={0.42} metal={0.35} shadow={false} />
+      <B p={[0, 0.235, 0]} s={[0.96, 0.024, 0.27]} c={TRIM_BLACK} rough={0.34} metal={0.55} shadow={false} />
+      <B p={[0, 0.228, 0]} s={[0.84, 0.02, 0.18]} c="#3A3027" rough={0.94} shadow={false} />
       {[-0.3, 0.3].map((bx, idx) => (
-        <B key={`br-${idx}`} p={[bx, 0.14, -0.13]} s={[0.045, 0.045, 0.12]} c={TRIM_BLACK} metal={0.6} rough={0.35} />
+        <B key={`br-${idx}`} p={[bx, 0.14, -0.13]} s={[0.045, 0.045, 0.12]} c={TRIM_BLACK} metal={0.6} rough={0.35} shadow={false} />
       ))}
 
-      {/* Tán lá xanh rậm trên miệng chậu */}
-      {[
-        { p: [-0.28, 0.31, 0.02] as V3, s: [0.22, 0.13, 0.16] as V3, mat: matDark },
-        { p: [-0.04, 0.34, -0.01] as V3, s: [0.24, 0.15, 0.17] as V3, mat: matMid },
-        { p: [0.24, 0.31, 0.02] as V3, s: [0.22, 0.13, 0.16] as V3, mat: matLight },
-        { p: [-0.14, 0.28, 0.09] as V3, s: [0.16, 0.1, 0.14] as V3, mat: matLight },
-        { p: [0.14, 0.28, 0.09] as V3, s: [0.17, 0.1, 0.14] as V3, mat: matMid },
-      ].map((c, idx) => (
-        <mesh
-          key={`top-${idx}`}
-          position={c.p}
-          scale={c.s}
-          geometry={BALCONY_LEAF_ICO}
-          material={c.mat}
-          castShadow
-          receiveShadow
-        />
-      ))}
-
-      {/* Các dải dây lá xanh rủ mềm xuống mép ban công */}
-      {vineStrands.map((st, sIdx) => {
-        const steps = 5
-        return (
-          <group key={`vine-${sIdx}`}>
-            {Array.from({ length: steps }, (_, k) => {
-              const t = k / (steps - 1)
-              const vy = 0.21 - t * st.len
-              const vz = st.zOff + Math.sin(t * 2.2 + sIdx) * 0.025
-              const vx = st.x + Math.sin(t * 3.1 + sIdx * 1.4) * 0.022
-              const rad = 0.068 * (1 - t * 0.42)
-              const mat = (sIdx + k) % 3 === 0 ? matLight : (sIdx + k) % 2 === 0 ? matMid : matDark
-              return (
-                <mesh
-                  key={k}
-                  position={[vx, vy, vz]}
-                  rotation={[0.3 * t, k * 0.7, 0.25]}
-                  scale={[rad * 1.05, rad * 1.35, rad * 0.85]}
-                  geometry={BALCONY_LEAF_ICO}
-                  material={mat}
-                  castShadow
-                  receiveShadow
-                />
-              )
-            })}
-          </group>
-        )
-      })}
+      {/* Tán lá & dải dây rủ gộp InstancedMesh */}
+      <instancedMesh
+        ref={leafInstRef}
+        args={[BALCONY_LEAF_ICO, BALCONY_LEAF_INST_MAT, 40]}
+        castShadow={false}
+        receiveShadow
+        raycast={noopRaycast}
+      />
     </group>
   )
 }
 
-/** Hệ mái Pergola hiên phải bên trên Sundeck ([1.2..5.5, 6.45..9.95]) đổ bóng sọc nắng sắc nét */
+/** Hệ mái Pergola hiên phải bên trên Sundeck ([1.2..5.5, 6.45..9.95]) */
 function RightPatioPergola({ darkMode }: { darkMode: boolean }) {
-  const teakTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(2.4, 0.25)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => teakTex.dispose(), [teakTex])
-
+  const slatInstRef = useRef<THREE.InstancedMesh>(null)
+  const slatMat = getRightPergolaSlatMat(darkMode)
   const louverCount = 15
   const startZ = 6.62
   const endZ = 9.72
-  const slatTint = darkMode ? '#DFCBB2' : '#FFFFFF'
+
+  useLayoutEffect(() => {
+    const inst = slatInstRef.current
+    if (!inst) return
+    _shellObj.rotation.set(0, 0, 0)
+    _shellObj.scale.set(4.08, 0.09, 0.055)
+    for (let i = 0; i < louverCount; i++) {
+      const lz = startZ + (i / (louverCount - 1)) * (endZ - startZ)
+      _shellObj.position.set(3.35, 4.135, lz)
+      _shellObj.updateMatrix()
+      inst.setMatrixAt(i, _shellObj.matrix)
+    }
+    inst.instanceMatrix.needsUpdate = true
+    inst.computeBoundingSphere()
+  }, [])
 
   return (
     <group>
       {/* 2 Trụ thép góc mảnh #1E2229 tại [1.25, -0.15, 9.85] & [5.45, -0.15, 9.85], cao tới y = 4.18 */}
       {[1.25, 5.45].map((px, idx) => (
         <group key={`pergola-post-${idx}`}>
-          <BB p={[px, -0.15, 9.85]} s={[0.18, 0.03, 0.18]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
-          <BB p={[px, -0.15, 9.85]} s={[0.105, 4.3, 0.105]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
+          <BB p={[px, -0.15, 9.85]} s={[0.18, 0.03, 0.18]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
+          <BB p={[px, -0.15, 9.85]} s={[0.105, 4.3, 0.105]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
         </group>
       ))}
 
       {/* Khung xà thép mảnh #1E2229 ở y = 4.04..4.18 (nằm gọn dưới dầm đua Tầng 2 y = 4.22) */}
-      <B p={[1.25, 4.11, 8.2]} s={[0.11, 0.14, 3.5]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
-      <B p={[5.45, 4.11, 8.2]} s={[0.11, 0.14, 3.5]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
-      <B p={[3.35, 4.11, 9.85]} s={[4.31, 0.14, 0.12]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
-      <B p={[3.35, 4.11, 6.5]} s={[4.31, 0.14, 0.1]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
+      <B p={[1.25, 4.11, 8.2]} s={[0.11, 0.14, 3.5]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
+      <B p={[5.45, 4.11, 8.2]} s={[0.11, 0.14, 3.5]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
+      <B p={[3.35, 4.11, 9.85]} s={[4.31, 0.14, 0.12]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
+      <B p={[3.35, 4.11, 6.5]} s={[4.31, 0.14, 0.1]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
       {/* Thanh đỡ giữa & tay ngàm gắn sạch vào dầm tường Tầng 1 */}
-      <B p={[3.35, 4.085, 8.175]} s={[0.06, 0.09, 3.35]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
+      <B p={[3.35, 4.085, 8.175]} s={[0.06, 0.09, 3.35]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
       {[1.25, 5.45].map((tx, idx) => (
-        <B key={`tie-${idx}`} p={[tx, 4.11, 6.39]} s={[0.1, 0.12, 0.22]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow />
+        <B key={`tie-${idx}`} p={[tx, 4.11, 6.39]} s={[0.1, 0.12, 0.22]} c={TRIM_BLACK} metal={0.65} rough={0.34} shadow={false} />
       ))}
 
-      {/* Hệ thanh lam gỗ Teak #C68642 nằm ngang đều nhau có castShadow = true */}
-      {Array.from({ length: louverCount }, (_, i) => {
-        const lz = startZ + (i / (louverCount - 1)) * (endZ - startZ)
-        return (
-          <B
-            key={`pergola-slat-${i}`}
-            p={[3.35, 4.135, lz]}
-            s={[4.08, 0.09, 0.055]}
-            map={teakTex}
-            c={slatTint}
-            rough={0.48}
-            shadow
-          />
-        )
-      })}
+      {/* Hệ thanh lam gỗ Teak #C68642 gộp InstancedMesh */}
+      <instancedMesh
+        ref={slatInstRef}
+        args={[UNIT_BOX_GEOM, slatMat, louverCount]}
+        castShadow={false}
+        receiveShadow
+        raycast={noopRaycast}
+      />
     </group>
   )
 }
@@ -489,15 +568,14 @@ function StructuralCornerColumns({
   const H2 = FLOOR2_HEIGHT
   const Y = FLOOR2_Y
   const colColor = palette.extWall
+  const colGroupRef = useRef<THREE.Group>(null)
+  const travTex = useMemo(() => getCachedTravTex(0.5, 2.2), [])
 
-  const travTex = useMemo(() => {
-    const t = getBrightTravertineTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(0.5, 2.2)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => travTex.dispose(), [travTex])
+  useEffect(() => {
+    const grp = colGroupRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'wall')
+  }, [showFloor2])
 
   const f1Corners: [number, number][] = [
     [-15.74, -6.14],
@@ -516,7 +594,7 @@ function StructuralCornerColumns({
   ]
 
   return (
-    <group>
+    <group ref={colGroupRef}>
       {f1Corners.map(([cx, cz], i) => (
         <B
           key={`c1-${i}`}
@@ -574,6 +652,12 @@ function CutawayWall({
   useLayoutEffect(() => {
     prevStateRef.current = null
   }, [darkMode, privacy])
+
+  useEffect(() => {
+    const grp = masonryRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'wall')
+  }, [])
 
   useEffect(() => {
     const grp = masonryRef.current
@@ -671,22 +755,25 @@ function SolidFloor1Slabs({
   onFloorClick?: (e: ThreeEvent<MouseEvent>) => void
 }) {
   const palette = getHousePalette(darkMode)
+  const slabsRef = useRef<THREE.Group>(null)
 
-  const floorMap = useMemo(() => {
-    const t = woodFloor().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(4.5, 2.7)
-    t.needsUpdate = true
-    return t
+  useEffect(() => {
+    const grp = slabsRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'slab')
   }, [])
 
-  const marbleMap = useMemo(() => {
-    const t = marbleTiles().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(2.4, 2.8)
-    t.needsUpdate = true
-    return t
-  }, [])
+  const floorMap = useMemo(() => getCachedFloorWoodMap(), [])
+  const marbleMap = useMemo(() => getCachedFloorMarbleMap(), [])
+
+  const handleFloorClick = useMemo(() => {
+    if (!onFloorClick) return undefined
+    return (e: ThreeEvent<MouseEvent>) => {
+      if (!isValidClick(e.clientX, e.clientY)) return
+      if (isHouseClosedOverview()) return
+      onFloorClick(e)
+    }
+  }, [onFloorClick])
 
   const livingMats = useMemo(() => {
     const topMat = new THREE.MeshStandardMaterial({
@@ -730,15 +817,15 @@ function SolidFloor1Slabs({
   }, [marbleMap, darkMode, palette.subFloor])
 
   return (
-    <group>
+    <group ref={slabsRef}>
       {/* Sàn khối đặc Phòng sinh hoạt (x: -10..10, z: -6..6, y: -0.30..0) */}
       <mesh
         position={[0, -SLAB_THICKNESS / 2, 0]}
         material={livingMats}
         castShadow
         receiveShadow
-        onClick={onFloorClick}
-        onDoubleClick={onFloorClick}
+        onClick={handleFloorClick}
+        onDoubleClick={handleFloorClick}
       >
         <boxGeometry args={[20.0, SLAB_THICKNESS, 12.0]} />
       </mesh>
@@ -749,8 +836,8 @@ function SolidFloor1Slabs({
         material={bathMats}
         castShadow
         receiveShadow
-        onClick={onFloorClick}
-        onDoubleClick={onFloorClick}
+        onClick={handleFloorClick}
+        onDoubleClick={handleFloorClick}
       >
         <boxGeometry args={[5.6, SLAB_THICKNESS, 12.0]} />
       </mesh>
@@ -784,6 +871,51 @@ function getFlutedBumpTexture(): THREE.CanvasTexture {
   return tex
 }
 
+const frostedMatCache = new Map<string, THREE.MeshStandardMaterial>()
+function getFrostedGlassMat(darkMode: boolean, fluted: boolean): THREE.MeshStandardMaterial {
+  const key = `${darkMode ? 'd' : 'l'}_${fluted ? 'f' : 's'}`
+  let mat = frostedMatCache.get(key)
+  if (!mat) {
+    mat = new THREE.MeshStandardMaterial({
+      color: darkMode ? (fluted ? '#525E69' : '#6A7580') : fluted ? '#EAE7E0' : '#E8E6E1',
+      transparent: true,
+      opacity: fluted ? 0.78 : 0.64,
+      roughness: fluted ? 0.68 : 0.48,
+      metalness: 0.08,
+      bumpMap: fluted ? getFlutedBumpTexture() : null,
+      bumpScale: fluted ? 0.035 : 0,
+      depthWrite: false,
+    })
+    frostedMatCache.set(key, mat)
+  }
+  return mat
+}
+
+const TEAK_SLAT_INST_MAT = new THREE.MeshStandardMaterial({
+  color: '#ffffff',
+  roughness: 0.48,
+  metalness: 0.04,
+})
+
+const sheerCurtainMatCache = new Map<string, THREE.MeshStandardMaterial>()
+function getSheerCurtainMat(darkMode: boolean, opacity: number): THREE.MeshStandardMaterial {
+  const key = `${darkMode ? 'd' : 'l'}_${opacity.toFixed(2)}`
+  let mat = sheerCurtainMatCache.get(key)
+  if (!mat) {
+    mat = new THREE.MeshStandardMaterial({
+      color: darkMode ? '#EAE4DA' : '#F4F0E8',
+      roughness: 0.92,
+      metalness: 0,
+      transparent: true,
+      opacity,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+    sheerCurtainMatCache.set(key, mat)
+  }
+  return mat
+}
+
 function Window3DMullioned({
   pos,
   size,
@@ -808,31 +940,22 @@ function Window3DMullioned({
   const [W, H] = size
   const frameC = TRIM_BLACK
   const resolvedSill = sillColor ?? TRIM_BLACK
+  const rootRef = useRef<THREE.Group>(null)
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
-  const frostedMat = useMemo(
-    () =>
-      new THREE.MeshPhysicalMaterial({
-        color: darkMode ? (fluted ? '#525E69' : '#6A7580') : fluted ? '#EAE7E0' : '#E8E6E1',
-        transparent: true,
-        opacity: fluted ? 0.78 : 0.64,
-        roughness: fluted ? 0.72 : 0.52,
-        metalness: 0.04,
-        clearcoat: fluted ? 0.35 : 0.45,
-        clearcoatRoughness: fluted ? 0.48 : 0.35,
-        bumpMap: fluted ? getFlutedBumpTexture() : null,
-        bumpScale: fluted ? 0.035 : 0,
-        ior: 1.48,
-        depthWrite: false,
-      }),
-    [darkMode, fluted],
-  )
+  const frostedMat = useMemo(() => getFrostedGlassMat(darkMode, fluted), [darkMode, fluted])
   const isZ = orientation === 'z'
   const frameDepth = WALL_THICKNESS + 0.025
   const frameThick = 0.048
   const mullionThick = 0.028
 
+  useEffect(() => {
+    const grp = rootRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'glass')
+  }, [])
+
   return (
-    <group position={pos}>
+    <group ref={rootRef} position={pos}>
       {/* Tấm kính khối đặc tràn viền */}
       <mesh
         material={frosted ? frostedMat : glassMat}
@@ -848,7 +971,7 @@ function Window3DMullioned({
         c={frameC}
         rough={0.34}
         metal={0.62}
-        shadow
+        shadow={false}
       />
       <B
         p={[0, -H / 2 + frameThick / 2, 0]}
@@ -856,7 +979,7 @@ function Window3DMullioned({
         c={frameC}
         rough={0.34}
         metal={0.62}
-        shadow
+        shadow={false}
       />
       <B
         p={isZ ? [-W / 2 + frameThick / 2, 0, 0] : [0, 0, -W / 2 + frameThick / 2]}
@@ -864,7 +987,7 @@ function Window3DMullioned({
         c={frameC}
         rough={0.34}
         metal={0.62}
-        shadow
+        shadow={false}
       />
       <B
         p={isZ ? [W / 2 - frameThick / 2, 0, 0] : [0, 0, W / 2 - frameThick / 2]}
@@ -872,7 +995,7 @@ function Window3DMullioned({
         c={frameC}
         rough={0.34}
         metal={0.62}
-        shadow
+        shadow={false}
       />
 
       {/* Đố đứng chia nhịp kính panorama mảnh mai */}
@@ -886,6 +1009,7 @@ function Window3DMullioned({
             c={frameC}
             rough={0.34}
             metal={0.62}
+            shadow={false}
           />
         )
       })}
@@ -901,6 +1025,7 @@ function Window3DMullioned({
             c={frameC}
             rough={0.34}
             metal={0.62}
+            shadow={false}
           />
         )
       })}
@@ -912,13 +1037,13 @@ function Window3DMullioned({
         c={resolvedSill}
         rough={0.55}
         metal={0.25}
-        shadow
+        shadow={false}
       />
     </group>
   )
 }
 
-/** Hệ lam gỗ Teak dọc ốp ngoại thất mặt tiền + tấm nền khe âm tối màu */
+/** Hệ lam gỗ Teak dọc ốp ngoại thất mặt tiền + tấm nền khe âm tối màu (InstancedMesh) */
 function VerticalTeakCladding({
   xRange,
   yRange,
@@ -945,27 +1070,42 @@ function VerticalTeakCladding({
   const count = Math.max(2, Math.floor((width - 0.06) / pitch) + 1)
   const span = (count - 1) * pitch
   const startX = cx - span / 2
+  const slatsRef = useRef<THREE.InstancedMesh>(null)
 
   const backColor = TRIM_BLACK
-  const tones = darkMode
-    ? [TEAK_DEEP, TEAK_WARM, '#A8672B']
-    : [TEAK_WARM, TEAK_DEEP, '#CE8E4B']
+
+  useLayoutEffect(() => {
+    const inst = slatsRef.current
+    if (!inst) return
+    const tones = darkMode
+      ? [TEAK_DEEP, TEAK_WARM, '#A8672B']
+      : [TEAK_WARM, TEAK_DEEP, '#CE8E4B']
+    _shellObj.rotation.set(0, 0, 0)
+    _shellObj.scale.set(slatW, height, slatD)
+    for (let i = 0; i < count; i++) {
+      _shellObj.position.set(startX + i * pitch, cy, z + slatD / 2 - 0.01)
+      _shellObj.updateMatrix()
+      inst.setMatrixAt(i, _shellObj.matrix)
+      _shellColor.set(tones[i % tones.length])
+      inst.setColorAt(i, _shellColor)
+    }
+    inst.instanceMatrix.needsUpdate = true
+    if (inst.instanceColor) inst.instanceColor.needsUpdate = true
+    inst.computeBoundingSphere()
+  }, [count, startX, pitch, cy, z, slatW, height, slatD, darkMode])
 
   return (
     <group>
       {/* Tấm nền khe rãnh tối màu phía sau lam gỗ */}
       <B p={[cx, cy, z - 0.018]} s={[width - 0.02, height, 0.016]} c={backColor} rough={0.78} shadow={false} />
-      {Array.from({ length: count }, (_, i) => (
-        <B
-          key={i}
-          p={[startX + i * pitch, cy, z + slatD / 2 - 0.01]}
-          s={[slatW, height, slatD]}
-          c={tones[i % tones.length]}
-          rough={0.48}
-          metal={0.04}
-          shadow
-        />
-      ))}
+      <instancedMesh
+        key={count}
+        ref={slatsRef}
+        args={[UNIT_BOX_GEOM, TEAK_SLAT_INST_MAT, count]}
+        castShadow={false}
+        receiveShadow
+        raycast={noopRaycast}
+      />
     </group>
   )
 }
@@ -979,35 +1119,27 @@ function MainEntranceDoor({
 }) {
   const [doorOpen, setDoorOpen] = useState(false)
   const leafRef = useRef<THREE.Group>(null)
+  const frameGroupRef = useRef<THREE.Group>(null)
+  const sidelightRef = useRef<THREE.Mesh>(null)
+  const canopyRef = useRef<THREE.Group>(null)
+  const closedOverview = useStore((s) => isHouseClosedOverview(s))
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const frameC = TRIM_BLACK
   const brassHandle = darkMode ? '#C9B48C' : '#D9C8A5'
   const canopyTrim = TRIM_BLACK
 
-  const doorWoodTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.rotation = Math.PI / 2
-    t.repeat.set(1.8, 0.85)
-    t.needsUpdate = true
-    return t
-  }, [])
+  const doorWoodTex = useMemo(() => getCachedTeakTex(1.8, 0.85, Math.PI / 2), [])
+  const soffitTex = useMemo(() => getCachedTeakTex(3.2, 0.85), [])
 
-  const soffitTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(3.2, 0.85)
-    t.needsUpdate = true
-    return t
+  useEffect(() => {
+    const cleanups: (() => void)[] = []
+    if (frameGroupRef.current) cleanups.push(registerOccluderMesh(frameGroupRef.current, 'wall'))
+    if (sidelightRef.current) cleanups.push(registerOccluderMesh(sidelightRef.current, 'glass'))
+    if (canopyRef.current) cleanups.push(registerOccluderMesh(canopyRef.current, 'roof'))
+    return () => {
+      cleanups.forEach((fn) => fn())
+    }
   }, [])
-
-  useEffect(
-    () => () => {
-      doorWoodTex.dispose()
-      soffitTex.dispose()
-    },
-    [doorWoodTex, soffitTex],
-  )
 
   useFrame((_, dt) => {
     if (!leafRef.current) return
@@ -1030,17 +1162,20 @@ function MainEntranceDoor({
   return (
     <group position={[-1.4, 0, 6.14]}>
       {/* Khung bao nhôm đen mờ #1E2229 toàn chiều cao y = 0..4.18 */}
-      <BB p={[-0.825, 0, 0]} s={[0.05, 4.18, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <BB p={[0.825, 0, 0]} s={[0.05, 4.18, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <B p={[0, 4.155, 0]} s={[1.7, 0.05, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow />
+      <group ref={frameGroupRef}>
+        <BB p={[-0.825, 0, 0]} s={[0.05, 4.18, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <BB p={[0.825, 0, 0]} s={[0.05, 4.18, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <B p={[0, 4.155, 0]} s={[1.7, 0.05, 0.32]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
 
-      {/* Nẹp hồi đứng bọc hai bên khối Teak sảnh chính (world x = -3.50 & +1.10) */}
-      <BB p={[-2.1, 0, 0.14]} s={[0.048, 4.18, 0.24]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <BB p={[2.5, 0, 0.14]} s={[0.048, 4.18, 0.24]} c={frameC} rough={0.34} metal={0.62} shadow />
+        {/* Nẹp hồi đứng bọc hai bên khối Teak sảnh chính (world x = -3.50 & +1.10) */}
+        <BB p={[-2.1, 0, 0.14]} s={[0.048, 4.18, 0.24]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <BB p={[2.5, 0, 0.14]} s={[0.048, 4.18, 0.24]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
 
+        {/* Đố phân ô kính sidelight */}
+        <BB p={[0.44, 0.04, 0]} s={[0.042, 4.09, 0.28]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+      </group>
       {/* Ô kính dọc mảnh kịch trần bên phải (sidelight x: +0.44..+0.80, y: 0.04..4.13) */}
-      <BB p={[0.44, 0.04, 0]} s={[0.042, 4.09, 0.28]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <mesh position={[0.62, 2.085, 0]} material={glassMat}>
+      <mesh ref={sidelightRef} position={[0.62, 2.085, 0]} material={glassMat}>
         <boxGeometry args={[0.32, 4.09, 0.03]} />
       </mesh>
 
@@ -1049,19 +1184,36 @@ function MainEntranceDoor({
         onClick={
           onYardClick
             ? (e) => {
+                if (!isValidClick(e.clientX, e.clientY)) return
                 e.stopPropagation()
                 onYardClick(e)
               }
             : undefined
         }
       >
-        <BB p={[0, 0, 0.025]} s={[1.76, 0.04, 0.36]} c={TRIM_BLACK} rough={0.55} />
+        <BB p={[0, 0, 0.025]} s={[1.76, 0.04, 0.36]} c={TRIM_BLACK} rough={0.55} shadow={false} />
       </group>
 
-      {/* Cánh cửa gỗ Teak bản lớn dạng trục xoay Pivot cao kịch trần (rộng 1.22, cao 4.09, Click để đóng/mở) */}
+      {/* Cánh cửa gỗ Teak bản lớn dạng trục xoay Pivot cao kịch trần */}
       <Interact
-        hint={doorOpen ? '🚪 Đóng cửa Pivot chính' : '🚪 Mở cửa Pivot chính'}
-        onClick={() => setDoorOpen((v) => !v)}
+        zone="exterior"
+        hint={
+          closedOverview
+            ? '🚶 Bước vào khám phá bên trong nhà'
+            : doorOpen
+              ? '🚪 Đóng cửa Pivot chính'
+              : '🚪 Mở cửa Pivot chính'
+        }
+        onClick={(e) => {
+          if (e && !isValidClick(e.clientX, e.clientY)) return
+          if (isHouseClosedOverview()) {
+            const st = useStore.getState()
+            st.setMode('fp')
+            st.notify('🚶 Bước vào khám phá bên trong nhà')
+            return
+          }
+          setDoorOpen((v) => !v)
+        }}
       >
         <group ref={leafRef} position={[-0.62, 0.04, 0]}>
           {/* Thân cánh cửa gỗ Teak ấm #C68642 / #B87333 đặc dày 0.095 */}
@@ -1092,7 +1244,7 @@ function MainEntranceDoor({
           <B p={[0.14, 2.05, 0]} s={[0.1, 3.69, 0.102]} c={frameC} rough={0.34} metal={0.6} />
 
           {/* Tay nắm kéo dài kim loại vàng Champagne cao 1.95m (mặt ngoài & mặt trong) */}
-          <B p={[0.91, 1.48, 0.095]} s={[0.032, 1.95, 0.032]} c={brassHandle} metal={0.88} rough={0.22} shadow />
+          <B p={[0.91, 1.48, 0.095]} s={[0.032, 1.95, 0.032]} c={brassHandle} metal={0.88} rough={0.22} shadow={false} />
           <B p={[0.91, 2.22, 0.068]} s={[0.024, 0.024, 0.055]} c={brassHandle} metal={0.88} rough={0.22} />
           <B p={[0.91, 0.74, 0.068]} s={[0.024, 0.024, 0.055]} c={brassHandle} metal={0.88} rough={0.22} />
           <B p={[0.91, 1.48, -0.095]} s={[0.032, 1.95, 0.032]} c={brassHandle} metal={0.88} rough={0.22} />
@@ -1102,7 +1254,7 @@ function MainEntranceDoor({
       </Interact>
 
       {/* MÁI HIÊN ĐUA RA CHE SẢNH CHÍNH TỚI z = 8.05 (bước tiếp nối sạch từ mép đua Tầng 2 z = 7.18 -> z = 8.05, zero z-fighting) */}
-      <group position={[0.2, 4.26, 1.476]}>
+      <group ref={canopyRef} position={[0.2, 4.26, 1.476]}>
         {/* Khối mái hiên viền thép đen mờ #1E2229 & mặt trên chống thấm */}
         <B p={[0, 0, 0]} s={[4.64, 0.18, 0.868]} c={canopyTrim} rough={0.4} metal={0.55} shadow />
         <B p={[0, 0.095, 0]} s={[4.48, 0.016, 0.78]} c="#2B303A" rough={0.86} />
@@ -1150,28 +1302,22 @@ function MainEntranceDoor({
         />
       ))}
 
-      {/* 2 Đèn hắt tường 2 chiều rọi mảng lam gỗ Teak hai bên cửa chính (sáng ấm cả ban ngày) */}
+      {/* 2 Đèn hắt tường 2 chiều rọi mảng lam gỗ Teak hai bên cửa chính */}
       {[-1.18, 1.18].map((sx, idx) => (
-        <WallSconce key={idx} pos={[sx, 2.25, 0.225]} darkMode={darkMode} includeLight={false} />
+        <WallSconce key={idx} pos={[sx, 2.25, 0.225]} darkMode={darkMode} />
       ))}
 
-      {/* Đèn pointLight rọi sảnh chính & mảng Teak ấm áp hoạt động cả Ban ngày lẫn Ban đêm */}
-      <pointLight
-        position={[0.1, 3.85, 1.35]}
-        intensity={darkMode ? 2.4 : 1.3}
-        distance={8.5}
-        decay={2}
-        color={WARM_LED}
-        castShadow={false}
-      />
-      <pointLight
-        position={[0, 1.95, 0.85]}
-        intensity={darkMode ? 1.85 : 1.0}
-        distance={6.8}
-        decay={2}
-        color={WARM_LED}
-        castShadow={false}
-      />
+      {/* 1 Đèn pointLight đại diện rọi sảnh mặt tiền ban đêm */}
+      {darkMode && (
+        <pointLight
+          position={[0.1, 3.6, 1.35]}
+          intensity={2.6}
+          distance={10.5}
+          decay={1.8}
+          color={WARM_LED}
+          castShadow={false}
+        />
+      )}
     </group>
   )
 }
@@ -1215,21 +1361,7 @@ function FacadeSheerCurtain({
     ]
   }, [xMin, xMax, totalW, split, gap])
 
-  const mat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: darkMode ? '#EAE4DA' : '#F4F0E8',
-        roughness: 0.92,
-        metalness: 0,
-        transparent: true,
-        opacity,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      }),
-    [darkMode, opacity],
-  )
-
-  useEffect(() => () => mat.dispose(), [mat])
+  const mat = useMemo(() => getSheerCurtainMat(darkMode, opacity), [darkMode, opacity])
 
   const panelGeoms = useMemo(() => {
     return panels.map(({ w }) => {
@@ -1262,6 +1394,7 @@ function FacadeSheerCurtain({
         c={trackColor}
         rough={0.35}
         metal={0.6}
+        shadow={false}
       />
       {panels.map((panel, idx) => (
         <mesh
@@ -1269,6 +1402,8 @@ function FacadeSheerCurtain({
           position={[panel.cx, cy, z]}
           geometry={panelGeoms[idx]}
           material={mat}
+          castShadow={false}
+          raycast={noopRaycast}
           userData={{ origCastShadow: false }}
         />
       ))}
@@ -1284,9 +1419,16 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
   const [doorOpen, setDoorOpen] = useState(false)
   const leftLeafRef = useRef<THREE.Group>(null)
   const rightLeafRef = useRef<THREE.Group>(null)
+  const frameRef = useRef<THREE.Group>(null)
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const frameC = TRIM_BLACK
   const handleC = darkMode ? '#C9B48C' : '#D9C8A5'
+
+  useEffect(() => {
+    const grp = frameRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'wall')
+  }, [])
 
   useFrame((_, dt) => {
     const DOOR_X = -10.14
@@ -1323,16 +1465,22 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
   return (
     <group position={[-10.14, 0, 3.1]}>
       {/* Khung bao nhôm đen mờ quanh ô cửa lùa */}
-      <B p={[0, 3.575, 0]} s={[WALL_THICKNESS + 0.04, 0.05, 2.04]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <B p={[0, 1.8, -0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow />
-      <B p={[0, 1.8, 0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow />
-      {/* Ngưỡng ray trượt sát sàn & thanh ray dẫn hướng mở rộng dọc mặt ngoài tường */}
-      <B p={[0, 0.014, 0]} s={[WALL_THICKNESS + 0.06, 0.028, 2.02]} c={darkMode ? '#1F232A' : '#2C313A'} rough={0.55} />
-      <B p={[-0.17, 3.56, 0]} s={[0.07, 0.06, 3.9]} c={frameC} rough={0.34} metal={0.62} shadow />
+      <group ref={frameRef}>
+        <B p={[0, 3.575, 0]} s={[WALL_THICKNESS + 0.04, 0.05, 2.04]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <B p={[0, 1.8, -0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <B p={[0, 1.8, 0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        {/* Ngưỡng ray trượt sát sàn & thanh ray dẫn hướng mở rộng dọc mặt ngoài tường */}
+        <B p={[0, 0.014, 0]} s={[WALL_THICKNESS + 0.06, 0.028, 2.02]} c={darkMode ? '#1F232A' : '#2C313A'} rough={0.55} shadow={false} />
+        <B p={[-0.17, 3.56, 0]} s={[0.07, 0.06, 3.9]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+      </group>
 
       <Interact
+        zone="interior_f2"
         hint={doorOpen ? '🚪 Đóng cửa lùa Sân thượng' : '🚪 Mở cửa lùa Sân thượng'}
-        onClick={() => setDoorOpen((v) => !v)}
+        onClick={(e) => {
+          if (e && !isValidClick(e.clientX, e.clientY)) return
+          setDoorOpen((v) => !v)
+        }}
       >
         <group ref={leftLeafRef} position={[-0.17, 1.78, -0.485]}>
           <mesh material={glassMat} userData={{ origCastShadow: false }}>
@@ -1380,14 +1528,14 @@ function Floor1Envelope({
 }) {
   const H = FLOOR1_HEIGHT
   const extC = palette.extWall
-  const travTex = useMemo(() => {
-    const t = getBrightTravertineTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(3.2, 1.4)
-    t.needsUpdate = true
-    return t
+  const travTex = useMemo(() => getCachedTravTex(3.2, 1.4), [])
+  const bathPartRef = useRef<THREE.Group>(null)
+
+  useEffect(() => {
+    const grp = bathPartRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'wall')
   }, [])
-  useEffect(() => () => travTex.dispose(), [travTex])
 
   return (
     <group>
@@ -1646,7 +1794,7 @@ function Floor1Envelope({
       </CutawayWall>
 
       {/* 5. VÁCH NGĂN NỘI THẤT PHÒNG TẮM (x = -10.0, dày 0.22) */}
-      <group>
+      <group ref={bathPartRef}>
         <B p={[-10.0, H / 2, -5.05]} s={[0.22, H, 1.9]} c={palette.wallPartition} rough={0.85} shadow />
         <B p={[-9.875, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
         <B p={[-10.125, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
@@ -1666,9 +1814,16 @@ function Floor1Envelope({
 }
 
 function InteriorLivingPartition({ palette }: { palette: ReturnType<typeof getHousePalette> }) {
+  const partRef = useRef<THREE.Group>(null)
+  useEffect(() => {
+    const grp = partRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'wall')
+  }, [])
+
   // Đặt tại z = -0.05 (ngay phía sau SmartTvUnit ở z: 0.07..0.63), chừa hoàn toàn lối đi NAV_NODES hai bên
   return (
-    <group>
+    <group ref={partRef}>
       {/* Mảng vách đặc sau kệ TV (x: 2.45..6.05, y: 0..4.05, dày 0.16) */}
       <B p={[4.25, 2.025, -0.05]} s={[3.6, 4.05, 0.16]} c={palette.wallPartition} rough={0.85} shadow />
       {/* Đường viền nhấn gỗ ấm & nẹp Matte Charcoal mặt phòng khách */}
@@ -1715,38 +1870,32 @@ function Floor2Envelope({
   const H2 = FLOOR2_HEIGHT
   const extC = palette.extWall
   const railColor = TRIM_BLACK
+  const landingSlabRef = useRef<THREE.Group>(null)
+  const balconySlabRef = useRef<THREE.Group>(null)
+  const balconyGlassRef = useRef<THREE.Mesh>(null)
+  const lFrameRef = useRef<THREE.Group>(null)
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
-  const travTex = useMemo(() => {
-    const t = getBrightTravertineTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(3.2, 1.4)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => travTex.dispose(), [travTex])
+  const travTex = useMemo(() => getCachedTravTex(3.2, 1.4), [])
+  const teakTex = useMemo(() => getCachedTeakTex(9.5, 0.55), [])
+  const balconyDeckTex = useMemo(() => getCachedTeakTex(8.5, 0.5), [])
 
-  const teakTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(9.5, 0.55)
-    t.needsUpdate = true
-    return t
+  useEffect(() => {
+    const cleanups: (() => void)[] = []
+    if (landingSlabRef.current) cleanups.push(registerOccluderMesh(landingSlabRef.current, 'slab'))
+    if (balconySlabRef.current) cleanups.push(registerOccluderMesh(balconySlabRef.current, 'slab'))
+    if (balconyGlassRef.current) cleanups.push(registerOccluderMesh(balconyGlassRef.current, 'glass'))
+    if (lFrameRef.current) cleanups.push(registerOccluderMesh(lFrameRef.current, 'wall'))
+    return () => {
+      cleanups.forEach((fn) => fn())
+    }
   }, [])
-  useEffect(() => () => teakTex.dispose(), [teakTex])
-
-  const balconyDeckTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(8.5, 0.5)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => balconyDeckTex.dispose(), [balconyDeckTex])
 
   return (
     <group>
       {/* Dải sàn nối mép trong Tầng 2 gặp tường mặt tiền lùi tại z = 6.22 (chừa khoảng thông tầng x > -1.2) */}
-      <B p={[-5.59, Y - 0.15, 6.102]} s={[8.78, 0.3, 0.24]} c={palette.wallCream} rough={0.85} shadow />
+      <group ref={landingSlabRef}>
+        <B p={[-5.59, Y - 0.15, 6.102]} s={[8.78, 0.3, 0.24]} c={palette.wallCream} rough={0.85} shadow />
+      </group>
 
       {/* 1. TƯỜNG SAU TẦNG 2 (z = -6.14, normal [0,0,-1]: luôn giữ nguyên chiều cao làm phông tựa vòm LED & kệ sách) */}
       <CutawayWall
@@ -1884,26 +2033,31 @@ function Floor2Envelope({
 
             {/* KHỐI ĐUA TẦNG 2 MẠNH MẼ TỚI z = 7.18 + TRẦN GỖ TEAK & LED BAN NGÀY + HÀNH LANG BAN CÔNG KÍNH CHẠY DÀI MẶT TIỀN */}
             <group>
-              {/* Kết cấu sàn đua dưới & mũi đá Travertine #F5F2EB nổi khối */}
-              <B p={[-0.04, -0.064, 6.6825]} s={[19.96, 0.128, 0.795]} c={extC} map={travTex} rough={0.4} shadow />
-              <B p={[-0.04, 0.056, 6.77]} s={[19.96, 0.112, 0.62]} c={railColor} rough={0.45} metal={0.35} shadow />
-              <B p={[-0.04, 0.001, 7.13]} s={[19.96, 0.258, 0.1]} c={extC} map={travTex} rough={0.4} shadow />
-              {/* Sàn hành lang ban công ốp gỗ Teak ấm chạy dài suốt mặt tiền */}
-              <B
-                p={[-0.04, 0.122, 6.7725]}
-                s={[19.96, 0.02, 0.605]}
-                map={balconyDeckTex}
-                c={darkMode ? '#EADBC6' : '#FFFFFF'}
-                rough={0.48}
-              />
-              {/* Mặt dưới khối đua Tầng 2 ốp kín Gỗ Teak #C68642 (lơ lửng ngay trên hiên Tầng 1, zero z-fighting với mái hiên z = 7.182..8.05) */}
-              <B
-                p={[-0.04, -0.136, 6.7225]}
-                s={[19.96, 0.016, 0.875]}
-                map={teakTex}
-                c={darkMode ? '#EADBC6' : '#FFFFFF'}
-                rough={0.48}
-              />
+              <group ref={balconySlabRef}>
+                {/* Kết cấu sàn đua dưới & mũi đá Travertine #F5F2EB nổi khối */}
+                <B p={[-0.04, -0.064, 6.6825]} s={[19.96, 0.128, 0.795]} c={extC} map={travTex} rough={0.4} shadow />
+                <B p={[-0.04, 0.056, 6.77]} s={[19.96, 0.112, 0.62]} c={railColor} rough={0.45} metal={0.35} shadow />
+                <B p={[-0.04, 0.001, 7.13]} s={[19.96, 0.258, 0.1]} c={extC} map={travTex} rough={0.4} shadow />
+                {/* Sàn hành lang ban công ốp gỗ Teak ấm chạy dài suốt mặt tiền */}
+                <B
+                  p={[-0.04, 0.122, 6.7725]}
+                  s={[19.96, 0.02, 0.605]}
+                  map={balconyDeckTex}
+                  c={darkMode ? '#EADBC6' : '#FFFFFF'}
+                  rough={0.48}
+                />
+                {/* Mặt dưới khối đua Tầng 2 ốp kín Gỗ Teak #C68642 */}
+                <B
+                  p={[-0.04, -0.136, 6.7225]}
+                  s={[19.96, 0.016, 0.875]}
+                  map={teakTex}
+                  c={darkMode ? '#EADBC6' : '#FFFFFF'}
+                  rough={0.48}
+                />
+                {/* Cánh đá Travertine bo mép trái khối đua Tầng 2 */}
+                <B p={[-10.149, 2.01, 6.8375]} s={[0.258, 4.3, 0.685]} c={extC} map={travTex} rough={0.4} shadow />
+              </group>
+
               {/* Dải đèn LED #FFAE52 âm trần dưới mũi khối đua Tầng 2 sáng ấm cả Ban ngày & Ban đêm */}
               <B
                 p={[-0.04, -0.15, 7.06]}
@@ -1913,44 +2067,25 @@ function Floor2Envelope({
                 ei={darkMode ? 2.7 : 2.0}
                 shadow={false}
               />
-              <pointLight
-                position={[-6.2, -0.5, 6.9]}
-                intensity={darkMode ? 1.85 : 0.95}
-                distance={7.5}
-                decay={2}
-                color={WARM_LED}
-                castShadow={false}
-              />
-              <pointLight
-                position={[5.8, -0.5, 6.9]}
-                intensity={darkMode ? 1.85 : 0.95}
-                distance={7.5}
-                decay={2}
-                color={WARM_LED}
-                castShadow={false}
-              />
 
               {/* Lan can kính cường lực trong suốt tại z = 7.12 (nẹp đáy, tay vịn & kẹp chân #1E2229) */}
-              <B p={[-0.04, 0.15, 7.12]} s={[19.94, 0.04, 0.055]} c={railColor} rough={0.35} metal={0.62} shadow />
-              <mesh position={[-0.04, 0.655, 7.12]} material={glassMat}>
+              <B p={[-0.04, 0.15, 7.12]} s={[19.94, 0.04, 0.055]} c={railColor} rough={0.35} metal={0.62} shadow={false} />
+              <mesh ref={balconyGlassRef} position={[-0.04, 0.655, 7.12]} material={glassMat}>
                 <boxGeometry args={[19.92, 0.97, 0.028]} />
               </mesh>
-              <B p={[-0.04, 1.16, 7.12]} s={[19.96, 0.04, 0.05]} c={railColor} rough={0.35} metal={0.62} shadow />
+              <B p={[-0.04, 1.16, 7.12]} s={[19.96, 0.04, 0.05]} c={railColor} rough={0.35} metal={0.62} shadow={false} />
               {[-8.8, -6.6, -4.4, -2.2, 0.0, 2.2, 4.4, 6.6, 8.8].map((sx, idx) => (
-                <B key={idx} p={[sx, 0.21, 7.12]} s={[0.055, 0.14, 0.068]} c={railColor} rough={0.35} metal={0.7} />
+                <B key={idx} p={[sx, 0.21, 7.12]} s={[0.055, 0.14, 0.068]} c={railColor} rough={0.35} metal={0.7} shadow={false} />
               ))}
 
               {/* 4 chậu cây rủ nhẹ dọc mép ban công (tránh mái hiên sảnh chính x: -3.52..+1.12) */}
               {[-8.1, -4.9, 2.8, 7.4].map((px, idx) => (
                 <HangingBalconyPlanter key={`planter-${idx}`} pos={[px, 0.14, 7.25]} darkMode={darkMode} variant={idx} />
               ))}
-
-              {/* Cánh đá Travertine bo mép trái khối đua Tầng 2 (tách sạch khỏi RooftopTerrace & f2Corners) */}
-              <B p={[-10.149, 2.01, 6.8375]} s={[0.258, 4.3, 0.685]} c={extC} map={travTex} rough={0.4} shadow />
             </group>
 
             {/* KHUNG VIỀN KIẾN TRÚC CHỮ L NGƯỢC ĐÁ TRAVERTINE #F5F2EB BÊN PHẢI TẦNG 2 ÔM KHÍT RA z = 7.24 */}
-            <group>
+            <group ref={lFrameRef}>
               {/* Thanh ngang trên của chữ L ngược (x: +0.96..+10.56, y: 3.84..4.16 dưới diềm gỗ mái hiên, z: 6.495..7.24) */}
               <B p={[5.76, 4.0, 6.8675]} s={[9.6, 0.32, 0.745]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
               {/* Trụ đứng bên phải của chữ L ngược (x: +9.94..+10.56, y: -0.15..3.84, z: 6.495..7.24) */}
@@ -2010,37 +2145,20 @@ function RoofSystem({
   const roofColor = palette.extWall
   const senoCapColor = TRIM_BLACK
   const soffitLed = WARM_LED
+  const roofRef = useRef<THREE.Group>(null)
 
-  const travTex = useMemo(() => {
-    const t = getBrightTravertineTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(5.5, 3.5)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => travTex.dispose(), [travTex])
+  const travTex = useMemo(() => getCachedTravTex(5.5, 3.5), [])
+  const frontSoffitTex = useMemo(() => getCachedTeakTex(14.0, 0.65), [])
+  const sideSoffitTex = useMemo(() => getCachedTeakTex(8.5, 0.5, Math.PI / 2), [])
 
-  const frontSoffitTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(14.0, 0.65)
-    t.needsUpdate = true
-    return t
+  useEffect(() => {
+    const grp = roofRef.current
+    if (!grp) return
+    return registerOccluderMesh(grp, 'roof')
   }, [])
-  useEffect(() => () => frontSoffitTex.dispose(), [frontSoffitTex])
-
-  const sideSoffitTex = useMemo(() => {
-    const t = getTeakPlankTexture().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.rotation = Math.PI / 2
-    t.repeat.set(8.5, 0.5)
-    t.needsUpdate = true
-    return t
-  }, [])
-  useEffect(() => () => sideSoffitTex.dispose(), [sideSoffitTex])
 
   return (
-    <group>
+    <group ref={roofRef}>
       {/* MÁI BẰNG CHÍNH ĐÁ TRAVERTINE #F5F2EB ĐUA SÂU RA TỚI z = 7.75 (x: -10.70..+10.90, z: -6.48..+7.75) */}
       <B p={[0.1, ROOF_Y + 0.15, 0.635]} s={[21.6, 0.3, 14.23]} map={travTex} c={roofColor} rough={0.4} shadow />
       {/* Lớp chống thấm đá sẫm lòng mái seno */}
@@ -2105,10 +2223,6 @@ function RoofSystem({
         ei={darkMode ? 2.5 : 1.9}
         shadow={false}
       />
-      {/* PointLight hắt rọi mặt tiền & cột ấm áp hoạt động cả Ban ngày & Ban đêm */}
-      <pointLight position={[-5.4, 8.2, 7.35]} intensity={darkMode ? 2.2 : 1.2} distance={9.5} decay={2} color={soffitLed} castShadow={false} />
-      <pointLight position={[0.2, 8.2, 7.35]} intensity={darkMode ? 2.3 : 1.3} distance={9.5} decay={2} color={soffitLed} castShadow={false} />
-      <pointLight position={[6.5, 8.2, 7.35]} intensity={darkMode ? 2.2 : 1.2} distance={9.5} decay={2} color={soffitLed} castShadow={false} />
     </group>
   )
 }
