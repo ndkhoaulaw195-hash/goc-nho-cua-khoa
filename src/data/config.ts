@@ -458,12 +458,16 @@ export const STATIONS: Record<
   },
 }
 
-/** Bảng màu kiến trúc đồng bộ giữa Tầng 1 và Tầng 2 (Ngoại thất Biệt thự Xám than #2B303A & Nội thất Warm Greige) */
+/** Bảng màu kiến trúc Ultra-Luxury Contemporary Villa (Đá Travertine trắng kem - Gỗ Teak - Đá đen mờ) */
 export function getHousePalette(darkMode: boolean) {
   return {
-    extWall: darkMode ? '#303642' : '#2B303A',
-    facadeFrame: darkMode ? '#DDD7CD' : '#F4F1EA',
-    subFloor: darkMode ? '#383C42' : '#2B303A',
+    extWall: darkMode ? '#EBE6DC' : '#F5F2EB',
+    facadeFrame: darkMode ? '#EFECE4' : '#F5F2EB',
+    trimBlack: '#1E2229',
+    teakWarm: '#C68642',
+    teakDeep: '#B87333',
+    warmLed: '#FFAE52',
+    subFloor: '#1E2229',
     floorTint: darkMode ? '#D4C8B8' : '#FFFFFF',
     wallCream: darkMode ? '#726E67' : '#EFECE6',
     wallPartition: darkMode ? '#6A6660' : '#EFECE6',

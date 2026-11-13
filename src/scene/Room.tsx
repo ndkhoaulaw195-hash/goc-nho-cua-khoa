@@ -215,12 +215,11 @@ function Rug({
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
   const weather = useStore((s) => s.weather)
-  const graphicMode = useStore((s) => s.graphicMode)
   const lampOn = useStore((s) => s.lampOn)
   const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
   const tvOn = useStore((s) => s.tvOn)
   const pcState = useStore((s) => s.pcState)
-  const shadowResolution = graphicMode === 'hd' ? 2048 : 1024
+  const shadowResolution = 2048
 
   // Ánh sáng studio ban ngày rõ nét sân vườn khi nhìn từ trong ra & giảm nhẹ AmbientLight ban đêm để nổi bật đèn vàng ấm nội thất qua kính phản quang
   const hemiSky = darkMode
@@ -231,7 +230,7 @@ export function Lights() {
   const hemiGround = darkMode
     ? '#413932'
     : '#A49E94'
-  const hemiIntensity = darkMode ? 0.34 : weather === 'rain' ? 0.56 : 0.66
+  const hemiIntensity = darkMode ? 0.34 : weather === 'rain' ? 0.56 : 0.64
 
   const sunColor = darkMode
     ? '#AFC4DE'
@@ -241,10 +240,10 @@ export function Lights() {
   const sunIntensity = darkMode
     ? 0.4
     : weather === 'sunset'
-      ? 1.48
+      ? 1.52
       : weather === 'rain'
-        ? 1.02
-        : 1.44
+        ? 1.04
+        : 1.48
   const sunPos: [number, number, number] = weather === 'sunset' ? [15.5, 17.5, 14.5] : [13.5, 20.5, 13.5]
 
   const ambientColor = darkMode
@@ -252,27 +251,27 @@ export function Lights() {
     : '#F2EFE9'
   const ambientIntensity = darkMode
     ? 0.16
-    : 0.32
+    : 0.3
 
   return (
     <>
       <hemisphereLight args={[hemiSky, hemiGround, hemiIntensity]} />
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
-      {/* Directional Light chính chiếu xiên nhẹ tạo bóng đổ mềm rõ nét cho cả kiến trúc & sân vườn */}
+      {/* Directional Light chính luôn chạy HD 2048px, bao trọn mái đua & Pergola để đổ bóng sọc nắng sắc nét */}
       <directionalLight
         position={sunPos}
         intensity={sunIntensity}
         color={sunColor}
         castShadow
         shadow-mapSize={[shadowResolution, shadowResolution]}
-        shadow-camera-left={-22}
-        shadow-camera-right={18}
-        shadow-camera-top={18}
-        shadow-camera-bottom={-17}
+        shadow-camera-left={-23}
+        shadow-camera-right={19}
+        shadow-camera-top={19}
+        shadow-camera-bottom={-19}
         shadow-camera-near={3}
-        shadow-camera-far={58}
-        shadow-radius={3.8}
+        shadow-camera-far={62}
+        shadow-radius={3.0}
         shadow-bias={-0.00025}
         shadow-normalBias={0.02}
       />
@@ -284,53 +283,59 @@ export function Lights() {
         color={darkMode ? '#9BB0C8' : '#EFECE6'}
       />
 
-      {/* Hệ đèn nội thất vàng ấm (tạo hiệu ứng hắt ấm qua rèm & kính phản quang cả ngày lẫn đêm, sáng rõ khi Vào nhà) */}
+      {/* Hệ đèn nội thất vàng ấm (#FFD59B / #FFAE52) cường độ cao hắt lung linh qua rèm voan & kính phản quang cả ngày lẫn đêm */}
+      {/* Phòng khách Tầng 1 */}
       <pointLight
         position={[3.8, 3.55, 2.2]}
-        intensity={darkMode ? 2.15 : 1.5}
-        distance={15}
-        decay={1.8}
-        color={darkMode ? '#FFD59E' : '#FFF0D8'}
+        intensity={darkMode ? 2.7 : 2.1}
+        distance={16}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
+      {/* Phòng ngủ Tầng 1 */}
       <pointLight
         position={[-3.2, 3.45, -1.2]}
-        intensity={darkMode ? 1.85 : 1.4}
-        distance={14}
-        decay={1.8}
-        color={darkMode ? '#FFD8A6' : '#FFF1DC'}
+        intensity={darkMode ? 2.45 : 1.9}
+        distance={15}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
+      {/* Phòng ngủ Tầng 2 */}
       <pointLight
         position={[-4.5, 7.6, 1.4]}
-        intensity={darkMode ? 2.05 : 1.45}
-        distance={15}
-        decay={1.8}
-        color={darkMode ? '#FFD59E' : '#FFF0D8'}
+        intensity={darkMode ? 2.65 : 2.05}
+        distance={16}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
+      {/* Thông tầng & Khu học tập Tầng 2 */}
       <pointLight
         position={[3.4, 7.6, -0.4]}
-        intensity={darkMode ? 1.9 : 1.4}
-        distance={15}
-        decay={1.8}
-        color={darkMode ? '#FFD8A6' : '#FFF1DC'}
+        intensity={darkMode ? 2.5 : 1.95}
+        distance={16}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
+      {/* Phòng tắm Tầng 1 */}
       <pointLight
         position={[-12.8, 3.4, -0.5]}
-        intensity={darkMode ? 1.45 : 1.28}
-        distance={12}
-        decay={1.8}
-        color={darkMode ? '#FFE0B8' : '#FAF6EE'}
+        intensity={darkMode ? 2.3 : 1.75}
+        distance={13}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
+      {/* Khu Bếp & Cầu thang Tầng 1 */}
       <pointLight
         position={[-8.85, 2.85, 2.5]}
-        intensity={darkMode ? 1.15 : 0.92}
-        distance={10.5}
-        decay={1.8}
-        color={darkMode ? '#FFE0B8' : '#FFF2DE'}
+        intensity={darkMode ? 2.4 : 1.85}
+        distance={13}
+        decay={1.7}
+        color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
 
@@ -355,7 +360,7 @@ export function Lights() {
           castShadow={false}
         />
       )}
-      {darkMode && tvOn && graphicMode === 'hd' && (
+      {darkMode && tvOn && (
         <pointLight
           position={[8.9, 1.65, 2.35]}
           intensity={1.5}
@@ -365,7 +370,7 @@ export function Lights() {
           castShadow={false}
         />
       )}
-      {darkMode && pcState !== 'off' && graphicMode === 'hd' && (
+      {darkMode && pcState !== 'off' && (
         <pointLight
           position={[2.85, 1.35, -5.1]}
           intensity={1.4}
