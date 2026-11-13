@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, Sph, RBB } from './prims'
+import { isValidClick, isZoneInteractive } from './raycastRegistry'
 import { dartboard, loadPhotoTexture, rng, screen, sunflowerArt } from './textures'
 import { WALL_PHOTOS, type V3 } from '../data/config'
 import { useStore } from '../store'
@@ -17,6 +18,16 @@ const SLATE = '#5E7487'
 const SLATE_DARK = '#4A5E6F'
 const CAMEL = '#C4834E'
 const RUST = '#9E6338'
+
+const PELLET_GEOM = new THREE.SphereGeometry(0.028, 8, 8)
+const PELLET_MAT = new THREE.MeshStandardMaterial({ color: '#846b53' })
+const MONSTERA_STEM_GEOM = new THREE.CylinderGeometry(0.012, 0.018, 1, 6)
+const MONSTERA_STEM_MAT = new THREE.MeshStandardMaterial({ color: '#566E4C' })
+const MONSTERA_LEAF_GEOM = new THREE.SphereGeometry(1, 12, 8)
+const MONSTERA_LEAF_MATS = [
+  new THREE.MeshStandardMaterial({ color: '#6F8763', roughness: 0.62 }),
+  new THREE.MeshStandardMaterial({ color: '#566E4C', roughness: 0.62 }),
+]
 
 export function Furniture() {
   return (
@@ -87,9 +98,9 @@ function Wardrobe() {
       <RBB p={[0, 2.7, 0]} s={[2.32, 0.08, 0.88]} c={WALNUT} radius={0.02} shadow />
       <BB p={[0, 0.72, -0.02]} s={[2.2, 0.05, 0.8]} c="#9E968C" />
 
-      {/* Đèn LED 3000K (#FFD7A3) bên trong tủ */}
-      <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#FFD7A3" emissive="#FFD7A3" ei={1.85} shadow={false} />
-      <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#B7AFA5" emissive="#FFD7A3" ei={0.22} shadow={false} />
+      {/* Đèn LED 3000K (#FFAE52) bên trong tủ */}
+      <B p={[0, 2.64, 0.1]} s={[2.12, 0.025, 0.04]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
+      <B p={[0, 2.0, -0.37]} s={[2.12, 1.15, 0.015]} c="#B7AFA5" emissive="#FFAE52" ei={0.22} shadow={false} />
 
       <Cyl p={[0, 2.42, 0]} r={[0, 0, Math.PI / 2]} rt={0.018} h={2.15} c="#2B2D2F" metal={0.75} />
       {shirts.map((sh, i) => (
@@ -129,6 +140,7 @@ function Wardrobe() {
 
   return (
     <Interact
+      zone="interior_f1"
       hint="👕 Tủ quần áo của Khoa"
       onClick={() => useStore.getState().startActivity('wardrobe', true)}
     >
@@ -160,9 +172,9 @@ function LeftNightstand() {
       <Cyl p={[0.28, 0.78, 0.04]} rt={0.07} rb={0.09} h={0.18} c="#EFECE6" />
       <Sph p={[0.28, 0.92, 0.04]} s={[0.13, 0.1, 0.13]} c="#6F8763" />
       <Sph p={[0.24, 0.96, 0.02]} s={[0.09, 0.08, 0.09]} c="#566E4C" />
-      {/* Đèn gắn tường vàng ấm 3000K (#FFD7A3) */}
+      {/* Đèn gắn tường vàng ấm 3000K (#FFAE52) */}
       <B p={[0.05, 1.62, -0.32]} s={[0.08, 0.14, 0.12]} c={DARK} metal={0.5} />
-      <Cyl p={[0.05, 1.56, -0.24]} rt={0.05} rb={0.08} h={0.1} c="#FFD7A3" emissive="#FFD7A3" ei={1.25} />
+      <Cyl p={[0.05, 1.56, -0.24]} rt={0.05} rb={0.08} h={0.1} c="#FFAE52" emissive="#FFAE52" ei={1.5} />
     </G>
   )
 }
@@ -201,6 +213,7 @@ function Dartboard() {
 
   return (
     <Interact
+      zone="interior_f1"
       hint="🎯 Bảng phi tiêu"
       onClick={() => useStore.getState().startActivity('darts', true)}
     >
@@ -238,7 +251,7 @@ function AirCon() {
   })
 
   return (
-    <Interact hint="❄️ Điều hòa" onClick={() => useStore.getState().toggleAc()}>
+    <Interact zone="interior_f1" hint="❄️ Điều hòa" onClick={() => useStore.getState().toggleAc()}>
       <G p={[-2.6, 3.55, -5.82]}>
         <B s={[1.55, 0.4, 0.3]} c="#f2efe9" rough={0.4} />
         <B p={[0, -0.14, 0.15]} r={[acOn ? 0.55 : 0, 0, 0]} s={[1.45, 0.035, 0.04]} c="#dfd9ce" />
@@ -259,6 +272,7 @@ function AirCon() {
 function Bed() {
   return (
     <Interact
+      zone="interior_f1"
       hint="🛏️ Giường ngủ Tầng 1"
       onClick={() => useStore.getState().startActivity('sleep', true)}
     >
@@ -291,8 +305,9 @@ function RightNightstand() {
       <BB p={[0, 0, 0]} s={[0.68, 0.56, 0.52]} c={WALNUT} rough={0.62} shadow />
       <BB p={[0, 0.3, 0.265]} s={[0.6, 0.2, 0.02]} c={DARK} />
       <BB p={[0, 0.08, 0.265]} s={[0.6, 0.18, 0.02]} c={DARK} />
-      {/* Đèn ngủ đầu giường (#FFD7A3) */}
+      {/* Đèn ngủ đầu giường (#FFAE52) */}
       <Interact
+        zone="interior_f1"
         hint={floor1BedLampOn ? '💡 Tắt đèn ngủ Tầng 1' : '💡 Bật đèn ngủ Tầng 1'}
         onClick={() => useStore.getState().toggleFloor1BedLamp()}
       >
@@ -304,15 +319,15 @@ function RightNightstand() {
             rt={0.14}
             rb={0.16}
             h={0.24}
-            c={floor1BedLampOn ? '#FFD7A3' : '#D6D1C9'}
-            emissive={floor1BedLampOn ? '#FFD7A3' : '#000000'}
-            ei={floor1BedLampOn ? 1.85 : 0}
+            c={floor1BedLampOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={floor1BedLampOn ? '#FFAE52' : '#000000'}
+            ei={floor1BedLampOn ? 1.5 : 0}
             seg={24}
           />
           {floor1BedLampOn && (
             <mesh position={[0, 0.88, 0]}>
               <sphereGeometry args={[0.22, 16, 12]} />
-              <meshBasicMaterial color="#FFD7A3" transparent opacity={0.2} depthWrite={false} />
+              <meshBasicMaterial color="#FFAE52" transparent opacity={0.2} depthWrite={false} />
             </mesh>
           )}
         </G>
@@ -350,6 +365,7 @@ function WallPhotoFrame({ item }: { item: (typeof WALL_PHOTOS)[number] }) {
   const tex = useMemo(() => loadPhotoTexture(item.src), [item.src])
   return (
     <Interact
+      zone="interior_f1"
       hint={`🖼️ ${item.title}`}
       onClick={() => {
         const st = useStore.getState()
@@ -358,10 +374,10 @@ function WallPhotoFrame({ item }: { item: (typeof WALL_PHOTOS)[number] }) {
       }}
     >
       <G p={item.position}>
-        {/* Đèn rọi tranh Matte Charcoal & ánh vàng ấm #FFD7A3 */}
+        {/* Đèn rọi tranh Matte Charcoal & ánh vàng ấm #FFAE52 */}
         <B p={[0, 0.44, 0.04]} s={[0.1, 0.04, 0.08]} c={DARK} metal={0.65} />
         <Cyl p={[0, 0.41, 0.1]} r={[0, 0, Math.PI / 2]} rt={0.022} h={0.22} c={DARK} metal={0.65} />
-        <B p={[0, 0.39, 0.1]} s={[0.18, 0.015, 0.025]} c="#FFD7A3" emissive="#FFD7A3" ei={1.4} shadow={false} />
+        <B p={[0, 0.39, 0.1]} s={[0.18, 0.015, 0.025]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
 
         {/* Khung ảnh Matte Charcoal & Bo kem ấm (#EFECE6) */}
         <B s={[0.54, 0.66, 0.04]} c={DARK} rough={0.65} polyOffset />
@@ -407,6 +423,7 @@ function Bookshelf({ p, seed }: { p: V3; seed: number }) {
   }, [seed])
   return (
     <Interact
+      zone="interior_f1"
       hint="📚 Tủ sách"
       onClick={() => useStore.getState().startActivity('read', true)}
     >
@@ -472,12 +489,13 @@ function Desk() {
         <BB key={x} p={[x, 0, 0]} s={[0.06, 0.74, 0.84]} c={DARK} metal={0.45} rough={0.4} shadow />
       ))}
 
-      {/* Đèn LED hắt sau bàn dùng ánh sáng vàng ấm 3000K (#FFD7A3) đồng bộ, không dùng RGB */}
+      {/* Đèn LED hắt sau bàn dùng ánh sáng vàng ấm 3000K (#FFAE52) đồng bộ, không dùng RGB */}
       {pcState !== 'off' && (
-        <B p={[0, 0.78, -0.44]} s={[2.2, 0.03, 0.03]} c="#FFD7A3" emissive="#FFD7A3" ei={1.35} shadow={false} />
+        <B p={[0, 0.78, -0.44]} s={[2.2, 0.03, 0.03]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
       )}
 
       <Interact
+        zone="interior_f1"
         hint="💻 Bàn máy tính Tầng 1"
         onClick={() => useStore.getState().startActivity('pc', true)}
       >
@@ -555,6 +573,7 @@ function OfficeChair({
 
   return (
     <Interact
+      zone="interior_f1"
       hint="💻 Ghế công thái học"
       onClick={() => useStore.getState().startActivity('pc', true)}
     >
@@ -587,7 +606,7 @@ function Painting() {
     <G p={[2.85, 3.05, -5.92]}>
       <B p={[0, 0.86, 0.05]} s={[0.14, 0.05, 0.1]} c={DARK} metal={0.65} />
       <Cyl p={[0, 0.82, 0.14]} r={[0, 0, Math.PI / 2]} rt={0.025} h={0.45} c={DARK} metal={0.65} />
-      <B p={[0, 0.8, 0.14]} s={[0.38, 0.015, 0.03]} c="#FFD7A3" emissive="#FFD7A3" ei={1.4} shadow={false} />
+      <B p={[0, 0.8, 0.14]} s={[0.38, 0.015, 0.03]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
 
       {/* Khung tranh Matte Charcoal (#2B2D2F) & Bo kem (#EFECE6) */}
       <B s={[1.36, 1.56, 0.045]} c={DARK} rough={0.6} polyOffset />
@@ -704,6 +723,7 @@ function WaterDispenser() {
 
   return (
     <Interact
+      zone="interior_f1"
       hint={`💧 Cây nước nóng lạnh (${drinkLabel})`}
       onClick={() => useStore.getState().startActivity('drink', true)}
     >
@@ -735,8 +755,9 @@ function LowCabinet() {
         <Sph p={[0.12, 0.36, 0.05]} s={[0.16, 0.14, 0.16]} c="#6F8763" />
         <Sph p={[-0.12, 0.38, -0.04]} s={[0.16, 0.14, 0.16]} c="#566E4C" />
       </G>
-      {/* Đèn bàn ánh vàng 3000K (#FFD7A3) */}
+      {/* Đèn bàn ánh vàng 3000K (#FFAE52) */}
       <Interact
+        zone="interior_f1"
         hint={floor1DeskLampOn ? '💡 Tắt đèn bàn PC' : '💡 Bật đèn bàn PC'}
         onClick={() => useStore.getState().toggleFloor1DeskLamp()}
       >
@@ -748,15 +769,15 @@ function LowCabinet() {
             rt={0.18}
             rb={0.22}
             h={0.28}
-            c={floor1DeskLampOn ? '#FFD7A3' : '#D6D1C9'}
-            emissive={floor1DeskLampOn ? '#FFD7A3' : '#000000'}
-            ei={floor1DeskLampOn ? 1.85 : 0}
+            c={floor1DeskLampOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={floor1DeskLampOn ? '#FFAE52' : '#000000'}
+            ei={floor1DeskLampOn ? 1.5 : 0}
             seg={24}
           />
           {floor1DeskLampOn && (
             <mesh position={[0, 0.48, 0]}>
               <sphereGeometry args={[0.26, 16, 12]} />
-              <meshBasicMaterial color="#FFD7A3" transparent opacity={0.2} depthWrite={false} />
+              <meshBasicMaterial color="#FFAE52" transparent opacity={0.2} depthWrite={false} />
             </mesh>
           )}
         </G>
@@ -817,6 +838,7 @@ function PanoramicWindow() {
   return (
     <group ref={groupRef}>
       <Interact
+        zone="interior_f1"
         hint="🪟 Rèm cửa Tầng 1"
         onClick={() => useStore.getState().toggleCurtainsFloor1()}
       >
@@ -899,6 +921,7 @@ function FloorLamp() {
   const lampOn = useStore((s) => s.lampOn)
   return (
     <Interact
+      zone="interior_f1"
       hint="💡 Đèn cây"
       onClick={() => useStore.getState().toggleLamp()}
     >
@@ -910,9 +933,9 @@ function FloorLamp() {
           rt={0.32}
           rb={0.38}
           h={0.48}
-          c={lampOn ? '#FFD7A3' : '#D6D1C9'}
-          emissive={lampOn ? '#FFD7A3' : '#000000'}
-          ei={lampOn ? 1.35 : 0}
+          c={lampOn ? '#FFAE52' : '#D6D1C9'}
+          emissive={lampOn ? '#FFAE52' : '#000000'}
+          ei={lampOn ? 1.5 : 0}
           seg={32}
         />
       </G>
@@ -1005,9 +1028,9 @@ function DogCorner() {
         {/* Mái gỗ & Đệm olive trầm trên nóc chuồng (#566E4C) */}
         <BB p={[0, 1.15, 0]} s={[2.02, 0.08, 1.56]} c={WALNUT} />
         <BB p={[0.02, 1.23, 0.02]} s={[1.64, 0.1, 1.24]} c="#566E4C" rough={0.85} />
-        {/* Nệm ấm bên trong chuồng gỗ + Ánh đèn 3000K (#FFD7A3) */}
+        {/* Nệm ấm bên trong chuồng gỗ + Ánh đèn 3000K (#FFAE52) */}
         <BB p={[0, 0.02, 0]} s={[1.72, 0.06, 1.28]} c="#EFECE6" rough={0.85} />
-        <B p={[0, 1.1, 0]} s={[0.8, 0.02, 0.5]} c="#FFD7A3" emissive="#FFD7A3" ei={1.15} shadow={false} />
+        <B p={[0, 1.1, 0]} s={[0.8, 0.02, 0.5]} c="#FFAE52" emissive="#FFAE52" ei={1.5} shadow={false} />
       </G>
 
       {/* 4. Nệm tròn Donut êm ái trên thảm */}
@@ -1021,6 +1044,7 @@ function DogCorner() {
 
       {/* 5. Máy cho ăn tự động & Bát ăn + Hoạt ảnh hạt thức ăn rơi xuống bát */}
       <Interact
+        zone="interior_f1"
         hint="🦴 Máy cho ăn"
         onClick={() => useStore.getState().startActivity('feed', true)}
       >
@@ -1036,10 +1060,13 @@ function DogCorner() {
         </mesh>
         <group ref={pelletsRef} visible={false}>
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <mesh key={i} position={[-7.1, 0.4, 1.44 + (i % 2) * 0.04]}>
-              <sphereGeometry args={[0.028, 8, 8]} />
-              <meshStandardMaterial color="#846b53" />
-            </mesh>
+            <mesh
+              key={i}
+              position={[-7.1, 0.4, 1.44 + (i % 2) * 0.04]}
+              geometry={PELLET_GEOM}
+              material={PELLET_MAT}
+              castShadow={false}
+            />
           ))}
         </group>
       </Interact>
@@ -1058,7 +1085,7 @@ function SmartTvUnit() {
 
   return (
     <G p={[4.15, 0, 0.35]}>
-      <Interact hint="📺 Smart TV" onClick={handleTvClick}>
+      <Interact zone="interior_f1" hint="📺 Smart TV" onClick={handleTvClick}>
         {/* Kệ TV Warm Taupe/Greige (#B7AFA5) & mặt gỗ sồi sáng (#D8C7B2) */}
         <BB p={[0, 0, 0]} s={[2.85, 0.44, 0.56]} c={WALNUT} rough={0.55} />
         <BB p={[0, 0.44, 0]} s={[2.89, 0.04, 0.58]} c={OAK} rough={0.48} />
@@ -1295,6 +1322,7 @@ function SmartTvScreen({
     <mesh
       position={[0, 1.32, -0.015]}
       onClick={(e) => {
+        if (!isValidClick(e.clientX, e.clientY) || !isZoneInteractive('interior_f1')) return
         e.stopPropagation()
         onClick()
       }}
@@ -1330,7 +1358,7 @@ function Ottoman() {
 /* ---------- Bàn trà gỗ sồi (#D8C7B2 / #C4AF97) chân Matte Charcoal (#2B2D2F) ---------- */
 function CoffeeTable() {
   return (
-    <Interact hint="📺 Đổi kênh TV" onClick={() => useStore.getState().cycleTvChannel()}>
+    <Interact zone="interior_f1" hint="📺 Đổi kênh TV" onClick={() => useStore.getState().cycleTvChannel()}>
       <G p={[4.15, 0, 2.15]}>
         <RBB p={[0, 0.4, 0]} s={[1.65, 0.055, 0.92]} c={OAK} rough={0.48} metal={0.04} radius={0.03} shadow />
         <BB p={[0, 0.06, 0]} s={[1.55, 0.045, 0.84]} c={WALNUT_LIGHT} rough={0.5} />
@@ -1353,6 +1381,7 @@ const LEATHER_2 = SLATE
 function Sofa() {
   return (
     <Interact
+      zone="interior_f1"
       hint="🛋️ Ghế sofa"
       onClick={() => useStore.getState().startActivity('tv', true)}
     >
@@ -1405,18 +1434,19 @@ export function Monstera({ p }: { p: V3 }) {
             <mesh
               position={[x / 2, 0.55 + l.h / 2, z / 2]}
               rotation={[Math.sin(l.a) * 0.5, 0, -Math.cos(l.a) * 0.5]}
-            >
-              <cylinderGeometry args={[0.012, 0.018, Math.hypot(l.len, l.h), 6]} />
-              <meshStandardMaterial color="#566E4C" />
-            </mesh>
+              scale={[1, Math.hypot(l.len, l.h), 1]}
+              geometry={MONSTERA_STEM_GEOM}
+              material={MONSTERA_STEM_MAT}
+              castShadow={false}
+            />
             <mesh
               position={[x, 0.55 + l.h, z]}
               rotation={[0, -l.a, l.tilt]}
               scale={[0.32, 0.025, 0.24]}
-            >
-              <sphereGeometry args={[1, 16, 10]} />
-              <meshStandardMaterial color={i % 2 ? '#566E4C' : '#6F8763'} roughness={0.62} />
-            </mesh>
+              geometry={MONSTERA_LEAF_GEOM}
+              material={MONSTERA_LEAF_MATS[i % 2]}
+              castShadow={false}
+            />
           </group>
         )
       })}

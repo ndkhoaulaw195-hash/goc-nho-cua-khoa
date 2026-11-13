@@ -546,7 +546,7 @@ html.dark .pill-btn.active {
   animation: dockPop 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .context-dock.in-fp {
-  bottom: 64px;
+  bottom: 92px;
 }
 
 @keyframes dockPop {
@@ -816,14 +816,14 @@ html.dark .dock-btn.leave:hover {
   bottom: 84px;
 }
 .hover-hint.in-fp {
-  bottom: 64px;
+  bottom: 92px;
   border-color: rgba(255, 174, 82, 0.62);
   box-shadow:
     0 8px 26px rgba(0, 0, 0, 0.34),
     0 0 18px rgba(255, 174, 82, 0.26);
 }
 .hover-hint.in-fp.with-context {
-  bottom: 120px;
+  bottom: 148px;
 }
 .hover-hint-dot {
   width: 7px;
@@ -834,39 +834,124 @@ html.dark .dock-btn.leave:hover {
   flex: none;
 }
 
-/* ---- Dải gợi ý GTA siêu mảnh gọn ở mép dưới màn hình (.gta-hud-hint) ---- */
+/* ---- Dải gợi ý & điều khiển GTA Camera ở mép dưới màn hình (.gta-hud-hint) ---- */
 .gta-hud-hint {
   position: fixed;
-  bottom: 16px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
   max-width: calc(100vw - 24px);
-  border-radius: 999px;
+  padding: 6px 12px 7px;
+  border-radius: 20px;
   background: var(--card-sheen), var(--card);
   color: var(--ink);
   border: 1px solid var(--card-border);
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-specular);
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
   z-index: 103;
   animation: fadeIn 0.2s ease;
 }
-.gta-hud-hint.is-locked {
+.gta-hud-hint.is-locked,
+.gta-hud-hint.is-locked button {
   pointer-events: none;
-  padding: 7px 16px;
-  white-space: nowrap;
 }
 .gta-hud-hint.is-unlocked {
   pointer-events: auto;
-  padding: 4px 6px 4px 8px;
+}
+.gta-hud-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 6px;
+}
+.gta-hud-guide {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.35;
+}
+.gta-dist-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--segment-track);
+  border: 1px solid var(--line);
+}
+.gta-dist-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 3px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.gta-dist-btn {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+}
+.gta-dist-btn:hover:not(.active) {
+  background: var(--chip-hover);
+  color: var(--ink);
+}
+.gta-dist-btn.active {
+  background: linear-gradient(135deg, #272c35 0%, #1a1e24 100%);
+  color: #f5f2eb;
+  border-color: rgba(198, 134, 66, 0.45);
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(26, 30, 36, 0.22);
+}
+html.dark .gta-dist-btn.active {
+  background: linear-gradient(135deg, #e2ae6d 0%, #c68642 100%);
+  color: #16191e;
+  border-color: rgba(255, 244, 224, 0.56);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.36);
+}
+.gta-persp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.gta-persp-btn:hover {
+  background: var(--chip-hover);
+  border-color: var(--accent-gold);
 }
 .gta-lock-dot {
   width: 7px;
@@ -879,24 +964,21 @@ html.dark .dock-btn.leave:hover {
 .gta-hint-lock-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   height: 28px;
   padding: 0 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--ink);
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
   white-space: nowrap;
 }
 .gta-hint-lock-btn:hover {
   background: var(--chip-hover);
+  border-color: var(--accent-gold);
   color: var(--ink);
-}
-.gta-hint-sep {
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--muted);
-  white-space: nowrap;
 }
 .gta-hint-exit-btn {
   display: inline-flex;
@@ -905,7 +987,7 @@ html.dark .dock-btn.leave:hover {
   height: 28px;
   padding: 0 11px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -1645,26 +1727,29 @@ html.dark .auto-melody-btn.playing {
   }
 
   .gta-hud-hint {
-    bottom: calc(60px + env(safe-area-inset-bottom));
-    max-width: calc(100vw - 20px);
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 16px);
+    padding: 6px 8px;
     font-size: 11px;
     border-radius: 16px;
   }
-  .gta-hud-hint.is-locked {
-    padding: 6px 12px;
-    white-space: normal;
-    text-align: center;
-  }
-  .gta-hud-hint.is-unlocked {
-    flex-wrap: wrap;
-    padding: 4px 8px;
+  .gta-hud-controls {
     gap: 4px;
   }
+  .gta-dist-btn {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 10.5px;
+  }
+  .gta-persp-btn,
   .gta-hint-lock-btn,
   .gta-hint-exit-btn {
-    height: 26px;
-    font-size: 11px;
+    height: 24px;
+    font-size: 10.5px;
     padding: 0 8px;
+  }
+  .gta-hud-guide {
+    font-size: 10px;
   }
 
   .context-dock {
@@ -1675,7 +1760,7 @@ html.dark .auto-melody-btn.playing {
     gap: 6px;
   }
   .context-dock.in-fp {
-    bottom: calc(132px + env(safe-area-inset-bottom));
+    bottom: calc(162px + env(safe-area-inset-bottom));
   }
   .context-sep {
     display: none;
@@ -1691,10 +1776,10 @@ html.dark .auto-melody-btn.playing {
     bottom: calc(136px + env(safe-area-inset-bottom));
   }
   .hover-hint.in-fp {
-    bottom: calc(132px + env(safe-area-inset-bottom));
+    bottom: calc(162px + env(safe-area-inset-bottom));
   }
   .hover-hint.in-fp.with-context {
-    bottom: calc(202px + env(safe-area-inset-bottom));
+    bottom: calc(232px + env(safe-area-inset-bottom));
   }
 
   .side-modal {

@@ -163,43 +163,117 @@ export function Overlay() {
   )
 }
 
-/* ---------- Dải gợi ý GTA siêu mảnh gọn ở mép dưới khi đang ở góc nhìn Tầm mắt ---------- */
+/* ---------- Dải gợi ý & điều khiển GTA Camera ở mép dưới khi đang Vào nhà ('fp') ---------- */
+type FpDistOption = {
+  id: 'close' | 'medium' | 'far'
+  label: string
+}
+
+const FP_DIST_OPTIONS: readonly FpDistOption[] = [
+  { id: 'close', label: 'Gần' },
+  { id: 'medium', label: 'Trung bình' },
+  { id: 'far', label: 'Toàn cảnh xa' },
+]
+
+type FpStoreShape = {
+  fpDistPreset?: 'close' | 'medium' | 'far'
+  setFpDistPreset?: (p: 'close' | 'medium' | 'far') => void
+  fpPerspective?: 'eye' | 'third'
+  toggleFpPerspective?: () => void
+}
+
 function GtaHudHint({ isPointerLocked }: { isPointerLocked: boolean }) {
-  if (isPointerLocked) {
-    return (
-      <div className="gta-hud-hint is-locked" role="status" aria-live="polite">
-        <span className="gta-lock-dot" aria-hidden="true" />
-        <span>WASD di chuyển · Lia chuột xoay 360° · Click / E tương tác · Esc nhả chuột</span>
-      </div>
-    )
+  const fpDistPreset = useStore((s) => (s as typeof s & FpStoreShape).fpDistPreset ?? 'medium')
+  const fpPerspective = useStore((s) => (s as typeof s & FpStoreShape).fpPerspective ?? 'third')
+
+  const handleSelectDist = (preset: 'close' | 'medium' | 'far') => {
+    const st = useStore.getState() as ReturnType<typeof useStore.getState> & FpStoreShape
+    st.setFpDistPreset?.(preset)
+  }
+
+  const handleTogglePerspective = () => {
+    const st = useStore.getState() as ReturnType<typeof useStore.getState> & FpStoreShape
+    st.toggleFpPerspective?.()
   }
 
   return (
-    <div className="gta-hud-hint is-unlocked" role="region" aria-label="Điều khiển góc nhìn Tầm mắt GTA">
-      <button
-        type="button"
-        className="gta-hint-lock-btn"
-        onClick={requestCanvasPointerLock}
-        title="Khóa chuột để lia xoay 360° tự do chuẩn GTA"
-      >
-        <span aria-hidden="true">🖱️</span>
-        <span>Click vào không gian để khóa chuột xoay GTA</span>
-      </button>
-      <span className="gta-hint-sep" aria-hidden="true">
-        · hoặc bấm
-      </span>
-      <button
-        type="button"
-        className="gta-hint-exit-btn"
-        onClick={() => {
-          releaseCanvasPointerLock()
-          useStore.getState().returnOverview()
-        }}
-        title="Quay lại góc nhìn Toàn cảnh"
-      >
-        <span aria-hidden="true">🏠</span>
-        <span>Toàn cảnh</span>
-      </button>
+    <div
+      className={`gta-hud-hint ${isPointerLocked ? 'is-locked' : 'is-unlocked'}`}
+      role="region"
+      aria-label="Điều khiển GTA Camera"
+    >
+      <div className="gta-hud-controls">
+        {isPointerLocked && <span className="gta-lock-dot" aria-hidden="true" />}
+
+        <div className="gta-dist-group" role="group" aria-label="Cự ly GTA Camera (Phím V)">
+          <span className="gta-dist-kbd" title="Bấm phím V để chuyển nhanh 3 cự ly">
+            V
+          </span>
+          {FP_DIST_OPTIONS.map((opt) => {
+            const active = fpDistPreset === opt.id
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                className={`gta-dist-btn ${active ? 'active' : ''}`}
+                aria-pressed={active}
+                onClick={() => handleSelectDist(opt.id)}
+                title={`Cự ly ${opt.label} (Phím V)`}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          type="button"
+          className={`gta-persp-btn ${fpPerspective === 'third' ? 'is-third' : 'is-eye'}`}
+          aria-pressed={fpPerspective === 'eye'}
+          onClick={handleTogglePerspective}
+          title={
+            fpPerspective === 'third'
+              ? 'Đang ở góc nhìn Sau lưng GTA · Bấm chuyển Tầm mắt'
+              : 'Đang ở góc nhìn Tầm mắt · Bấm chuyển Sau lưng GTA'
+          }
+        >
+          <span aria-hidden="true">{fpPerspective === 'third' ? '🎥' : '👁️'}</span>
+          <span>{fpPerspective === 'third' ? 'Sau lưng' : 'Tầm mắt'}</span>
+        </button>
+
+        {!isPointerLocked && (
+          <>
+            <button
+              type="button"
+              className="gta-hint-lock-btn"
+              onClick={requestCanvasPointerLock}
+              title="Khóa chuột để lia xoay 360° tự do chuẩn GTA"
+            >
+              <span aria-hidden="true">🖱️</span>
+              <span>Khóa chuột</span>
+            </button>
+            <button
+              type="button"
+              className="gta-hint-exit-btn"
+              onClick={() => {
+                releaseCanvasPointerLock()
+                useStore.getState().returnOverview()
+              }}
+              title="Quay lại góc nhìn Toàn cảnh"
+            >
+              <span aria-hidden="true">🏠</span>
+              <span>Toàn cảnh</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      <div className="gta-hud-guide" role="status" aria-live="polite">
+        <span>
+          WASD di chuyển theo hướng nhìn · Chuột xoay 360° (Tự canh sau 2s) · Cuộn chuột / Phím V thu phóng · Click đồ để tương tác
+          {isPointerLocked ? ' · Esc nhả chuột' : ''}
+        </span>
+      </div>
     </div>
   )
 }

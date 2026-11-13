@@ -1,14 +1,38 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import {
+  Canvas,
+  events as createR3FPointerEvents,
+  useFrame,
+  useThree,
+  type DomEvent,
+  type EventManager,
+  type Events,
+  type RootState,
+  type RootStore,
+} from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
 import { Furniture } from './Furniture'
-import { Avatar, CORGI, Dog, PUG } from './Characters'
-import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS, type V3 } from '../data/config'
+import { Avatar, CORGI, Dog, PUG, getGroundY } from './Characters'
+import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
+import {
+  MAX_FP_INTERACT_DIST,
+  findInteractZoneOfObject,
+  getActiveInteractableMeshes,
+  getSpringArmOccluders,
+  getVisibleOccluderMeshes,
+  isHouseClosedOverview,
+  isOccluderHit,
+  isOrbitDragging,
+  isValidClick,
+  isZoneInteractive,
+  recordPointerDown,
+  setOrbitDragging,
+} from './raycastRegistry'
 
 /** Hiệu ứng hạt mưa rơi lãng mạn bên ngoài cửa sổ (Lofi Rain Effect) */
 function RainEffect() {
@@ -95,6 +119,249 @@ function SetupEnvironment() {
   return null
 }
 
+const POINTER_MOVE_THROTTLE_MS = 65
+const _occluderRaycaster = new THREE.Raycaster()
+const _closedShellRaycaster = new THREE.Raycaster()
+let lastInteractClickAt = 0
+
+function clearHoverState() {
+  if (typeof document !== 'undefined' && document.body.style.cursor !== 'auto') {
+    document.body.style.cursor = 'auto'
+  }
+  const st = useStore.getState()
+  if (st.hoverHint !== null) {
+    st.setHoverHint(null)
+  }
+}
+
+function maybeNotifyClosedOverviewClick(e: MouseEvent, rootState: RootState) {
+  if (!isHouseClosedOverview()) return
+  rootState.events.compute?.(e as unknown as DomEvent, rootState)
+  const occluders = getVisibleOccluderMeshes()
+  if (occluders.length === 0) return
+
+  const activeInteractables = getActiveInteractableMeshes()
+  _closedShellRaycaster.ray.copy(rootState.raycaster.ray)
+  _closedShellRaycaster.near = rootState.raycaster.near
+  _closedShellRaycaster.far = 150
+
+  const occHits = _closedShellRaycaster.intersectObjects(occluders, false)
+  const firstOcc = occHits.find((h) => isOccluderHit(h.object))
+  if (!firstOcc) return
+
+  const actHits =
+    activeInteractables.length > 0
+      ? _closedShellRaycaster.intersectObjects(activeInteractables, false)
+      : []
+  const firstAct = actHits[0]
+  if (firstAct && firstAct.distance <= firstOcc.distance + 0.02) {
+    return
+  }
+
+  const p = firstOcc.point
+  const onClosedHouseShell =
+    p.x >= -15.7 && p.x <= 10.1 && p.z >= -6.1 && p.z <= 6.1 && p.y >= 0.05
+  if (onClosedHouseShell) {
+    useStore
+      .getState()
+      .notify('💡 Bấm "Vào nhà" hoặc "Tầng 1 / Tầng 2" để khám phá bên trong')
+  }
+}
+
+/** Custom R3F EventManager: throttle pointermove ~65ms, pause khi drag, kiểm tra occlusion tường/kính & drag threshold */
+function createVillaPointerEvents(store: RootStore): EventManager<HTMLElement> {
+  const base = createR3FPointerEvents(store)
+  let lastPointerMoveRaycastAt = 0
+
+  const filter = (items: THREE.Intersection[], state: RootState): THREE.Intersection[] => {
+    const st = useStore.getState()
+    const dom = state.gl?.domElement
+    if (
+      st.mode === 'fp' &&
+      typeof document !== 'undefined' &&
+      dom &&
+      document.pointerLockElement === dom
+    ) {
+      return []
+    }
+    if (!items.length) return items
+
+    const occluders = getVisibleOccluderMeshes()
+    let firstOccDist = Infinity
+    let firstOccObj: THREE.Object3D | null = null
+    if (occluders.length > 0) {
+      _occluderRaycaster.ray.copy(state.raycaster.ray)
+      _occluderRaycaster.near = state.raycaster.near
+      _occluderRaycaster.far = items[items.length - 1].distance + 0.05
+      const occHits = _occluderRaycaster.intersectObjects(occluders, false)
+      for (const oh of occHits) {
+        if (isOccluderHit(oh.object)) {
+          firstOccDist = oh.distance
+          firstOccObj = oh.object
+          break
+        }
+      }
+    }
+
+    if (
+      firstOccObj !== null &&
+      items[0].object !== firstOccObj &&
+      items[0].distance > firstOccDist + 0.015
+    ) {
+      clearHoverState()
+      return []
+    }
+
+    const filtered: THREE.Intersection[] = []
+    for (const item of items) {
+      if (
+        firstOccObj !== null &&
+        item.object !== firstOccObj &&
+        item.distance > firstOccDist + 0.015
+      ) {
+        continue
+      }
+
+      const zone = findInteractZoneOfObject(item.object)
+      if (zone && !isZoneInteractive(zone, st)) {
+        continue
+      }
+
+      if (isHouseClosedOverview(st) && !zone) {
+        const p = item.point
+        const insideClosedHouse =
+          p.x >= -15.65 && p.x <= 10.05 && p.z >= -6.05 && p.z <= 6.05 && p.y > -0.25
+        if (insideClosedHouse || isOccluderHit(item.object)) {
+          continue
+        }
+      }
+
+      if (st.mode === 'fp' && zone !== null) {
+        if (st.fpPerspective === 'eye') {
+          if (item.distance > MAX_FP_INTERACT_DIST) continue
+        } else {
+          const char = st.userRole || st.activeChar || 'boy'
+          const charPos = char === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+          const charDist = Math.hypot(
+            item.point.x - charPos[0],
+            item.point.y - (charPos[1] + 1.0),
+            item.point.z - charPos[2],
+          )
+          if (charDist > MAX_FP_INTERACT_DIST) continue
+        }
+      }
+
+      filtered.push(item)
+    }
+
+    if (filtered.length === 0) {
+      clearHoverState()
+    }
+    return filtered
+  }
+
+  const baseHandlers = base.handlers!
+  const wrappedHandlers: Events = {
+    ...baseHandlers,
+    onPointerDown: (e) => {
+      if (e instanceof PointerEvent || e instanceof MouseEvent) {
+        recordPointerDown(e.clientX, e.clientY)
+      }
+      baseHandlers.onPointerDown(e)
+    },
+    onPointerMove: (e) => {
+      const rootState = store.getState()
+      const dom = rootState.gl?.domElement
+      if (typeof document !== 'undefined' && dom && document.pointerLockElement === dom) {
+        return
+      }
+      if (isOrbitDragging()) {
+        if (rootState.internal.hovered.size > 0) {
+          baseHandlers.onPointerCancel(e)
+        }
+        clearHoverState()
+        return
+      }
+      const now = performance.now()
+      if (now - lastPointerMoveRaycastAt < POINTER_MOVE_THROTTLE_MS) return
+      lastPointerMoveRaycastAt = now
+      baseHandlers.onPointerMove(e)
+    },
+    onClick: (e) => {
+      const rootState = store.getState()
+      const dom = rootState.gl?.domElement
+      if (typeof document !== 'undefined' && dom && document.pointerLockElement === dom) {
+        return
+      }
+      if (e instanceof MouseEvent && !isValidClick(e.clientX, e.clientY, 5, 250)) {
+        return
+      }
+      if (e instanceof MouseEvent) {
+        rootState.events.compute?.(e as unknown as DomEvent, rootState)
+        const actMeshes = getActiveInteractableMeshes()
+        if (actMeshes.length > 0) {
+          _occluderRaycaster.ray.copy(rootState.raycaster.ray)
+          _occluderRaycaster.near = rootState.raycaster.near
+          _occluderRaycaster.far = 150
+          const actHits = _occluderRaycaster.intersectObjects(actMeshes, false)
+          if (actHits.length > 0) {
+            const occluders = getVisibleOccluderMeshes()
+            const occHits =
+              occluders.length > 0 ? _occluderRaycaster.intersectObjects(occluders, false) : []
+            const firstOcc = occHits.find((h) => isOccluderHit(h.object))
+            if (!firstOcc || actHits[0].distance <= firstOcc.distance + 0.015) {
+              lastInteractClickAt = performance.now()
+            }
+          }
+        }
+      }
+      const wasClosedOverview = isHouseClosedOverview()
+      baseHandlers.onClick(e)
+      if (wasClosedOverview && isHouseClosedOverview() && e instanceof MouseEvent) {
+        maybeNotifyClosedOverviewClick(e, rootState)
+      }
+    },
+    onDoubleClick: (e) => {
+      if (e instanceof MouseEvent && !isValidClick(e.clientX, e.clientY, 5, 250)) {
+        return
+      }
+      baseHandlers.onDoubleClick(e)
+    },
+  }
+
+  return {
+    ...base,
+    filter,
+    handlers: wrappedHandlers,
+  }
+}
+
+/** Gắn pointerdown/pointerup/pointercancel toàn cục lên canvas để đồng bộ drag threshold và isOrbitDragging */
+function PointerInteractionBridge() {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    const dom = gl.domElement
+    const onPointerDown = (e: PointerEvent) => {
+      recordPointerDown(e.clientX, e.clientY)
+    }
+    const onPointerEnd = () => {
+      setOrbitDragging(false)
+    }
+    dom.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('pointerup', onPointerEnd)
+    window.addEventListener('pointercancel', onPointerEnd)
+    window.addEventListener('blur', onPointerEnd)
+    return () => {
+      dom.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('pointerup', onPointerEnd)
+      window.removeEventListener('pointercancel', onPointerEnd)
+      window.removeEventListener('blur', onPointerEnd)
+      setOrbitDragging(false)
+    }
+  }, [gl])
+  return null
+}
+
 /** Tối ưu GPU & CPU khi người dùng đang thao tác trên các ứng dụng khác (Background Performance Optimizer) */
 function BackgroundOptimizer({ isWindowFocused }: { isWindowFocused: boolean }) {
   const gl = useThree((s) => s.gl)
@@ -167,15 +434,16 @@ export function Experience() {
     }
   }, [isWindowFocused])
 
-  // Luôn giữ chất lượng HD sắc nét (1.35x khi focus cửa sổ, 1.0x khi mất focus để tiết kiệm GPU)
-  const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 2
-  const dpr = isWindowFocused ? Math.min(deviceDpr, 1.35) : 1.0
+  // Giới hạn pixelRatio không bao giờ vượt quá 1.5 (giảm về 1.0 khi mất focus để tiết kiệm GPU)
+  const maxDpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1.5)
+  const dpr: [number, number] = [1, isWindowFocused ? maxDpr : 1.0]
 
   return (
     <Canvas
       frameloop={isPageVisible ? 'always' : 'never'}
       shadows={{ type: THREE.PCFShadowMap }}
       performance={{ min: 0.5, max: 1 }}
+      events={createVillaPointerEvents}
       gl={{
         antialias: true,
         alpha: true,
@@ -189,6 +457,7 @@ export function Experience() {
       dpr={dpr}
       camera={{ position: HOME_VIEW.pos, fov: 34, near: 0.2, far: 150 }}
     >
+      <PointerInteractionBridge />
       <BackgroundOptimizer isWindowFocused={isWindowFocused} />
       <SetupEnvironment />
       <Lights />
@@ -230,6 +499,11 @@ export function Experience() {
             maxPolarAngle={Math.PI / 2.02}
             minAzimuthAngle={allowFull360 ? -Infinity : -Math.PI * 0.56}
             maxAzimuthAngle={allowFull360 ? Infinity : Math.PI * 0.56}
+            onStart={() => {
+              setOrbitDragging(true)
+              clearHoverState()
+            }}
+            onEnd={() => setOrbitDragging(false)}
           />
           <CameraRig controlsRef={controlsRef} />
         </>
@@ -382,46 +656,25 @@ function CameraRig({ controlsRef }: { controlsRef: RefObject<OrbitControlsImpl |
   return null
 }
 
-function computeThirdPersonCameraPos(charPos: V3, camYaw: number, camPitch: number): V3 {
-  const [cx, cy, cz] = charPos
-  const bx = Math.sin(camYaw)
-  const bz = Math.cos(camYaw)
-  const desiredDist = 2.2
+/* ---------- Chế độ Vào nhà (GTA Third-Person Free-Orbit & Eye-Level): Hỗ trợ Spring Arm + Auto-Recenter + Zoom ---------- */
+const CENTER_NDC = new THREE.Vector2(0, 0)
+const PITCH_MIN = -Math.PI / 3 // -60°
+const PITCH_MAX = (75 * Math.PI) / 180 // +75°
+const DEFAULT_THIRD_PITCH = 0.22
+const DEFAULT_EYE_PITCH = 0.04
+const AUTO_RECENTER_DELAY_MS = 2000
 
-  const inFloor1House = cy < 3.5 && cx > -15.6 && cx < 10.0 && cz > -6.0 && cz < 6.0
-  const inFloor2House = cy >= 3.5 && cx > -10.0 && cx < 10.0 && cz > -6.0 && cz < 6.0
-
-  let armDist = desiredDist
-  if (inFloor1House || inFloor2House) {
-    for (let i = 1; i <= 10; i++) {
-      const d = (desiredDist * i) / 10
-      const px = cx + bx * d
-      const pz = cz + bz * d
-      const hitBack = pz <= -5.75
-      const hitRight = px >= 9.75
-      const hitFront = pz >= 5.75 && !(cy < 3.5 && px >= -2.15 && px <= -0.75)
-      const hitBathLeft = cy < 3.5 && px <= -15.35
-      const hitBathPartition =
-        cy < 3.5 &&
-        pz > -3.55 &&
-        ((cx < -10.0 && px >= -10.25) || (cx > -10.0 && px <= -9.75))
-      const hitTerraceWall = cy >= 3.5 && px <= -9.75 && (pz < 2.15 || pz > 4.05)
-
-      if (hitBack || hitRight || hitFront || hitBathLeft || hitBathPartition || hitTerraceWall) {
-        armDist = Math.max(0.55, (desiredDist * (i - 1)) / 10)
-        break
-      }
+function getCameraFloorY(camX: number, camZ: number, charFloorY: number): number {
+  if (charFloorY >= 3.5) {
+    const onMainSlab = camX >= -10.0 && camX <= 10.0 && camZ >= -6.0 && camZ <= 0.18
+    const onBedroomBalcony = camX >= -7.7 && camX <= -1.2 && camZ > 0.18 && camZ <= 5.98
+    const onTerrace = camX >= -15.6 && camX < -10.0 && camZ >= -6.0 && camZ <= 6.0
+    if (onMainSlab || onBedroomBalcony || onTerrace) {
+      return 4.35
     }
   }
-
-  const maxCamY = inFloor1House ? 3.85 : inFloor2House ? 8.2 : cy + 3.2
-  const camY = THREE.MathUtils.clamp(cy + 1.55 - Math.sin(camPitch) * 0.7, cy + 0.55, maxCamY)
-
-  return [cx + bx * armDist, camY, cz + bz * armDist]
+  return getGroundY(camX, camZ)
 }
-
-/* ---------- Chế độ Vào nhà (Walkthrough): Hỗ trợ 2 góc nhìn 'eye' (tầm mắt) & 'third' (sau lưng) ---------- */
-const CENTER_NDC = new THREE.Vector2(0, 0)
 
 function isEffectivelyVisible(obj: THREE.Object3D): boolean {
   let cur: THREE.Object3D | null = obj
@@ -446,7 +699,6 @@ function findInteractUserData(obj: THREE.Object3D): { interactHint?: string; onI
 function raycastCenterInteract(
   raycaster: THREE.Raycaster,
   camera: THREE.PerspectiveCamera,
-  scene: THREE.Scene,
 ): { interactHint?: string; onInteractClick?: () => void } | null {
   const st = useStore.getState()
   if (st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null) return null
@@ -456,26 +708,23 @@ function raycastCenterInteract(
   const charPos = isGirl ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
   const isThird = st.fpPerspective === 'third'
 
+  const interactMeshes = getActiveInteractableMeshes()
+  if (interactMeshes.length === 0) return null
+  const occluderMeshes = getVisibleOccluderMeshes()
+
+  const targetSet = new Set<THREE.Object3D>(interactMeshes)
+  for (const m of occluderMeshes) targetSet.add(m)
+  const targets = Array.from(targetSet)
+
   raycaster.setFromCamera(CENTER_NDC, camera)
-  raycaster.far = 5.5
-  const hits = raycaster.intersectObjects(scene.children, true)
+  raycaster.far = isThird ? st.fpDistance + MAX_FP_INTERACT_DIST + 1.5 : MAX_FP_INTERACT_DIST
+  const hits = raycaster.intersectObjects(targets, false)
 
   for (const hit of hits) {
-    if (hit.distance > 5.5) break
     const obj = hit.object
     if (!isEffectivelyVisible(obj)) continue
-    if (obj instanceof THREE.Points || obj instanceof THREE.Line || obj instanceof THREE.LineSegments) continue
 
-    const interactData = findInteractUserData(obj)
-    if (interactData && (interactData.onInteractClick || interactData.interactHint)) {
-      return interactData
-    }
-
-    const mat = (obj as THREE.Mesh).material
-    const firstMat = Array.isArray(mat) ? mat[0] : mat
-    if (firstMat && 'transparent' in firstMat && firstMat.transparent && 'opacity' in firstMat && (firstMat.opacity as number) < 0.82) {
-      continue
-    }
+    // Bỏ qua chính cơ thể nhân vật đang điều khiển ở góc nhìn thứ 3
     if (
       isThird &&
       Math.hypot(hit.point.x - charPos[0], hit.point.z - charPos[2]) < 0.55 &&
@@ -485,7 +734,31 @@ function raycastCenterInteract(
       continue
     }
 
-    return null
+    const interactData = findInteractUserData(obj)
+    const zone = findInteractZoneOfObject(obj)
+
+    // Chặn xuyên tường/sàn/mái/kính: nếu giao cắt gần nhất là vật cản kiến trúc -> dừng ngay
+    if (isOccluderHit(obj) && !interactData) {
+      return null
+    }
+
+    if (zone && !isZoneInteractive(zone, st)) {
+      return null
+    }
+
+    if (interactData && (interactData.onInteractClick || interactData.interactHint)) {
+      const distFromActor = isThird
+        ? Math.hypot(
+            hit.point.x - charPos[0],
+            hit.point.y - (charPos[1] + 1.0),
+            hit.point.z - charPos[2],
+          )
+        : hit.distance
+      if (distFromActor > MAX_FP_INTERACT_DIST) {
+        return null
+      }
+      return interactData
+    }
   }
   return null
 }
@@ -493,10 +766,14 @@ function raycastCenterInteract(
 function FirstPerson() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const gl = useThree((s) => s.gl)
-  const scene = useThree((s) => s.scene)
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(LIVE_ACTORS.fpYaw || 0.15)
-  const pitch = useRef(-0.06)
+  const pitch = useRef(DEFAULT_THIRD_PITCH)
+  const smoothPivot = useRef(new THREE.Vector3())
+  const pivotInitialized = useRef(false)
+  const desiredDistRef = useRef(useStore.getState().fpDistance)
+  const actualArmDistRef = useRef(useStore.getState().fpDistance)
+  const lastMouseOrbitAt = useRef(performance.now())
   const dragging = useRef(false)
   const hasLastMouse = useRef(false)
   const lastMouse = useRef<[number, number]>([0, 0])
@@ -505,6 +782,9 @@ function FirstPerson() {
   const isLockedRef = useRef(false)
   const lastUnlockAtRef = useRef(0)
   const raycasterRef = useRef(new THREE.Raycaster())
+  const springRaycasterRef = useRef(new THREE.Raycaster())
+  const springDirRef = useRef(new THREE.Vector3())
+  const targetPivotVec = useRef(new THREE.Vector3())
   const lastRaycastAtRef = useRef(0)
   const lastCenterHintRef = useRef<string | null>(null)
   const prevActiveStateRef = useRef<string>('idle:idle')
@@ -531,20 +811,46 @@ function FirstPerson() {
     }
 
     yaw.current = initYaw
-    pitch.current = isThird ? -0.07 : -0.04
+    pitch.current = isThird ? DEFAULT_THIRD_PITCH : DEFAULT_EYE_PITCH
     LIVE_ACTORS.fpYaw = yaw.current
+    desiredDistRef.current = st.fpDistance
+    actualArmDistRef.current = st.fpDistance
+    smoothPivot.current.set(spawnPos[0], spawnPos[1] + 1.42, spawnPos[2])
+    pivotInitialized.current = true
+    lastMouseOrbitAt.current = performance.now()
 
     if (isThird) {
-      const [cx, cy, cz] = computeThirdPersonCameraPos(spawnPos, yaw.current, pitch.current)
-      camera.position.set(cx, cy, cz)
+      const cosP = Math.cos(pitch.current)
+      const dirX = Math.sin(yaw.current) * cosP
+      const dirY = Math.sin(pitch.current)
+      const dirZ = Math.cos(yaw.current) * cosP
+      springDirRef.current.set(dirX, dirY, dirZ)
+      const armOccluders = getSpringArmOccluders()
+      let initArmDist = st.fpDistance
+      if (armOccluders.length > 0) {
+        springRaycasterRef.current.set(smoothPivot.current, springDirRef.current)
+        springRaycasterRef.current.near = 0.15
+        springRaycasterRef.current.far = st.fpDistance + 0.3
+        const hits = springRaycasterRef.current.intersectObjects(armOccluders, true)
+        if (hits.length > 0 && hits[0].distance < st.fpDistance) {
+          initArmDist = Math.max(0.55, hits[0].distance - 0.28)
+        }
+      }
+      actualArmDistRef.current = initArmDist
+      const cx = smoothPivot.current.x + dirX * initArmDist
+      const rawY = smoothPivot.current.y + dirY * initArmDist
+      const cz = smoothPivot.current.z + dirZ * initArmDist
+      const floorY = getCameraFloorY(cx, cz, spawnPos[1])
+      camera.position.set(cx, Math.max(rawY, floorY + 0.18), cz)
+      camera.lookAt(smoothPivot.current)
     } else {
       camera.position.set(
         spawnPos[0] - Math.sin(yaw.current) * 0.08,
         spawnPos[1] + 1.48,
         spawnPos[2] - Math.cos(yaw.current) * 0.08,
       )
+      camera.rotation.set(-pitch.current, yaw.current, 0, 'YXZ')
     }
-    camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ')
 
     const syncLockState = (locked: boolean) => {
       const wasLocked = isLockedRef.current
@@ -558,6 +864,7 @@ function FirstPerson() {
       }
       dragging.current = false
       hasLastMouse.current = false
+      setOrbitDragging(false)
       if (!locked && lastCenterHintRef.current !== null) {
         lastCenterHintRef.current = null
         useStore.getState().setHoverHint(null)
@@ -601,7 +908,8 @@ function FirstPerson() {
         }
         cur.setMode('orbit')
       } else if (e.code === 'KeyV') {
-        useStore.getState().toggleFpPerspective()
+        if (e.repeat) return
+        useStore.getState().cycleFpDistPreset()
       } else if (e.code === 'Space') {
         const cur = useStore.getState()
         const curChar = cur.userRole || cur.activeChar || 'boy'
@@ -619,7 +927,7 @@ function FirstPerson() {
         }
 
         if (document.pointerLockElement === dom) {
-          const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+          const hit = raycastCenterInteract(raycasterRef.current, camera)
           if (hit?.onInteractClick) {
             hit.onInteractClick()
             return
@@ -627,7 +935,6 @@ function FirstPerson() {
         }
 
         const curPos = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
-        // Kiểm tra xem có đứng gần Mochi hoặc Bơ không
         const dMochi = Math.hypot(
           LIVE_ACTORS.dogs.mochi.pos[0] - curPos[0],
           LIVE_ACTORS.dogs.mochi.pos[2] - curPos[2],
@@ -671,19 +978,26 @@ function FirstPerson() {
     const onPointerLeave = () => {
       hasLastMouse.current = false
       dragging.current = false
+      setOrbitDragging(false)
     }
 
     const onPointerDown = (e: PointerEvent) => {
-      if (e.button !== 0) return
+      if (e.button !== 0 && e.button !== 2) return
       dragging.current = true
       hasLastMouse.current = true
       lastMouse.current = [e.clientX, e.clientY]
       dragMovedDist.current = 0
     }
 
+    const onContextMenu = (e: MouseEvent) => {
+      if (useStore.getState().mode === 'fp') {
+        e.preventDefault()
+      }
+    }
+
     const onMouseDown = (e: MouseEvent) => {
       if (document.pointerLockElement !== dom || e.button !== 0) return
-      const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+      const hit = raycastCenterInteract(raycasterRef.current, camera)
       if (hit?.onInteractClick) {
         hit.onInteractClick()
         const next = useStore.getState()
@@ -702,8 +1016,9 @@ function FirstPerson() {
         const dx = THREE.MathUtils.clamp(e.movementX || 0, -180, 180)
         const dy = THREE.MathUtils.clamp(e.movementY || 0, -180, 180)
         yaw.current -= dx * 0.0024
-        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0022, -1.15, 1.15)
+        pitch.current = THREE.MathUtils.clamp(pitch.current + dy * 0.0022, PITCH_MIN, PITCH_MAX)
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          lastMouseOrbitAt.current = performance.now()
           orientCancelledRef.current = true
           orientTimerRef.current = 0
         }
@@ -723,25 +1038,13 @@ function FirstPerson() {
         const dy = THREE.MathUtils.clamp(e.clientY - lastMouse.current[1], -120, 120)
         lastMouse.current = [e.clientX, e.clientY]
         dragMovedDist.current += Math.hypot(dx, dy)
+        if (dragMovedDist.current > 3) {
+          setOrbitDragging(true)
+        }
         yaw.current -= dx * 0.0042
-        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0042, -1.15, 1.15)
+        pitch.current = THREE.MathUtils.clamp(pitch.current + dy * 0.0042, PITCH_MIN, PITCH_MAX)
         if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-          orientCancelledRef.current = true
-          orientTimerRef.current = 0
-        }
-      } else if (e.target === dom) {
-        // Fallback lia chuột nhẹ mượt khi con trỏ nằm trên canvas mà chưa khóa chuột
-        if (!hasLastMouse.current) {
-          lastMouse.current = [e.clientX, e.clientY]
-          hasLastMouse.current = true
-          return
-        }
-        const dx = THREE.MathUtils.clamp(e.clientX - lastMouse.current[0], -80, 80)
-        const dy = THREE.MathUtils.clamp(e.clientY - lastMouse.current[1], -80, 80)
-        lastMouse.current = [e.clientX, e.clientY]
-        yaw.current -= dx * 0.0018
-        pitch.current = THREE.MathUtils.clamp(pitch.current - dy * 0.0016, -1.15, 1.15)
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+          lastMouseOrbitAt.current = performance.now()
           orientCancelledRef.current = true
           orientTimerRef.current = 0
         }
@@ -750,11 +1053,23 @@ function FirstPerson() {
 
     const onMouseUp = () => {
       dragging.current = false
+      hasLastMouse.current = false
+      setOrbitDragging(false)
     }
 
-    const onCanvasClick = () => {
+    const onWheel = (e: WheelEvent) => {
+      const cur = useStore.getState()
+      if (cur.mode !== 'fp' || cur.fpPerspective !== 'third') return
+      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
+      e.preventDefault()
+      const deltaNorm = THREE.MathUtils.clamp(e.deltaY, -160, 160) * 0.0045
+      cur.setFpDistance(cur.fpDistance + deltaNorm)
+    }
+
+    const onCanvasClick = (e: MouseEvent) => {
       if (document.pointerLockElement === dom) return
-      if (dragMovedDist.current >= 8) return
+      if (!isValidClick(e.clientX, e.clientY, 5, 250)) return
+      if (performance.now() - lastInteractClickAt < 100) return
       requestGtaLock()
     }
 
@@ -773,29 +1088,39 @@ function FirstPerson() {
     document.addEventListener('pointerlockchange', onPointerLockChange)
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('mouseup', onMouseUp)
+    window.addEventListener('pointerup', onMouseUp)
+    window.addEventListener('pointercancel', onMouseUp)
+    window.addEventListener('blur', onMouseUp)
     dom.addEventListener('pointerenter', onPointerEnter)
     dom.addEventListener('pointerleave', onPointerLeave)
     dom.addEventListener('pointerdown', onPointerDown)
+    dom.addEventListener('contextmenu', onContextMenu)
+    dom.addEventListener('wheel', onWheel, { passive: false })
     dom.addEventListener('click', onCanvasClick)
     dom.addEventListener('pointermove', suppressLockedPointerMove, true)
     dom.addEventListener('click', suppressLockedClick, true)
     document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
 
     return () => {
       document.removeEventListener('pointerlockchange', onPointerLockChange)
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('pointerup', onMouseUp)
+      window.removeEventListener('pointercancel', onMouseUp)
+      window.removeEventListener('blur', onMouseUp)
       dom.removeEventListener('pointerenter', onPointerEnter)
       dom.removeEventListener('pointerleave', onPointerLeave)
       dom.removeEventListener('pointerdown', onPointerDown)
+      dom.removeEventListener('contextmenu', onContextMenu)
+      dom.removeEventListener('wheel', onWheel)
       dom.removeEventListener('click', onCanvasClick)
       dom.removeEventListener('pointermove', suppressLockedPointerMove, true)
       dom.removeEventListener('click', suppressLockedClick, true)
       document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
       syncLockState(false)
       if (document.pointerLockElement === dom) {
         try {
@@ -805,7 +1130,7 @@ function FirstPerson() {
         }
       }
     }
-  }, [camera, gl, scene])
+  }, [camera, gl])
 
   useFrame(({ clock }, dt) => {
     const st = useStore.getState()
@@ -830,7 +1155,10 @@ function FirstPerson() {
       camera.updateProjectionMatrix()
     }
 
-    if (k.KeyQ) yaw.current += 1.8 * delta
+    if (k.KeyQ) {
+      yaw.current += 1.8 * delta
+      lastMouseOrbitAt.current = performance.now()
+    }
 
     const char = st.userRole || st.activeChar || 'boy'
     const isGirl = char === 'girl'
@@ -844,12 +1172,11 @@ function FirstPerson() {
     if (st.walkthroughSpawn && st.walkthroughSpawn.tick !== lastSpawnTick.current) {
       lastSpawnTick.current = st.walkthroughSpawn.tick
       yaw.current = st.walkthroughSpawn.yaw
-      pitch.current = isThird ? -0.07 : -0.04
+      pitch.current = isThird ? DEFAULT_THIRD_PITCH : DEFAULT_EYE_PITCH
       charPos = st.walkthroughSpawn.pos
       snapped = true
+      lastMouseOrbitAt.current = performance.now()
     }
-
-    LIVE_ACTORS.fpYaw = yaw.current
 
     let eyeH = 1.48
     let eyeForward = 0.08
@@ -875,33 +1202,18 @@ function FirstPerson() {
     const isWalking = currentPhase === 'walking'
     const bob = isWalking ? Math.abs(Math.sin(t * 10)) * 0.035 : 0
 
-    let targetCamX: number
-    let targetCamY: number
-    let targetCamZ: number
-
-    if (isThird) {
-      const [tx, ty, tz] = computeThirdPersonCameraPos(charPos, yaw.current, pitch.current)
-      targetCamX = tx
-      targetCamY = ty + bob * 0.4
-      targetCamZ = tz
-    } else {
-      targetCamX = charPos[0] - Math.sin(yaw.current) * eyeForward
-      targetCamY = charPos[1] + eyeH + bob
-      targetCamZ = charPos[2] - Math.cos(yaw.current) * eyeForward
-    }
-
-    if (snapped) {
-      camera.position.set(targetCamX, targetCamY, targetCamZ)
-    } else {
-      const lerpK = 1 - Math.exp(-delta * (isThird ? 16 : 22))
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, lerpK)
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, lerpK)
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, lerpK)
-    }
-
     const isManualKeyMove = Boolean(
       k.KeyW || k.KeyA || k.KeyS || k.KeyD || k.ArrowUp || k.ArrowDown || k.ArrowLeft || k.ArrowRight,
     )
+    const isForwardOnlyKey =
+      Boolean(k.KeyW || k.ArrowUp) &&
+      !k.KeyS &&
+      !k.ArrowDown &&
+      !k.KeyA &&
+      !k.KeyD &&
+      !k.ArrowLeft &&
+      !k.ArrowRight
+    const isTapWalking = !isManualKeyMove && (isWalking || Boolean(st.avatarTarget))
 
     // Khi mới chuyển sang ngồi/nằm/tương tác đồ vật, chỉ xoay nhẹ 1 lần trong ~0.45s đầu (tắt ngay nếu chuột di chuyển) để tự do xoay 360°
     const activeStateKey = `${currentAct}:${currentPhase}`
@@ -926,21 +1238,116 @@ function FirstPerson() {
       prevActiveStateRef.current = activeStateKey
       orientTimerRef.current = 0
       orientCancelledRef.current = false
-      if (!isLockedRef.current && !dragging.current && !snapped && !isManualKeyMove && (isWalking || st.avatarTarget)) {
+
+      // Auto-Recenter sau 2 giây không di chuyển chuột khi đang tiến tới hoặc đi tới điểm click
+      const idleMouseMs = performance.now() - lastMouseOrbitAt.current
+      if (
+        idleMouseMs >= AUTO_RECENTER_DELAY_MS &&
+        !dragging.current &&
+        !snapped &&
+        (isForwardOnlyKey || isTapWalking)
+      ) {
         const desiredCamYaw = charYaw + Math.PI
-        const diff = Math.atan2(Math.sin(desiredCamYaw - yaw.current), Math.cos(desiredCamYaw - yaw.current))
-        yaw.current += diff * Math.min(1, delta * 3.5)
+        const diff = Math.atan2(
+          Math.sin(desiredCamYaw - yaw.current),
+          Math.cos(desiredCamYaw - yaw.current),
+        )
+        yaw.current += diff * Math.min(1, delta * 2.8)
       }
     }
 
-    camera.rotation.set(pitch.current, yaw.current, 0, 'YXZ')
+    LIVE_ACTORS.fpYaw = yaw.current
 
-    // Raycast từ tâm màn hình (0, 0) mỗi ~80ms khi khóa chuột GTA để hiển thị gợi ý tương tác
+    if (isThird) {
+      // 1. Pivot mục tiêu ở lưng/vai nhân vật với Smooth Damping / Camera Lag
+      targetPivotVec.current.set(charPos[0], charPos[1] + 1.42, charPos[2])
+      if (snapped || !pivotInitialized.current) {
+        smoothPivot.current.copy(targetPivotVec.current)
+        pivotInitialized.current = true
+      } else {
+        const kHoriz = 1 - Math.exp(-delta * 10.5)
+        const kVert = 1 - Math.exp(-delta * 15.0)
+        smoothPivot.current.x = THREE.MathUtils.lerp(smoothPivot.current.x, targetPivotVec.current.x, kHoriz)
+        smoothPivot.current.y = THREE.MathUtils.lerp(smoothPivot.current.y, targetPivotVec.current.y, kVert)
+        smoothPivot.current.z = THREE.MathUtils.lerp(smoothPivot.current.z, targetPivotVec.current.z, kHoriz)
+      }
+
+      // 2. Smooth Zoom Distance
+      if (snapped) {
+        desiredDistRef.current = st.fpDistance
+      } else {
+        desiredDistRef.current = THREE.MathUtils.lerp(
+          desiredDistRef.current,
+          st.fpDistance,
+          1 - Math.exp(-delta * 10.0),
+        )
+      }
+
+      // 3. Spring Arm Collision với tường/sàn/mái visible (KHÔNG lấy scene.children)
+      const cosP = Math.cos(pitch.current)
+      const dirX = Math.sin(yaw.current) * cosP
+      const dirY = Math.sin(pitch.current)
+      const dirZ = Math.cos(yaw.current) * cosP
+      springDirRef.current.set(dirX, dirY, dirZ)
+
+      const armOccluders = getSpringArmOccluders()
+      let targetArmDist = desiredDistRef.current
+      let hardMaxDist = desiredDistRef.current
+      if (armOccluders.length > 0) {
+        springRaycasterRef.current.set(smoothPivot.current, springDirRef.current)
+        springRaycasterRef.current.near = 0.15
+        springRaycasterRef.current.far = desiredDistRef.current + 0.3
+        const hits = springRaycasterRef.current.intersectObjects(armOccluders, false)
+        const firstHit = hits.find((h) => isEffectivelyVisible(h.object))
+        if (firstHit && firstHit.distance < desiredDistRef.current) {
+          targetArmDist = Math.max(0.55, firstHit.distance - 0.28)
+          hardMaxDist = Math.max(0.55, firstHit.distance - 0.16)
+        }
+      }
+
+      if (snapped) {
+        actualArmDistRef.current = targetArmDist
+      } else {
+        const pullRate = targetArmDist < actualArmDistRef.current ? 26.0 : 6.5
+        actualArmDistRef.current = THREE.MathUtils.lerp(
+          actualArmDistRef.current,
+          targetArmDist,
+          1 - Math.exp(-delta * pullRate),
+        )
+        if (actualArmDistRef.current > hardMaxDist) {
+          actualArmDistRef.current = hardMaxDist
+        }
+      }
+
+      const camX = smoothPivot.current.x + dirX * actualArmDistRef.current
+      const rawCamY = smoothPivot.current.y + dirY * actualArmDistRef.current
+      const camZ = smoothPivot.current.z + dirZ * actualArmDistRef.current
+      const floorY = getCameraFloorY(camX, camZ, charPos[1])
+      const camY = Math.max(rawCamY, floorY + 0.18)
+
+      camera.position.set(camX, camY, camZ)
+      camera.lookAt(smoothPivot.current)
+    } else {
+      const targetCamX = charPos[0] - Math.sin(yaw.current) * eyeForward
+      const targetCamY = charPos[1] + eyeH + bob
+      const targetCamZ = charPos[2] - Math.cos(yaw.current) * eyeForward
+      if (snapped) {
+        camera.position.set(targetCamX, targetCamY, targetCamZ)
+      } else {
+        const lerpK = 1 - Math.exp(-delta * 22)
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, lerpK)
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, lerpK)
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, lerpK)
+      }
+      camera.rotation.set(-pitch.current, yaw.current, 0, 'YXZ')
+    }
+
+    // Raycast từ tâm màn hình (0, 0) mỗi ~70ms khi khóa chuột GTA để hiển thị gợi ý tương tác
     if (document.pointerLockElement === dom) {
       const now = performance.now()
-      if (now - lastRaycastAtRef.current >= 80) {
+      if (now - lastRaycastAtRef.current >= 70) {
         lastRaycastAtRef.current = now
-        const hit = raycastCenterInteract(raycasterRef.current, camera, scene)
+        const hit = raycastCenterInteract(raycasterRef.current, camera)
         const nextHint = hit?.interactHint ?? null
         if (nextHint !== lastCenterHintRef.current) {
           lastCenterHintRef.current = nextHint

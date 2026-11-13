@@ -29,6 +29,17 @@ export const WALKTHROUGH_SPOTS: Record<
   pool: { label: 'Hồ bơi', icon: '🏊', pos: [4.2, -0.15, 10.6], yaw: -1.1 },
 }
 
+export type FpDistPreset = 'close' | 'medium' | 'far'
+
+export const FP_DISTANCES: Record<FpDistPreset, number> = {
+  close: 2.35,
+  medium: 4.15,
+  far: 7.0,
+}
+
+export const FP_DISTANCE_MIN = 1.7
+export const FP_DISTANCE_MAX = 9.0
+
 // Vị trí trực tiếp theo thời gian thực của nhân vật và 2 bé chó để đồng bộ camera & tương tác vuốt ve
 export const LIVE_ACTORS: {
   khoaPos: [number, number]

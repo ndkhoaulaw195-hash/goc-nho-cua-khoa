@@ -6,6 +6,8 @@ import { isBlocked, isBlockedTier2 } from './Furniture'
 import { LIVE_ACTORS, OUTFITS, STATIONS, type V3 } from '../data/config'
 import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import { openBookPages } from './textures'
+import { Interact } from './prims'
+import { isValidClick } from './raycastRegistry'
 
 function Capsule({
   p = [0, 0, 0],
@@ -1292,14 +1294,11 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   }, [])
 
   useFrame(({ clock }, dt) => {
-    const st = useStore.getState() as ReturnType<typeof useStore.getState> & {
-      fpPerspective?: 'eye' | 'third'
-      walkthroughSpawn?: { space: string; pos: V3; yaw: number; tick: number } | null
-    }
+    const st = useStore.getState()
     if (!root.current) return
 
     const isControllingBoyNow = (st.userRole || st.activeChar) === 'boy'
-    const isFpEyeNow = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
+    const isFpEyeNow = st.mode === 'fp' && st.fpPerspective === 'eye'
     const spawn = st.walkthroughSpawn
     if (spawn && spawn.tick !== lastSpawnTick.current) {
       lastSpawnTick.current = spawn.tick
@@ -1725,7 +1724,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       rightArm.current.rotation.x = THREE.MathUtils.lerp(rightArm.current.rotation.x, rArmX, k)
       rightArm.current.rotation.z = THREE.MathUtils.lerp(rightArm.current.rotation.z, rArmZ, k)
     }
-    const isFpEye = st.mode === 'fp' && (st.fpPerspective ?? 'third') === 'eye'
+    const isFpEye = st.mode === 'fp' && st.fpPerspective === 'eye'
     if (head.current) {
       head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, headY, k)
       head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, headX, k)
@@ -1756,12 +1755,16 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const SKIN = '#deb089'
   const sleeping = boyActivity === 'sleep' || boyActivity === 'girl_sleep'
   const userRole = useStore((s) => s.userRole)
+  const activeChar = useStore((s) => s.activeChar)
+  const mode = useStore((s) => s.mode)
   const roleOccupancy = useStore((s) => s.roleOccupancy)
-  const fpPerspective = useStore((s) => (s as ReturnType<typeof useStore.getState> & { fpPerspective?: 'eye' | 'third' }).fpPerspective ?? 'third')
+  const fpPerspective = useStore((s) => s.fpPerspective)
   const isBoyClaimed = userRole === 'boy' || Boolean(roleOccupancy?.boy)
   const canControlBoy = !userRole || userRole === 'boy'
+  const isControllingBoy = (userRole || activeChar) === 'boy'
+  const allowBoyInteract = canControlBoy && !(mode === 'fp' && isControllingBoy)
   // Nhân vật Khoa chỉ ẩn thân xác khi chính người chơi này đang vào vai Khoa và ở góc nhìn tầm mắt ('eye')
-  const hideInFp = useStore((s) => s.mode === 'fp') && fpPerspective === 'eye' && userRole === 'boy'
+  const hideInFp = mode === 'fp' && fpPerspective === 'eye' && userRole === 'boy'
 
   const isBoySleepingNow =
     (boyActivity === 'sleep' || boyActivity === 'girl_sleep') && boyPhase === 'active'
@@ -1772,32 +1775,19 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       position={p}
       rotation={[0, ry, 0]}
       visible={!hideInFp}
-      onClick={
-        canControlBoy
-          ? (e: ThreeEvent<MouseEvent>) => {
-              e.stopPropagation()
-              useStore.getState().setActiveChar('boy')
-            }
-          : undefined
-      }
-      onPointerOver={
-        canControlBoy
-          ? (e: ThreeEvent<PointerEvent>) => {
-              e.stopPropagation()
-              document.body.style.cursor = 'pointer'
-              useStore.getState().setHoverHint('🧑 Khoa (Click để điều khiển)')
-            }
-          : undefined
-      }
-      onPointerOut={
-        canControlBoy
-          ? () => {
-              document.body.style.cursor = 'auto'
-              useStore.getState().setHoverHint(null)
-            }
-          : undefined
-      }
     >
+      <Interact
+        zone="exterior"
+        hint={allowBoyInteract ? '🧑 Khoa (Click để điều khiển)' : undefined}
+        onClick={
+          allowBoyInteract
+            ? (e?: ThreeEvent<MouseEvent>) => {
+                if (e && typeof e.clientX === 'number' && !isValidClick(e.clientX, e.clientY)) return
+                useStore.getState().setActiveChar('boy')
+              }
+            : undefined
+        }
+      >
       {/* Chấm tròn nhỏ phát sáng trên đầu: Xanh khi có người chơi, Đỏ khi trống / Auto (ẩn khi ngủ) */}
       <CharacterRoleIndicator isControlled={isBoyClaimed} y={1.82} visible={!isBoySleepingNow} />
 
@@ -1922,6 +1912,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
           </>
         )}
       </group>
+      </Interact>
     </group>
   )
 }
@@ -2207,20 +2198,15 @@ export function Dog({
       position={p}
       rotation={[0, ry, 0]}
       scale={s}
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation()
-        useStore.getState().petDog(id, true)
-      }}
-      onPointerOver={(e: ThreeEvent<PointerEvent>) => {
-        e.stopPropagation()
-        document.body.style.cursor = 'pointer'
-        useStore.getState().setHoverHint(`🐶 ${name}`)
-      }}
-      onPointerOut={() => {
-        document.body.style.cursor = 'auto'
-        useStore.getState().setHoverHint(null)
-      }}
     >
+      <Interact
+        zone="exterior"
+        hint={`🐶 ${name}`}
+        onClick={(e?: ThreeEvent<MouseEvent>) => {
+          if (e && typeof e.clientX === 'number' && !isValidClick(e.clientX, e.clientY)) return
+          useStore.getState().petDog(id, true)
+        }}
+      >
       <mesh ref={heartRef} geometry={heartGeo} position={[0, 0.62, 0.2]} visible={false}>
         <meshStandardMaterial color="#c98882" emissive="#c98882" emissiveIntensity={0.85} />
       </mesh>
@@ -2286,6 +2272,7 @@ export function Dog({
           <Capsule p={[0, 0.03, -0.05]} r={[-0.85, 0, 0]} rad={0.032} len={0.09} c={look.body} />
         </group>
       </group>
+      </Interact>
     </group>
   )
 }
