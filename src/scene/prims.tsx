@@ -279,6 +279,15 @@ function isObjectInside(obj: THREE.Object3D | null | undefined, root: THREE.Obje
   return false
 }
 
+function isGhostTransparentOccluder(
+  st: ReturnType<typeof useStore.getState>,
+  obj: THREE.Object3D,
+): boolean {
+  if (st.mode !== 'orbit' || st.wallMode !== 'ghost') return false
+  const kind = obj.userData?.occluderKind as OccluderKind | undefined
+  return kind === 'wall' || kind === 'roof' || kind === 'glass'
+}
+
 function getFpInteractionDistance(
   st: ReturnType<typeof useStore.getState>,
   camera: THREE.Camera,
@@ -405,7 +414,12 @@ export function Interact({
       }
     }
     const first = e.intersections?.[0]
-    if (first && !isObjectInside(first.object, groupRef.current) && isOccluderHit(first.object)) {
+    if (
+      first &&
+      !isObjectInside(first.object, groupRef.current) &&
+      isOccluderHit(first.object) &&
+      !isGhostTransparentOccluder(st, first.object)
+    ) {
       clearHover()
       if (document.body.style.cursor !== 'auto') {
         document.body.style.cursor = 'auto'
@@ -437,7 +451,12 @@ export function Interact({
                 if (getFpInteractionDistance(st, e.camera, e.point) > limit) return
               }
               const first = e.intersections?.[0]
-              if (first && !isObjectInside(first.object, groupRef.current) && isOccluderHit(first.object)) {
+              if (
+                first &&
+                !isObjectInside(first.object, groupRef.current) &&
+                isOccluderHit(first.object) &&
+                !isGhostTransparentOccluder(st, first.object)
+              ) {
                 return
               }
               e.stopPropagation()
