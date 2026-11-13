@@ -435,6 +435,8 @@ function TopRight() {
   const viewPreset = useStore((s) => s.viewPreset)
   const roofVisible = useStore((s) => s.roofVisible)
   const toggleRoof = useStore((s) => s.toggleRoof)
+  const wallMode = useStore((s) => s.wallMode)
+  const cycleWallMode = useStore((s) => s.cycleWallMode)
   const resetCamera = useStore((s) => s.resetCamera)
   const randomCameraView = useStore((s) => s.randomCameraView)
 
@@ -525,6 +527,19 @@ function TopRight() {
           aria-label="Bật tắt mái nhà"
         >
           🏠 <span>Mái nhà</span>
+        </button>
+
+        <button
+          className={`dock-pill-btn ${wallMode !== 'cutaway' ? 'active' : ''}`}
+          onClick={cycleWallMode}
+          data-tooltip="Đổi kiểu hiển thị tường: Tường lửng • Tường mờ • Đủ tường"
+          title="Đổi kiểu hiển thị tường: Tường lửng • Tường mờ • Đủ tường"
+          aria-label="Đổi kiểu hiển thị tường"
+        >
+          <span>{wallMode === 'cutaway' ? '🧱' : wallMode === 'ghost' ? '🪟' : '🏛️'}</span>
+          <span className="pill-label">
+            {wallMode === 'cutaway' ? 'Tường lửng' : wallMode === 'ghost' ? 'Tường mờ' : 'Đủ tường'}
+          </span>
         </button>
 
         <button

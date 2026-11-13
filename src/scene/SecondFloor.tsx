@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, Sph, RB, RBB } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
+import { isWallCutByCamera } from './ArchitectureShell'
 import {
   AUTO_DURATION,
   AUTO_SEQUENCE_GIRL,
@@ -409,12 +410,22 @@ function Floor2AmbientOcclusion({ darkMode }: { darkMode: boolean }) {
 function SecondFloorCurtains() {
   const curtainsFloor2Open = useStore((s) => s.curtainsFloor2Open)
   const Y = FLOOR2_Y
+  const groupRef = useRef<THREE.Group>(null)
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
   const sheerLeftRef = useRef<THREE.Mesh>(null)
   const sheerRightRef = useRef<THREE.Mesh>(null)
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
+    const st = useStore.getState()
+    if (groupRef.current) {
+      const rightCut =
+        st.mode === 'orbit' &&
+        st.wallMode === 'cutaway' &&
+        !(st.viewPreset === 'overview' && st.roofVisible) &&
+        isWallCutByCamera(camera.position, [1, 0, 0])
+      groupRef.current.visible = !rightCut
+    }
     const k = 1 - Math.exp(-dt * 7)
     if (leftRef.current) {
       leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor2Open ? -1.45 : -0.75, k)
@@ -433,10 +444,11 @@ function SecondFloorCurtains() {
   })
 
   return (
-    <Interact
-      hint="🪟 Rèm cửa Tầng 2"
-      onClick={() => useStore.getState().toggleCurtainsFloor2()}
-    >
+    <group ref={groupRef}>
+      <Interact
+        hint="🪟 Rèm cửa Tầng 2"
+        onClick={() => useStore.getState().toggleCurtainsFloor2()}
+      >
       <G p={[9.94, Y, -2.3]} r={[0, -Math.PI / 2, 0]}>
         {/* Tấm bắt click rộng lớn phủ kín cửa sổ */}
         <mesh position={[0, 2.08, 0.25]}>
@@ -490,6 +502,7 @@ function SecondFloorCurtains() {
         </group>
       </G>
     </Interact>
+    </group>
   )
 }
 

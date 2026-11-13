@@ -2,11 +2,12 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, Sph, RBB } from './prims'
-import { dartboard, loadPhotoTexture, rng, screen, sunflowerArt, windowSky } from './textures'
+import { dartboard, loadPhotoTexture, rng, screen, sunflowerArt } from './textures'
 import { WALL_PHOTOS, type V3 } from '../data/config'
 import { useStore } from '../store'
 import { Bathroom } from './Bathroom'
 import { SecondFloor } from './SecondFloor'
+import { isWallCutByCamera } from './ArchitectureShell'
 
 const DARK = '#2B2D2F'
 const WALNUT = '#B7AFA5'
@@ -764,15 +765,23 @@ function LowCabinet() {
   )
 }
 
-/* ---------- Cửa sổ Panorama toàn cảnh bên tường phải + Rèm voan trắng & Rèm vải kem dài chạm sàn ---------- */
+/* ---------- Rèm voan trắng & Rèm vải kem dài chạm sàn khớp Cửa sổ Panorama tường phải ---------- */
 function PanoramicWindow() {
-  const darkMode = useStore((s) => s.darkMode)
   const curtainsFloor1Open = useStore((s) => s.curtainsFloor1Open)
-  const skyMap = useMemo(() => windowSky(darkMode), [darkMode])
+  const groupRef = useRef<THREE.Group>(null)
   const leftRef = useRef<THREE.Group>(null)
   const rightRef = useRef<THREE.Group>(null)
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
+    const st = useStore.getState()
+    if (groupRef.current) {
+      const rightCut =
+        st.mode === 'orbit' &&
+        st.wallMode === 'cutaway' &&
+        !(st.viewPreset === 'overview' && st.roofVisible) &&
+        isWallCutByCamera(camera.position, [1, 0, 0])
+      groupRef.current.visible = !rightCut
+    }
     const k = 1 - Math.exp(-dt * 7)
     if (leftRef.current) {
       leftRef.current.position.x = THREE.MathUtils.lerp(leftRef.current.position.x, curtainsFloor1Open ? -2.35 : -1.15, k)
@@ -785,37 +794,19 @@ function PanoramicWindow() {
   })
 
   return (
-    <Interact
-      hint="🪟 Rèm cửa Tầng 1"
-      onClick={() => useStore.getState().toggleCurtainsFloor1()}
-    >
-      <G p={[9.95, 0, -1.0]} r={[0, -Math.PI / 2, 0]}>
-        {/* Tấm bắt click rộng lớn phủ kín toàn bộ diện tích cửa sổ & rèm */}
-        <mesh position={[0, 2.25, 0.25]}>
-          <planeGeometry args={[6.0, 3.8]} />
-          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
+    <group ref={groupRef}>
+      <Interact
+        hint="🪟 Rèm cửa Tầng 1"
+        onClick={() => useStore.getState().toggleCurtainsFloor1()}
+      >
+        <G p={[9.95, 0, -1.0]} r={[0, -Math.PI / 2, 0]}>
+          {/* Tấm bắt click rộng lớn phủ kín toàn bộ diện tích cửa sổ & rèm */}
+          <mesh position={[0, 2.25, 0.25]}>
+            <planeGeometry args={[6.0, 3.8]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
 
-        {/* Mặt kính bầu trời nắng ấm / đêm sao */}
-        <mesh position={[0, 2.25, 0.01]}>
-          <planeGeometry args={[5.2, 3.1]} />
-          <meshStandardMaterial
-            map={skyMap}
-            emissive="#ffffff"
-            emissiveMap={skyMap}
-            emissiveIntensity={darkMode ? 0.95 : 1.35}
-          />
-        </mesh>
-
-        {/* Khung cửa sổ kem ấm (#EFECE6) */}
-        <B p={[0, 3.82, 0.04]} s={[5.4, 0.09, 0.09]} c="#EFECE6" />
-        <B p={[0, 0.68, 0.04]} s={[5.4, 0.09, 0.14]} c="#EFECE6" />
-        {[-2.65, -0.88, 0.88, 2.65].map((wx, i) => (
-          <B key={i} p={[wx, 2.25, 0.04]} s={[0.07, 3.18, 0.08]} c="#EFECE6" />
-        ))}
-        <B p={[0, 2.55, 0.04]} s={[5.3, 0.06, 0.07]} c="#EFECE6" />
-
-        {/* Lớp rèm voan mỏng xuyên sáng không sương mù */}
+          {/* Lớp rèm voan mỏng xuyên sáng không sương mù */}
         <BB p={[-1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#EFECE6" opacity={0.35} rough={0.85} shadow={false} />
         <BB p={[1.75, 0.04, 0.1]} s={[1.15, 3.82, 0.03]} c="#EFECE6" opacity={0.35} rough={0.85} shadow={false} />
 
@@ -853,6 +844,7 @@ function PanoramicWindow() {
         </group>
       </G>
     </Interact>
+    </group>
   )
 }
 

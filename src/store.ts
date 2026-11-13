@@ -130,6 +130,8 @@ interface State {
   viewPreset: 'overview' | 'floor1' | 'floor2'
   roofVisible: boolean
   toggleRoof: () => void
+  wallMode: 'cutaway' | 'ghost' | 'full'
+  cycleWallMode: () => void
   randomViewIdx: number
   setFocus: (f: CamFocus | null, preset?: 'overview' | 'floor1' | 'floor2') => void
   returnOverview: () => void
@@ -693,6 +695,21 @@ export const useStore = create<State>()(
                 }
               : {}),
             toastMessage: next ? '🏠 Hiện mái nhà & ngoại thất' : '✨ Ẩn mái nhà',
+          }
+        }),
+      wallMode: 'cutaway',
+      cycleWallMode: () =>
+        set((s) => {
+          const order: Array<'cutaway' | 'ghost' | 'full'> = ['cutaway', 'ghost', 'full']
+          const next = order[(order.indexOf(s.wallMode) + 1) % order.length]
+          const labels = {
+            cutaway: '🧱 Tường lửng (tự động hạ tường chắn)',
+            ghost: '🪟 Tường kính mờ (giữ khung 4 mặt)',
+            full: '🏛️ Đủ 4 tường (ngoại thất kín)',
+          }
+          return {
+            wallMode: next,
+            toastMessage: labels[next],
           }
         }),
       randomViewIdx: -1,

@@ -13,11 +13,21 @@ export const FLOOR2_HEIGHT = 4.2
 export const ROOF_Y = FLOOR2_Y + FLOOR2_HEIGHT // 8.55
 export const WALL_THICKNESS = 0.28
 export const SLAB_THICKNESS = 0.3
-export const CUTAWAY_HEIGHT = 0.35
+export const CUTAWAY_HEIGHT = 1.05
+export const WALL_CUT_DOT_THRESHOLD = -0.22
 
 const HOUSE_CENTER = new THREE.Vector3(-2.8, 2.5, 0)
 const _camToCenter = new THREE.Vector3()
 const _wallNormal = new THREE.Vector3()
+
+/** Kiểm tra tường có pháp tuyến hướng về phía Camera đang bị chắn hay không */
+export function isWallCutByCamera(cameraPos: THREE.Vector3, normal: V3): boolean {
+  _camToCenter.subVectors(HOUSE_CENTER, cameraPos)
+  if (_camToCenter.lengthSq() <= 0.0001) return false
+  _camToCenter.normalize()
+  _wallNormal.set(normal[0], normal[1], normal[2]).normalize()
+  return _camToCenter.dot(_wallNormal) < WALL_CUT_DOT_THRESHOLD
+}
 
 interface ArchitectureShellProps {
   onFloorClick?: (e: ThreeEvent<MouseEvent>) => void
@@ -33,14 +43,16 @@ export function ArchitectureShell({ onFloorClick }: ArchitectureShellProps) {
   const darkMode = useStore((s) => s.darkMode)
   const mode = useStore((s) => s.mode)
   const viewPreset = useStore((s) => s.viewPreset)
-  // Đọc roofVisible an toàn (đồng bộ cùng store.ts; mặc định false khi chưa khai báo)
-  const roofVisible = useStore((s) => Boolean((s as unknown as { roofVisible?: boolean }).roofVisible))
+  const roofVisible = useStore((s) => s.roofVisible)
+  const wallMode = useStore((s) => s.wallMode)
   const palette = getHousePalette(darkMode)
 
   const showFloor2 = viewPreset !== 'floor1'
   const showRoof = viewPreset === 'overview' && roofVisible
-  const cutawayFloor1 = mode === 'orbit' && (viewPreset === 'floor1' || (viewPreset === 'overview' && !roofVisible))
-  const cutawayFloor2 = mode === 'orbit' && (viewPreset === 'floor2' || (viewPreset === 'overview' && !roofVisible))
+  const cutawayFloor1 =
+    mode === 'orbit' && wallMode !== 'full' && (viewPreset === 'floor1' || (viewPreset === 'overview' && !roofVisible))
+  const cutawayFloor2 =
+    mode === 'orbit' && wallMode !== 'full' && (viewPreset === 'floor2' || (viewPreset === 'overview' && !roofVisible))
 
   return (
     <group>
@@ -50,36 +62,92 @@ export function ArchitectureShell({ onFloorClick }: ArchitectureShellProps) {
       {/* 2. Sàn Khối đặc Tầng 1 (dày 0.3 units, mảng 6 material, castShadow & receiveShadow) */}
       <SolidFloor1Slabs darkMode={darkMode} onFloorClick={onFloorClick} />
 
-      {/* 3. Hệ Tường bao Tầng 1 (dày 0.28, Sims-style CutawayWall) & Vách ngăn nội thất */}
+      {/* 3. Trụ cột góc kiến trúc cố định giữ vững khung khối 3D ở mọi góc xoay */}
+      <StructuralCornerColumns palette={palette} showFloor2={showFloor2} />
+
+      {/* 4. Hệ Tường bao Tầng 1 (dày 0.28, Sims-style CutawayWall) & Vách ngăn nội thất */}
       <Floor1Envelope
         darkMode={darkMode}
         palette={palette}
         cutawayEnabled={cutawayFloor1}
+        wallMode={wallMode}
       />
 
-      {/* 4. Hệ Tường bao Tầng 2 (dày 0.28, ẩn hoàn toàn khi viewPreset === 'floor1') */}
+      {/* 5. Hệ Tường bao Tầng 2 (dày 0.28, ẩn hoàn toàn khi viewPreset === 'floor1') */}
       <group visible={showFloor2}>
         <Floor2Envelope
           darkMode={darkMode}
           palette={palette}
           cutawayEnabled={cutawayFloor2}
+          wallMode={wallMode}
         />
       </group>
 
-      {/* 5. Hệ Mái bằng dày 0.3 + Viền Seno + Giếng trời phòng tắm + Đèn hắt ngoại thất */}
+      {/* 6. Hệ Mái bằng dày 0.3 + Viền Seno + Giếng trời phòng tắm + Đèn hắt ngoại thất */}
       {showRoof && <RoofSystem darkMode={darkMode} palette={palette} />}
     </group>
   )
 }
 
+/** Hệ trụ cột góc cố định giữ hình khối kiến trúc luôn vững chắc khi tường hạ/mờ */
+function StructuralCornerColumns({
+  palette,
+  showFloor2,
+}: {
+  palette: ReturnType<typeof getHousePalette>
+  showFloor2: boolean
+}) {
+  const H1 = FLOOR1_HEIGHT
+  const H2 = FLOOR2_HEIGHT
+  const Y = FLOOR2_Y
+  const colColor = palette.extWall
+  const trimColor = palette.crownMolding
+
+  const f1Corners: [number, number][] = [
+    [-15.74, -6.14],
+    [-15.74, 6.14],
+    [-10.14, -6.14],
+    [-10.14, 6.14],
+    [10.14, -6.14],
+    [10.14, 6.14],
+  ]
+
+  const f2Corners: [number, number][] = [
+    [-10.14, -6.14],
+    [-10.14, 6.14],
+    [10.14, -6.14],
+    [10.14, 6.14],
+  ]
+
+  return (
+    <group>
+      {f1Corners.map(([cx, cz], i) => (
+        <group key={`c1-${i}`}>
+          <B p={[cx, H1 / 2, cz]} s={[0.34, H1, 0.34]} c={colColor} rough={0.82} shadow />
+          <B p={[cx, H1 - 0.06, cz]} s={[0.37, 0.12, 0.37]} c={trimColor} rough={0.75} shadow={false} />
+        </group>
+      ))}
+      {showFloor2 &&
+        f2Corners.map(([cx, cz], i) => (
+          <group key={`c2-${i}`}>
+            <B p={[cx, Y + H2 / 2, cz]} s={[0.34, H2, 0.34]} c={colColor} rough={0.82} shadow />
+            <B p={[cx, Y + H2 - 0.06, cz]} s={[0.37, 0.12, 0.37]} c={trimColor} rough={0.75} shadow={false} />
+          </group>
+        ))}
+    </group>
+  )
+}
+
 /* ============================================================================
- * 1. SIMS-STYLE DYNAMIC WALL CUTAWAY (Tích vô hướng Camera -> Tâm nhà & Normal)
+ * 1. SIMS-STYLE DYNAMIC WALL CUTAWAY (Tường lửng 1.05m / Tường mờ / Đủ tường)
  * ============================================================================ */
 function CutawayWall({
   normal,
   baseY,
   fullHeight,
   cutawayEnabled,
+  wallMode,
+  wallBox,
   upperChildren,
   children,
 }: {
@@ -87,60 +155,75 @@ function CutawayWall({
   baseY: number
   fullHeight: number
   cutawayEnabled: boolean
+  wallMode: 'cutaway' | 'ghost' | 'full'
+  wallBox: { p: V3; s: V3 }
   upperChildren?: ReactNode
   children: ReactNode
 }) {
   const wallRef = useRef<THREE.Group>(null)
+  const solidRef = useRef<THREE.Group>(null)
   const upperRef = useRef<THREE.Group>(null)
+  const ghostRef = useRef<THREE.Group>(null)
   const curHeightRef = useRef(fullHeight)
   const prevCutShadowRef = useRef(false)
-  const normalVec = useMemo(() => new THREE.Vector3(normal[0], normal[1], normal[2]).normalize(), [normal])
 
   useFrame(({ camera }, dt) => {
-    if (!wallRef.current) return
+    if (!wallRef.current || !solidRef.current) return
 
-    let shouldCut = false
-    if (cutawayEnabled) {
-      _camToCenter.subVectors(HOUSE_CENTER, camera.position)
-      if (_camToCenter.lengthSq() > 0.0001) {
-        _camToCenter.normalize()
-        _wallNormal.copy(normalVec)
-        const dot = _camToCenter.dot(_wallNormal)
-        shouldCut = dot < -0.12
-      }
+    const shouldCut = cutawayEnabled && isWallCutByCamera(camera.position, normal)
+    const isGhost = wallMode === 'ghost' && shouldCut
+
+    if (ghostRef.current) {
+      ghostRef.current.visible = isGhost
     }
+    solidRef.current.visible = !isGhost
 
-    const targetH = shouldCut ? CUTAWAY_HEIGHT : fullHeight
+    const targetH = wallMode === 'cutaway' && shouldCut ? CUTAWAY_HEIGHT : fullHeight
     const k = 1 - Math.exp(-Math.min(dt, 0.05) * 11)
     let nextH = THREE.MathUtils.lerp(curHeightRef.current, targetH, k)
     if (Math.abs(nextH - targetH) < 0.002) nextH = targetH
     curHeightRef.current = nextH
 
     const scaleY = nextH / fullHeight
-    wallRef.current.scale.y = scaleY
+    solidRef.current.scale.y = scaleY
 
     if (upperRef.current) {
-      upperRef.current.visible = scaleY > 0.34
+      upperRef.current.visible = !isGhost && scaleY > 0.55
     }
 
-    const isCut = scaleY < 0.85
-    if (isCut !== prevCutShadowRef.current) {
-      prevCutShadowRef.current = isCut
-      wallRef.current.traverse((obj) => {
+    const disableShadow = isGhost || scaleY < 0.85
+    if (disableShadow !== prevCutShadowRef.current) {
+      prevCutShadowRef.current = disableShadow
+      solidRef.current.traverse((obj) => {
         const mesh = obj as THREE.Mesh
         if (!mesh.isMesh) return
         if (mesh.userData.origCastShadow === undefined) {
           mesh.userData.origCastShadow = mesh.castShadow
         }
-        mesh.castShadow = isCut ? false : Boolean(mesh.userData.origCastShadow)
+        mesh.castShadow = disableShadow ? false : Boolean(mesh.userData.origCastShadow)
       })
     }
   })
 
   return (
     <group ref={wallRef} position={[0, baseY, 0]}>
-      {children}
-      {upperChildren && <group ref={upperRef}>{upperChildren}</group>}
+      <group ref={solidRef}>
+        {children}
+        {upperChildren && <group ref={upperRef}>{upperChildren}</group>}
+      </group>
+      <group ref={ghostRef} visible={false}>
+        <mesh position={wallBox.p}>
+          <boxGeometry args={wallBox.s} />
+          <meshPhysicalMaterial
+            color="#9FB0C0"
+            transparent
+            opacity={0.14}
+            roughness={0.18}
+            metalness={0.05}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -461,10 +544,12 @@ function Floor1Envelope({
   darkMode,
   palette,
   cutawayEnabled,
+  wallMode,
 }: {
   darkMode: boolean
   palette: ReturnType<typeof getHousePalette>
   cutawayEnabled: boolean
+  wallMode: 'cutaway' | 'ghost' | 'full'
 }) {
   const H = FLOOR1_HEIGHT
   const extC = palette.extWall
@@ -477,6 +562,8 @@ function Floor1Envelope({
         baseY={0}
         fullHeight={H}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [-2.8, H / 2, -6.14], s: [26.16, H, 0.28] }}
         upperChildren={
           <group>
             <B p={[0.0, H - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -506,6 +593,8 @@ function Floor1Envelope({
         baseY={0}
         fullHeight={H}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [-15.74, H / 2, 0], s: [0.28, H, 12.28] }}
         upperChildren={
           <group>
             <B p={[-15.56, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -543,6 +632,8 @@ function Floor1Envelope({
         baseY={0}
         fullHeight={H}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [10.14, H / 2, 0], s: [0.28, H, 12.28] }}
         upperChildren={
           <group>
             <B p={[9.96, H - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -579,6 +670,8 @@ function Floor1Envelope({
         baseY={0}
         fullHeight={H}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [-2.8, H / 2, 6.14], s: [26.16, H, 0.28] }}
         upperChildren={
           <group>
             <B p={[-2.8, H - 0.08, 5.96]} s={[25.6, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -714,10 +807,12 @@ function Floor2Envelope({
   darkMode,
   palette,
   cutawayEnabled,
+  wallMode,
 }: {
   darkMode: boolean
   palette: ReturnType<typeof getHousePalette>
   cutawayEnabled: boolean
+  wallMode: 'cutaway' | 'ghost' | 'full'
 }) {
   const Y = FLOOR2_Y
   const H2 = FLOOR2_HEIGHT
@@ -731,6 +826,8 @@ function Floor2Envelope({
         baseY={Y}
         fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [0, H2 / 2, -6.14], s: [20.56, H2, 0.28] }}
         upperChildren={
           <B p={[0, H2 - 0.08, -5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
         }
@@ -748,6 +845,8 @@ function Floor2Envelope({
         baseY={Y}
         fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [-10.14, H2 / 2, 0], s: [0.28, H2, 12.28] }}
         upperChildren={
           <group>
             <B p={[-9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -785,6 +884,8 @@ function Floor2Envelope({
         baseY={Y}
         fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [10.14, H2 / 2, 0], s: [0.28, H2, 12.28] }}
         upperChildren={
           <group>
             <B p={[9.96, H2 - 0.08, 0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
@@ -838,6 +939,8 @@ function Floor2Envelope({
         baseY={Y}
         fullHeight={H2}
         cutawayEnabled={cutawayEnabled}
+        wallMode={wallMode}
+        wallBox={{ p: [0, H2 / 2, 6.14], s: [20.56, H2, 0.28] }}
         upperChildren={
           <group>
             <B p={[0, H2 - 0.08, 5.96]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
