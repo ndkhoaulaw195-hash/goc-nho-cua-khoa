@@ -1,18 +1,15 @@
 import { useMemo } from 'react'
 import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
+import { ArchitectureShell } from './ArchitectureShell'
 import { B, Interact } from './prims'
 import {
   aoContactShadow,
   aoLinearFalloff,
-  houseDropShadow,
-  marbleTiles,
   persianTerracottaRug,
   rugWeave,
-  woodFloor,
   woodSlats,
 } from './textures'
-import { getHousePalette } from '../data/config'
 import { useStore } from '../store'
 
 export const ROOM = { w: 20, d: 12, h: 4.35 }
@@ -21,16 +18,6 @@ export function Room() {
   const darkMode = useStore((s) => s.darkMode)
   const avatarTarget = useStore((s) => s.avatarTarget)
   const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
-  const palette = getHousePalette(darkMode)
-  const extWallColor = palette.extWall
-
-  const floorMap = useMemo(() => {
-    const t = woodFloor().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(4.5, 2.7)
-    t.needsUpdate = true
-    return t
-  }, [])
 
   const slatMap = useMemo(() => {
     const t = woodSlats().clone()
@@ -40,17 +27,7 @@ export function Room() {
     return t
   }, [])
 
-  const marbleMap = useMemo(() => {
-    const t = marbleTiles().clone()
-    t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(2.4, 2.8)
-    t.needsUpdate = true
-    return t
-  }, [])
-
-  const dropShadowMap = useMemo(() => houseDropShadow(), [])
-
-  const { w, d, h } = ROOM
+  const { d } = ROOM
 
   const handleFloorClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation()
@@ -64,57 +41,8 @@ export function Room() {
 
   return (
     <group>
-      {/* Bóng đổ studio mềm mại dưới đáy bệ móng giúp ngôi nhà 3D nổi khối vững chãi trên nền Radial Gradient */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-2.8, -0.665, -0.12]}>
-        <planeGeometry args={[30.5, 16.5]} />
-        <meshBasicMaterial
-          map={dropShadowMap}
-          transparent
-          opacity={darkMode ? 0.55 : 0.34}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Lớp sàn lót kiến trúc đồng bộ 2 tầng (#D6D1C9) ngăn cách hoàn toàn mặt sàn với đế #2B2D2F */}
-      <B p={[-2.8, -0.042, 0]} s={[25.6, 0.055, 12.0]} c={palette.subFloor} rough={0.85} shadow={false} />
-
-      {/* Đế mô hình Matte Charcoal (#2B2D2F) đặt hẳn bên dưới mặt sàn */}
-      <B p={[-2.8, -0.32, -0.12]} s={[26.08, 0.5, 12.24]} c="#2B2D2F" rough={0.85} shadow={false} />
-      <B p={[-2.8, -0.6, -0.12]} s={[26.28, 0.1, 12.44]} c="#232527" rough={0.85} shadow={false} />
-
-      {/* Mặt sàn gỗ sồi sáng (#D8C7B2 / #C4AF97), roughness ~0.48 bắt sáng nhẹ */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0, 0]}
-        receiveShadow
-        onClick={handleFloorClick}
-        onDoubleClick={handleFloorClick}
-      >
-        <planeGeometry args={[w, d]} />
-        <meshStandardMaterial
-          map={floorMap}
-          roughness={0.48}
-          metalness={0.04}
-          color={palette.floorTint}
-        />
-      </mesh>
-
-      {/* Mặt sàn gạch phòng tắm (#E5E4E0) */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[-12.8, 0, 0.0]}
-        receiveShadow
-        onClick={handleFloorClick}
-        onDoubleClick={handleFloorClick}
-      >
-        <planeGeometry args={[5.6, 12.0]} />
-        <meshStandardMaterial
-          map={marbleMap}
-          roughness={0.38}
-          metalness={0.05}
-          color={darkMode ? '#ACA59B' : '#DCD5CB'}
-        />
-      </mesh>
+      {/* Hệ thống Khung Kiến trúc Khối đặc (Sàn 0.3, Tường bao 0.28 + CutawayWall, Vách ngăn, Mái bằng & Sân vườn) */}
+      <ArchitectureShell onFloorClick={handleFloorClick} />
 
       {avatarTarget && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[avatarTarget[0], avatarTarget[1] + 0.032, avatarTarget[2]]}>
@@ -122,74 +50,6 @@ export function Room() {
           <meshBasicMaterial color="#EFECE6" transparent opacity={0.85} />
         </mesh>
       )}
-
-      {/* ---------- HỆ THỐNG TẤM TƯỜNG KIẾN TRÚC LÌ (roughness ~0.85) ĐỒNG MÀU 2 TẦNG ---------- */}
-      {/* 1. Tường sau: Viền tường cắt #D6D1C9 */}
-      <B
-        p={[-2.8, h / 2, -6.14]}
-        s={[26.08, h, 0.2]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-      {/* Lớp sơn mặt trong tường sau phòng tắm (#E5E4E0) */}
-      <B
-        p={[-12.8, h / 2, -6.01]}
-        s={[5.6, h, 0.04]}
-        c={palette.wallBath}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      {/* Lớp sơn mặt trong tường sau phòng ngủ (#EFECE6) đồng màu cánh trái Tầng 2 */}
-      <B
-        p={[-5.4, h / 2, -6.01]}
-        s={[9.2, h, 0.04]}
-        c={palette.wallCream}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      {/* Lớp sơn mặt trong tường sau khu vực bàn máy tính & phòng khách (Slate Blue #5E7487) đồng màu cánh phải Tầng 2 */}
-      <B
-        p={[4.6, h / 2, -6.01]}
-        s={[10.8, h, 0.04]}
-        c={palette.wallAccent}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-
-      {/* Phào chân tường Matte Charcoal (#2B2D2F) dọc tường sau phòng sinh hoạt & phòng tắm */}
-      <B p={[0.0, 0.07, -5.98]} s={[20.0, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-      <B p={[-12.8, 0.07, -5.98]} s={[5.6, 0.14, 0.03]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-
-      {/* 2. Tường bên trái phòng tắm (#D6D1C9 / #D8D2C8) */}
-      <B
-        p={[-15.72, h / 2, -0.12]}
-        s={[0.24, h, 12.24]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-      <B
-        p={[-15.56, h / 2, 0.0]}
-        s={[0.04, h, 11.9]}
-        c={palette.wallBath}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      <B p={[-15.54, 0.07, 0.0]} s={[0.04, 0.14, 11.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-
-      {/* 3. Vách ngăn giữa phòng tắm và phòng sinh hoạt (#EFECE6 & #D8D2C8) */}
-      <B p={[-10.0, h / 2, -5.05]} s={[0.22, h, 1.9]} c={palette.wallPartition} rough={0.85} shadow />
-      <B p={[-9.87, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-      <B p={[-10.12, 0.07, -5.05]} s={[0.03, 0.14, 1.9]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-      <B p={[-10.0, 3.45, -3.4]} s={[0.22, 1.8, 1.4]} c={palette.wallPartition} rough={0.85} shadow />
-      <B p={[-10.0, h / 2, 1.65]} s={[0.22, h, 8.7]} c={palette.wallPartition} rough={0.85} shadow />
-      <B p={[-9.87, 0.07, 1.65]} s={[0.03, 0.14, 8.7]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
-      <B p={[-10.12, 0.07, 1.65]} s={[0.03, 0.14, 8.7]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
 
       {/* Ốp lam gỗ dọc Slate Blue (#5E7487 / #4A5E6F) đầu giường + Đèn LED vàng ấm 3000K */}
       <mesh position={[-3.25, 0.72, -d / 2 + 0.06]} receiveShadow>
@@ -218,36 +78,6 @@ export function Room() {
           shadow={false}
         />
       </Interact>
-      {/* Phào chỉ trần nhà đồng bộ 2 tầng + LED vàng ấm 3000K dịu nhẹ */}
-      <B p={[0.0, h - 0.08, -d / 2 + 0.05]} s={[20.0, 0.16, 0.08]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-      <B
-        p={[-5.4, h - 0.17, -d / 2 + 0.07]}
-        s={[9.1, 0.045, 0.05]}
-        c="#F5C98B"
-        emissive="#F5C98B"
-        ei={darkMode ? 1.15 : 1.1}
-        shadow={false}
-      />
-
-      {/* 4. Tường bên phải: Mặt ngoài #D6D1C9, mặt trong Slate Blue #5E7487 */}
-      <B
-        p={[10.14, h / 2, -0.12]}
-        s={[0.2, h, 12.24]}
-        c={extWallColor}
-        rough={0.85}
-        shadow
-      />
-      <B
-        p={[10.01, h / 2, 0.0]}
-        s={[0.04, h, 12.0]}
-        c={palette.wallAccent}
-        rough={0.85}
-        shadow={false}
-        polyOffset
-      />
-      {/* Phào trần & phào chân tường bên phải đồng bộ Tầng 2 */}
-      <B p={[9.95, h - 0.08, 0.0]} s={[0.08, 0.16, 12.0]} c={palette.crownMolding} rough={0.85} shadow={false} polyOffset />
-      <B p={[9.98, 0.07, 0.0]} s={[0.03, 0.14, 12.0]} c={palette.baseboard} rough={0.85} shadow={false} polyOffset />
 
       {/* Thảm trải sàn họa tiết trung tính (#8E908F phối #B6B7B5, bề mặt lì roughness ~0.85) */}
       {/* 1. Thảm lớn dưới giường ngủ */}
@@ -314,13 +144,17 @@ function StudioAmbientOcclusion({ darkMode }: { darkMode: boolean }) {
     <group>
       {/* 1. AO góc chân tường Tầng 1 */}
       {cornerStrip('f1-back', [0.0, 0.005, -5.73], [20.0, 0.54], 0)}
+      {cornerStrip('f1-front', [0.0, 0.005, 5.73], [20.0, 0.54], Math.PI)}
       {cornerStrip('f1-bath-back', [-12.82, 0.005, -5.73], [5.45, 0.54], 0)}
+      {cornerStrip('f1-bath-front', [-12.82, 0.005, 5.73], [5.45, 0.54], Math.PI)}
       {cornerStrip('f1-right', [9.73, 0.005, 0.0], [12.0, 0.54], -Math.PI / 2)}
       {cornerStrip('f1-bath-left', [-15.29, 0.005, 0.0], [11.9, 0.54], Math.PI / 2)}
       {cornerStrip('f1-part-e1', [-9.63, 0.005, -5.05], [1.9, 0.5], Math.PI / 2)}
       {cornerStrip('f1-part-e2', [-9.63, 0.005, 1.65], [8.7, 0.5], Math.PI / 2)}
       {cornerStrip('f1-part-w1', [-10.37, 0.005, -5.05], [1.9, 0.5], -Math.PI / 2)}
       {cornerStrip('f1-part-w2', [-10.37, 0.005, 1.65], [8.7, 0.5], -Math.PI / 2)}
+      {cornerStrip('f1-tv-part-s', [4.25, 0.005, 0.25], [3.6, 0.44], 0)}
+      {cornerStrip('f1-tv-part-n', [4.25, 0.005, -0.35], [3.6, 0.44], Math.PI)}
 
       {/* 2. AO gầm giường Tầng 1, gầm Sofa L, gầm bàn trà & gầm tủ kệ */}
       {contactPatch('ao-f1-bed', [-2.6, 0.038, -4.3], [2.75, 3.45])}
@@ -383,7 +217,7 @@ export function Lights() {
   const hemiGround = darkMode
     ? '#594E43'
     : '#9C968D'
-  const hemiIntensity = darkMode ? 0.56 : weather === 'rain' ? 0.52 : 0.60
+  const hemiIntensity = darkMode ? 0.56 : weather === 'rain' ? 0.52 : 0.6
 
   const sunColor = darkMode
     ? '#C9D8E8'
@@ -409,19 +243,19 @@ export function Lights() {
       <hemisphereLight args={[hemiSky, hemiGround, hemiIntensity]} />
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
 
-      {/* Directional Light chính chiếu xiên nhẹ từ cửa sổ bên phải tạo bóng đổ mềm rõ nét */}
+      {/* Directional Light chính chiếu xiên nhẹ tạo bóng đổ mềm rõ nét cho cả kiến trúc & sân vườn */}
       <directionalLight
         position={sunPos}
         intensity={sunIntensity}
         color={sunColor}
         castShadow
         shadow-mapSize={[shadowResolution, shadowResolution]}
-        shadow-camera-left={-18.5}
-        shadow-camera-right={15.5}
-        shadow-camera-top={15.5}
-        shadow-camera-bottom={-14.5}
+        shadow-camera-left={-22}
+        shadow-camera-right={18}
+        shadow-camera-top={18}
+        shadow-camera-bottom={-17}
         shadow-camera-near={3}
-        shadow-camera-far={52}
+        shadow-camera-far={58}
         shadow-radius={3.8}
         shadow-bias={-0.00025}
         shadow-normalBias={0.02}
