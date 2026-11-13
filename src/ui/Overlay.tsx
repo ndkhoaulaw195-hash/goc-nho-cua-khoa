@@ -10,8 +10,10 @@ import {
   SITE,
   STATIONS,
   TV_CHANNELS,
+  WALKTHROUGH_SPOTS,
   WALL_PHOTOS,
   WEATHER_MODES,
+  type WalkthroughSpaceId,
 } from '../data/config'
 
 const I = {
@@ -28,12 +30,6 @@ const I = {
       <circle cx="6" cy="18" r="3" />
       <circle cx="18" cy="16" r="3" />
       <path d="M2 2l20 20" />
-    </svg>
-  ),
-  eye: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
-      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
   reset: (
@@ -63,6 +59,7 @@ export function Overlay() {
   const toastMessage = useStore((s) => s.toastMessage)
   const hoverHint = useStore((s) => s.hoverHint)
   const mode = useStore((s) => s.mode)
+  const fpPerspective = useStore((s) => s.fpPerspective)
   const userRole = useStore((s) => s.userRole)
   const activity = useStore((s) => s.activity)
   const isUserInitiated = useStore((s) => s.isUserInitiated)
@@ -97,7 +94,8 @@ export function Overlay() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const showOnboarding = Boolean(userRole) && mode === 'orbit' && !(isUserInitiated && activity !== 'idle')
+  const hasContextDock = isUserInitiated && activity !== 'idle'
+  const showOnboarding = Boolean(userRole) && mode === 'orbit' && !hasContextDock
 
   return (
     <div className={`overlay ${darkMode ? 'is-dark' : ''}`}>
@@ -107,6 +105,7 @@ export function Overlay() {
 
       <TopRight />
       <ContextualDock />
+      {mode === 'fp' && <WalkthroughDock />}
       <WardrobeModal />
       <GirlWardrobeModal />
       <PhotoModal />
@@ -115,13 +114,16 @@ export function Overlay() {
 
       {showOnboarding && <OnboardingHint />}
 
-      {mode === 'fp' && (
-        <>
-          <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} />
-          <div className="fp-hud">WASD di chuyển · Chuột xoay góc nhìn · ESC thoát</div>
-        </>
+      {mode === 'fp' && (fpPerspective === 'eye' || Boolean(hoverHint)) && (
+        <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} />
       )}
-      {hoverHint && <div className="hover-hint">{hoverHint}</div>}
+      {hoverHint && (
+        <div
+          className={`hover-hint ${mode === 'fp' ? 'in-walkthrough' : ''} ${mode === 'fp' && hasContextDock ? 'with-context' : ''}`}
+        >
+          {hoverHint}
+        </div>
+      )}
       {toastMessage && <div className="toast" role="status" aria-live="polite">{toastMessage}</div>}
     </div>
   )
@@ -236,6 +238,7 @@ function TopLeft({
 
 /* ---------- Thanh hành động ngữ cảnh gọn gàng khi đang tương tác với đồ vật ---------- */
 function ContextualDock() {
+  const mode = useStore((s) => s.mode)
   const activity = useStore((s) => s.activity)
   const activityPhase = useStore((s) => s.activityPhase)
   const isUserInitiated = useStore((s) => s.isUserInitiated)
@@ -258,7 +261,11 @@ function ContextualDock() {
   if (!isUserInitiated || activity === 'idle') return null
 
   return (
-    <div className="context-dock card" role="region" aria-label="Điều khiển hoạt động hiện tại">
+    <div
+      className={`context-dock card ${mode === 'fp' ? 'above-walkthrough' : ''}`}
+      role="region"
+      aria-label="Điều khiển hoạt động hiện tại"
+    >
       <span className="dock-status">
         <span className="dock-status-dot" aria-hidden="true" />
         <span>{activityPhase === 'walking' ? '🚶 Đang đi tới...' : STATIONS[activity].label}</span>
@@ -432,6 +439,94 @@ function ContextualDock() {
   )
 }
 
+const WALKTHROUGH_ORDER: WalkthroughSpaceId[] = ['living', 'bedroom', 'bathroom', 'terrace', 'pool']
+
+/* ---------- Thanh Điều hướng Phòng (Interior Walkthrough Context Dock) khi ở chế độ Vào nhà ---------- */
+function WalkthroughDock() {
+  const walkthroughSpace = useStore((s) => s.walkthroughSpace)
+  const jumpToWalkthroughSpace = useStore((s) => s.jumpToWalkthroughSpace)
+  const fpPerspective = useStore((s) => s.fpPerspective)
+  const toggleFpPerspective = useStore((s) => s.toggleFpPerspective)
+  const returnOverview = useStore((s) => s.returnOverview)
+
+  return (
+    <div className="walkthrough-dock card" role="region" aria-label="Điều hướng không gian trong nhà">
+      <div className="walkthrough-row">
+        <div className="walkthrough-spots" role="group" aria-label="Đi tới không gian nhanh">
+          {WALKTHROUGH_ORDER.map((spaceId) => {
+            const spot = WALKTHROUGH_SPOTS[spaceId]
+            const active = walkthroughSpace === spaceId
+            return (
+              <button
+                key={spaceId}
+                type="button"
+                className={`walkthrough-spot-btn ${active ? 'active' : ''}`}
+                onClick={() => jumpToWalkthroughSpace(spaceId)}
+                aria-pressed={active}
+                title={`Đi thẳng tới ${spot.label}`}
+              >
+                <span aria-hidden="true">{spot.icon}</span>
+                <span>{spot.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <span className="dock-sep walkthrough-sep" aria-hidden="true" />
+
+        <div className="walkthrough-actions">
+          <button
+            type="button"
+            className={`walkthrough-ctrl-btn ${fpPerspective === 'eye' ? 'is-eye' : ''}`}
+            onClick={toggleFpPerspective}
+            aria-pressed={fpPerspective === 'eye'}
+            title={
+              fpPerspective === 'third'
+                ? 'Góc nhìn Sau lưng · Bấm để chuyển sang Tầm mắt'
+                : 'Góc nhìn Tầm mắt · Bấm để chuyển về Sau lưng'
+            }
+          >
+            <span aria-hidden="true">{fpPerspective === 'third' ? '🎥' : '👁️'}</span>
+            <span>{fpPerspective === 'third' ? 'Sau lưng' : 'Tầm mắt'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="walkthrough-ctrl-btn overview-exit"
+            onClick={returnOverview}
+            title="Quay lại góc nhìn Toàn cảnh bên ngoài"
+          >
+            <span aria-hidden="true">🏠</span>
+            <span>Toàn cảnh</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="walkthrough-hint" aria-label="Phím điều khiển trong nhà">
+        WASD / Mũi tên · Kéo xoay · Esc
+      </div>
+    </div>
+  )
+}
+
+const WALL_MODE_META: Record<'full' | 'cutaway' | 'ghost', { icon: string; label: string; tooltip: string }> = {
+  full: {
+    icon: '🏛️',
+    label: 'Đủ tường',
+    tooltip: 'Đủ tường · Bấm để chuyển sang Tường lửng (Cutaway)',
+  },
+  cutaway: {
+    icon: '🧱',
+    label: 'Tường lửng',
+    tooltip: 'Tường lửng (Cutaway) · Bấm để chuyển sang Tường mờ',
+  },
+  ghost: {
+    icon: '🪟',
+    label: 'Tường mờ',
+    tooltip: 'Tường mờ · Bấm để quay lại Đủ tường',
+  },
+}
+
 /* ---------- Cụm Phải Trên (Desktop) / Thanh Dock Dưới Đáy (Mobile): Điều hướng & Tiện ích ---------- */
 function TopRight() {
   const mode = useStore((s) => s.mode)
@@ -443,13 +538,17 @@ function TopRight() {
   const viewPreset = useStore((s) => s.viewPreset)
   const wallMode = useStore((s) => s.wallMode)
   const cycleWallMode = useStore((s) => s.cycleWallMode)
+  const nearInteriorOpen = useStore((s) => s.nearInteriorOpen)
   const resetCamera = useStore((s) => s.resetCamera)
   const randomCameraView = useStore((s) => s.randomCameraView)
 
+  const isWalkthrough = mode === 'fp'
   const isFloor1 = mode === 'orbit' && viewPreset === 'floor1'
   const isFloor2 = mode === 'orbit' && viewPreset === 'floor2'
   const isOverview = mode === 'orbit' && viewPreset === 'overview'
-  const isGhostWall = wallMode === 'ghost'
+  const autoCutawayActive = isOverview && nearInteriorOpen
+  const wallMeta = WALL_MODE_META[wallMode] ?? WALL_MODE_META.full
+  const wallActive = !isWalkthrough && (wallMode !== 'full' || autoCutawayActive)
 
   const [playing, setPlaying] = useState(false)
   const audio = useRef<HTMLAudioElement | null>(null)
@@ -488,7 +587,7 @@ function TopRight() {
 
   return (
     <div className="hud-top-right">
-      {/* Hàng 1: Segmented Góc nhìn 3D + Công cụ xuyên tường & Camera */}
+      {/* Hàng 1: Segmented Góc nhìn 3D + Chế độ tường + CTA Vào nhà & Camera */}
       <div className="glass-dock dock-nav-row">
         <div className="view-switcher" role="group" aria-label="Chọn góc nhìn biệt thự">
           <button
@@ -496,8 +595,8 @@ function TopRight() {
             className={`dock-pill-btn segment-btn ${isOverview ? 'active' : ''}`}
             onClick={() => useStore.getState().returnOverview()}
             aria-pressed={isOverview}
-            data-tooltip="Đưa về toàn cảnh biệt thự"
-            title="Đưa về toàn cảnh biệt thự"
+            data-tooltip="Đưa về toàn cảnh · Đóng kín biệt thự như thật"
+            title="Đưa về toàn cảnh · Đóng kín biệt thự như thật"
             aria-label="Toàn cảnh"
           >
             <span aria-hidden="true">🏠</span>
@@ -507,13 +606,14 @@ function TopRight() {
             type="button"
             className={`dock-pill-btn segment-btn ${isFloor1 ? 'active' : ''}`}
             onClick={() => {
-              useStore.getState().setMode('orbit')
-              useStore.getState().setFocus(FLOOR1_VIEW, 'floor1')
-              useStore.getState().notify('👦 Tầng 1 – Khoa')
+              const st = useStore.getState()
+              st.setMode('orbit')
+              st.setFocus(FLOOR1_VIEW, 'floor1')
+              st.notify('👦 Tầng 1 – Mở Cutaway xem nội thất')
             }}
             aria-pressed={isFloor1}
-            data-tooltip="Xem Tầng 1 – Không gian của Khoa"
-            title="Xem Tầng 1 – Không gian của Khoa"
+            data-tooltip="Tầng 1 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
+            title="Tầng 1 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
           >
             <span aria-hidden="true">👦</span>
             <span>Tầng 1</span>
@@ -522,58 +622,69 @@ function TopRight() {
             type="button"
             className={`dock-pill-btn segment-btn ${isFloor2 ? 'active' : ''}`}
             onClick={() => {
-              useStore.getState().setMode('orbit')
-              useStore.getState().setFocus(FLOOR2_VIEW, 'floor2')
-              useStore.getState().notify('👧 Tầng 2 – Bạn Gái')
+              const st = useStore.getState()
+              st.setMode('orbit')
+              st.setFocus(FLOOR2_VIEW, 'floor2')
+              st.notify('👧 Tầng 2 – Mở Cutaway xem nội thất')
             }}
             aria-pressed={isFloor2}
-            data-tooltip="Xem Tầng 2 – Không gian của Bạn Gái"
-            title="Xem Tầng 2 – Không gian của Bạn Gái"
+            data-tooltip="Tầng 2 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
+            title="Tầng 2 · Tự động mở Cutaway & ẩn mái xem sắc nét nội thất"
           >
             <span aria-hidden="true">👧</span>
             <span>Tầng 2</span>
           </button>
         </div>
 
-        <span className="dock-sep" aria-hidden="true" />
+        <span className={`dock-sep ${isWalkthrough ? 'hide-on-mobile' : ''}`} aria-hidden="true" />
 
-        {/* Nút duy nhất chuyển chế độ xem xuyên tường: Đủ tường <-> Tường mờ */}
+        {/* Nút chuyển chế độ tường: Đủ tường -> Tường lửng -> Tường mờ (khoá kín 100% khi Vào nhà) */}
         <button
           type="button"
-          className={`dock-pill-btn wall-toggle-btn ${isGhostWall ? 'active' : ''}`}
+          className={`dock-pill-btn wall-toggle-btn ${wallActive ? 'active' : ''} ${isWalkthrough ? 'is-locked-fp' : ''}`}
           onClick={cycleWallMode}
-          aria-pressed={isGhostWall}
+          disabled={isWalkthrough}
+          aria-pressed={wallActive}
           data-tooltip={
-            isGhostWall
-              ? 'Tường mờ đang bật · Bấm để hiện Đủ tường'
-              : 'Đủ tường · Bấm để bật Tường mờ xem xuyên nội thất'
+            isWalkthrough
+              ? 'Đang ở chế độ Vào nhà · Tự động đóng kín 100% tường & mái'
+              : autoCutawayActive && wallMode === 'full'
+                ? 'Đang xem gần (Tự mở Cutaway) · Bấm để đổi chế độ tường'
+                : wallMeta.tooltip
           }
           title={
-            isGhostWall
-              ? 'Tường mờ đang bật · Bấm để hiện Đủ tường'
-              : 'Đủ tường · Bấm để bật Tường mờ xem xuyên nội thất'
+            isWalkthrough
+              ? 'Đang ở chế độ Vào nhà · Tự động đóng kín 100% tường & mái'
+              : autoCutawayActive && wallMode === 'full'
+                ? 'Đang xem gần (Tự mở Cutaway) · Bấm để đổi chế độ tường'
+                : wallMeta.tooltip
           }
-          aria-label={
-            isGhostWall
-              ? 'Đang bật Tường mờ, bấm để chuyển sang Đủ tường'
-              : 'Đang bật Đủ tường, bấm để chuyển sang Tường mờ'
-          }
+          aria-label={isWalkthrough ? 'Tường đóng kín 100% trong chế độ Vào nhà' : wallMeta.label}
         >
-          <span aria-hidden="true">{isGhostWall ? '🪟' : '🏛️'}</span>
-          <span className="pill-label">{isGhostWall ? 'Tường mờ' : 'Đủ tường'}</span>
-          <span className={`wall-state-dot ${isGhostWall ? 'on' : ''}`} aria-hidden="true" />
+          <span aria-hidden="true">{isWalkthrough ? '🏛️' : wallMeta.icon}</span>
+          <span className="pill-label">{isWalkthrough ? 'Kín 100%' : wallMeta.label}</span>
+          <span className={`wall-state-dot ${wallActive ? 'on' : ''}`} aria-hidden="true" />
         </button>
 
+        {/* Nút CTA nổi bật Vào nhà */}
         <button
           type="button"
-          className={`dock-pill-btn ${mode === 'fp' ? 'active' : ''}`}
-          onClick={() => setMode(mode === 'fp' ? 'orbit' : 'fp')}
-          aria-pressed={mode === 'fp'}
-          data-tooltip={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
-          title={mode === 'fp' ? 'Thoát góc nhìn thứ nhất' : 'Góc nhìn thứ nhất (WASD đi bộ)'}
+          className={`dock-pill-btn enter-house-btn ${isWalkthrough ? 'is-inside' : ''}`}
+          onClick={() => setMode(isWalkthrough ? 'orbit' : 'fp')}
+          aria-pressed={isWalkthrough}
+          data-tooltip={
+            isWalkthrough
+              ? 'Thoát chế độ Vào nhà · Quay lại góc nhìn Toàn cảnh'
+              : 'Bước vào bên trong biệt thự · Đóng kín 100% & đi bộ tự do'
+          }
+          title={
+            isWalkthrough
+              ? 'Thoát chế độ Vào nhà · Quay lại góc nhìn Toàn cảnh'
+              : 'Bước vào bên trong biệt thự · Đóng kín 100% & đi bộ tự do'
+          }
         >
-          {I.eye}
-          <span className="pill-label">{mode === 'fp' ? 'Thoát góc nhìn 1' : 'Góc nhìn 1'}</span>
+          <span aria-hidden="true">{isWalkthrough ? '🚪' : '🚶'}</span>
+          <span className="enter-house-label">{isWalkthrough ? 'Thoát Vào nhà' : 'Vào nhà'}</span>
         </button>
 
         <span className="dock-sep" aria-hidden="true" />
@@ -648,6 +759,14 @@ function TopRight() {
           {graphicMode === 'hd' ? '✨ HD' : '⚡ Mượt'}
         </button>
       </div>
+
+      {/* Trạng thái tinh tế khi zoom sát tự động mở Cutaway */}
+      {autoCutawayActive && (
+        <div className="glass-dock cutaway-auto-badge" role="status" aria-live="polite">
+          <span className="cutaway-auto-dot" aria-hidden="true" />
+          <span>Đang xem gần · Tự mở Cutaway</span>
+        </div>
+      )}
     </div>
   )
 }

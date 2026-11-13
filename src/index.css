@@ -509,6 +509,86 @@ html.dark .pill-btn.active {
   box-shadow: 0 0 0 3px rgba(240, 203, 147, 0.28), 0 0 8px rgba(240, 203, 147, 0.72);
 }
 
+/* ---- Nút CTA nổi bật Vào nhà (.enter-house-btn) ---- */
+.enter-house-btn {
+  padding: 0 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #946530 0%, #6f481d 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 6px 16px rgba(111, 72, 29, 0.30),
+    0 1px 3px rgba(28, 32, 36, 0.14),
+    inset 0 1px 0 rgba(255, 244, 224, 0.36);
+}
+.enter-house-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a37138 0%, #7d5222 100%);
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #ffffff;
+  box-shadow:
+    0 8px 22px rgba(111, 72, 29, 0.38),
+    inset 0 1px 0 rgba(255, 244, 224, 0.45);
+}
+html.dark .enter-house-btn {
+  background: linear-gradient(135deg, #e2b778 0%, #c69551 100%);
+  color: #16181c;
+  border-color: rgba(255, 244, 220, 0.45);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.46),
+    0 0 0 1px rgba(232, 194, 138, 0.22),
+    inset 0 1px 0 rgba(255, 252, 244, 0.56);
+}
+html.dark .enter-house-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ecc58a 0%, #d3a25d 100%);
+  color: #121417;
+  border-color: rgba(255, 248, 232, 0.68);
+}
+
+.enter-house-btn.is-inside {
+  background: linear-gradient(135deg, #974038 0%, #6f2922 100%);
+  color: #ffffff;
+  border-color: rgba(255, 224, 220, 0.32);
+  box-shadow:
+    0 6px 16px rgba(111, 41, 34, 0.34),
+    inset 0 1px 0 rgba(255, 228, 224, 0.30);
+}
+.enter-house-btn.is-inside:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a84940 0%, #7d2f27 100%);
+  color: #ffffff;
+}
+html.dark .enter-house-btn.is-inside {
+  background: linear-gradient(135deg, #b64f46 0%, #8b352e 100%);
+  color: #ffffff;
+  border-color: rgba(244, 184, 178, 0.42);
+}
+html.dark .enter-house-btn.is-inside:hover:not(:disabled) {
+  background: linear-gradient(135deg, #c65b52 0%, #9b3d35 100%);
+}
+
+/* ---- Badge trạng thái tinh tế khi Zoom sát tự động mở Cutaway ---- */
+.cutaway-auto-badge {
+  pointer-events: none;
+  padding: 4px 12px;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink);
+  animation: fadeIn 0.2s ease;
+}
+.cutaway-auto-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  box-shadow: 0 0 0 3px rgba(179, 131, 74, 0.24);
+  flex: none;
+}
+html.dark .cutaway-auto-dot {
+  background: #e8c28a;
+  box-shadow: 0 0 0 3px rgba(232, 194, 138, 0.26);
+}
+
 /* ---- Tooltip tinh tế khi hover trên Desktop ---- */
 @media (hover: hover) and (pointer: fine) {
   .hud-top-right [data-tooltip]::after {
@@ -566,7 +646,156 @@ html.dark .pill-btn.active {
   border-radius: 999px;
   max-width: calc(100vw - 24px);
   z-index: 105;
+  transition: bottom 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   animation: dockPop 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.context-dock.above-walkthrough {
+  bottom: 118px;
+}
+
+/* ---- Thanh Điều hướng Phòng khi đang Vào nhà (.walkthrough-dock) ---- */
+.walkthrough-dock {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 7px;
+  border-radius: 22px;
+  max-width: calc(100vw - 28px);
+  z-index: 103;
+  background: var(--card-sheen), var(--card);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-lg);
+  animation: dockPop 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.walkthrough-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.walkthrough-spots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--segment-track);
+  border: 1px solid var(--line);
+}
+.walkthrough-spot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  flex: none;
+}
+.walkthrough-spot-btn:hover:not(.active) {
+  color: var(--ink);
+  background: var(--chip-hover);
+  transform: translateY(-1px);
+}
+.walkthrough-spot-btn.active {
+  background: linear-gradient(135deg, #946530 0%, #6f481d 100%);
+  color: #ffffff;
+  font-weight: 700;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow:
+    0 4px 12px rgba(111, 72, 29, 0.28),
+    inset 0 1px 0 rgba(255, 244, 224, 0.36);
+}
+html.dark .walkthrough-spot-btn.active {
+  background: linear-gradient(135deg, #e2b778 0%, #c69551 100%);
+  color: #16181c;
+  border-color: rgba(255, 248, 232, 0.56);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 252, 244, 0.52);
+}
+
+.walkthrough-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+.walkthrough-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--chip-bg);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  flex: none;
+}
+.walkthrough-ctrl-btn:hover {
+  border-color: var(--accent);
+  background: var(--chip-hover);
+  transform: translateY(-1px);
+}
+.walkthrough-ctrl-btn.is-eye {
+  background: linear-gradient(135deg, #3c5468 0%, #243340 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.26);
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(29, 45, 58, 0.26);
+}
+html.dark .walkthrough-ctrl-btn.is-eye {
+  background: linear-gradient(135deg, #4f6b82 0%, #304354 100%);
+  color: #ffffff;
+  border-color: rgba(232, 194, 138, 0.58);
+}
+.walkthrough-ctrl-btn.overview-exit {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: rgba(53, 76, 94, 0.28);
+  font-weight: 700;
+}
+.walkthrough-ctrl-btn.overview-exit:hover {
+  background: var(--accent);
+  color: var(--primary-ink);
+  border-color: transparent;
+}
+html.dark .walkthrough-ctrl-btn.overview-exit {
+  background: rgba(224, 182, 125, 0.16);
+  color: #f6dcb2;
+  border-color: rgba(232, 194, 138, 0.36);
+}
+html.dark .walkthrough-ctrl-btn.overview-exit:hover {
+  background: #e2b778;
+  color: #16181c;
+}
+
+.walkthrough-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 @keyframes dockPop {
   from {
@@ -825,6 +1054,12 @@ html.dark .dock-btn.leave:hover {
   white-space: nowrap;
   z-index: 106;
   animation: fadeIn 0.16s ease;
+}
+.hover-hint.in-walkthrough {
+  bottom: 120px;
+}
+.hover-hint.in-walkthrough.with-context {
+  bottom: 174px;
 }
 
 /* ---- Gợi ý thao tác nhỏ gọn cạnh dưới ---- */
@@ -1433,6 +1668,32 @@ html.dark .auto-melody-btn.playing {
     width: 32px;
     height: 32px;
   }
+  .walkthrough-dock {
+    max-width: calc(100vw - 24px);
+    padding: 7px 10px 6px;
+  }
+  .walkthrough-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .walkthrough-spots {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .walkthrough-spots::-webkit-scrollbar {
+    display: none;
+  }
+  .walkthrough-spot-btn {
+    height: 28px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .walkthrough-ctrl-btn {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
 }
 
 @media (max-width: 639px) {
@@ -1555,6 +1816,12 @@ html.dark .auto-melody-btn.playing {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  .hover-hint.in-walkthrough {
+    bottom: calc(198px + env(safe-area-inset-bottom));
+  }
+  .hover-hint.in-walkthrough.with-context {
+    bottom: calc(262px + env(safe-area-inset-bottom));
+  }
   .fp-hud {
     bottom: calc(104px + env(safe-area-inset-bottom));
     font-size: 11px;
@@ -1570,8 +1837,71 @@ html.dark .auto-melody-btn.playing {
     width: calc(100vw - 20px);
     gap: 6px;
   }
+  .context-dock.above-walkthrough {
+    bottom: calc(196px + env(safe-area-inset-bottom));
+  }
   .context-sep {
     display: none;
+  }
+
+  .wall-toggle-btn.is-locked-fp {
+    display: none;
+  }
+  .enter-house-btn {
+    padding: 0 11px;
+  }
+  .cutaway-auto-badge {
+    font-size: 10.5px;
+    padding: 3px 10px;
+  }
+
+  .walkthrough-dock {
+    bottom: calc(102px + env(safe-area-inset-bottom));
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    border-radius: 18px;
+    padding: 6px 8px 5px;
+    gap: 5px;
+  }
+  .walkthrough-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .walkthrough-sep {
+    display: none;
+  }
+  .walkthrough-spots {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    justify-content: flex-start;
+    padding: 2px;
+    gap: 3px;
+  }
+  .walkthrough-spots::-webkit-scrollbar {
+    display: none;
+  }
+  .walkthrough-spot-btn {
+    height: 28px;
+    padding: 0 9px;
+    font-size: 11.5px;
+  }
+  .walkthrough-actions {
+    width: 100%;
+    justify-content: center;
+    gap: 6px;
+  }
+  .walkthrough-ctrl-btn {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 11.5px;
+    flex: 1;
+    max-width: 160px;
+  }
+  .walkthrough-hint {
+    font-size: 10px;
   }
   .side-modal {
     right: 10px;
