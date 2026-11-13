@@ -46,8 +46,8 @@ export function Room() {
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -21.0, 16.0)
     const z = THREE.MathUtils.clamp(p.z, -9.0, 14.8)
-    // Tránh click nhầm vào lòng hồ bơi [2.8..12.2, 7.4..13.4]
-    if (x >= 2.8 && x <= 12.2 && z >= 7.4 && z <= 13.4) return
+    // Tránh click nhầm vào lòng hồ bơi [5.75..14.85, 7.1..13.95] (+ viền thành)
+    if (x >= 5.65 && x <= 15.05 && z >= 7.0 && z <= 14.1) return
     st.setAvatarTarget([x, p.y, z])
   }
 

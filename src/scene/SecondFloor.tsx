@@ -422,7 +422,6 @@ function SecondFloorCurtains() {
       const rightCut =
         st.mode === 'orbit' &&
         st.wallMode === 'ghost' &&
-        !(st.viewPreset === 'overview' && st.roofVisible) &&
         isWallCutByCamera(camera.position, [1, 0, 0])
       groupRef.current.visible = !rightCut
     }
@@ -2041,6 +2040,12 @@ function SleepingCat({ p }: { p: V3 }) {
 /* ============================================================================
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
+const GIRL_OUTDOOR_STROLL_SPOTS: { pos: V3; lookYaw: number }[] = [
+  { pos: [-8.8, -0.165, 12.6], lookYaw: Math.PI },    // Sân Firepit Lounge ấm áp
+  { pos: [4.65, -0.15, 10.5], lookYaw: Math.PI / 2 }, // Sundeck ngắm hồ bơi vô cực
+  { pos: [-1.45, -0.14, 13.8], lookYaw: 0 },          // Lối đá bước dạo nổi trên mặt nước
+]
+
 function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean } = {}) {
   const root = useRef<THREE.Group>(null)
   const hideIfUpstairsRef = useRef(hideIfUpstairs)
@@ -2077,6 +2082,10 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
   const walkWatchdog = useRef(0)
   const autoIdleTimer = useRef(1.8)
   const autoSeqIdx = useRef(0)
+  const outdoorStrollTarget = useRef<V3 | null>(null)
+  const outdoorStrollYaw = useRef<number | null>(null)
+  const outdoorStrollPause = useRef(0)
+  const outdoorStrollIdx = useRef(0)
   const lastSpinTick = useRef(girlOutfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
@@ -2167,11 +2176,14 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
     let showRemote = false
     let showBook = false
 
-    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1)
+    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1 <-> Sân vườn)
     if (st.girlActivity === 'idle') {
-      walkWatchdog.current = 0
       let moving = false
       if (isControllingGirl && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
+        walkWatchdog.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
         moving = stepCharacterWalk(
           walkPos,
           walkFloorY,
@@ -2188,19 +2200,65 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
         )
         if (moving) autoIdleTimer.current = 4.0
       } else if (st.girlAutoLife) {
-        autoIdleTimer.current -= delta
-        if (autoIdleTimer.current <= 0) {
-          const nextAct = AUTO_SEQUENCE_GIRL[autoSeqIdx.current % AUTO_SEQUENCE_GIRL.length]
-          autoSeqIdx.current += 1
-          autoIdleTimer.current = 1.6
-          if (nextAct === 'pet') {
-            st.petDog(autoSeqIdx.current % 2 === 0 ? 'bo' : 'mochi', false, 'girl')
+        if (outdoorStrollTarget.current) {
+          walkWatchdog.current += delta
+          const [ox, , oz] = outdoorStrollTarget.current
+          const distOutdoor = Math.hypot(walkPos.current[0] - ox, walkPos.current[1] - oz)
+          if (distOutdoor > 0.25 && walkWatchdog.current < 28.0) {
+            moving = stepCharacterWalk(
+              walkPos,
+              walkFloorY,
+              walkYaw,
+              walkPhase,
+              0,
+              0,
+              false,
+              outdoorStrollTarget.current,
+              () => {
+                outdoorStrollTarget.current = null
+              },
+              delta,
+              [LIVE_ACTORS.khoaPos[0], LIVE_ACTORS.khoaPos[1]],
+              LIVE_ACTORS.khoaFloorY,
+            )
           } else {
-            st.startActivity(nextAct, false, 'girl')
+            outdoorStrollTarget.current = null
+            walkWatchdog.current = 0
+            walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
           }
-          return
+        } else if (outdoorStrollPause.current > 0) {
+          walkWatchdog.current = 0
+          outdoorStrollPause.current -= delta
+          if (outdoorStrollYaw.current !== null) {
+            const diff = Math.atan2(
+              Math.sin(outdoorStrollYaw.current - walkYaw.current),
+              Math.cos(outdoorStrollYaw.current - walkYaw.current),
+            )
+            walkYaw.current += diff * Math.min(1, delta * 4)
+          }
+          headY = Math.sin(t * 0.85) * 0.24
+          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+        } else {
+          walkWatchdog.current = 0
+          outdoorStrollYaw.current = null
+          autoIdleTimer.current -= delta
+          if (autoIdleTimer.current <= 0) {
+            const nextAct = AUTO_SEQUENCE_GIRL[autoSeqIdx.current % AUTO_SEQUENCE_GIRL.length]
+            autoSeqIdx.current += 1
+            autoIdleTimer.current = 1.6
+            if (nextAct === 'pet') {
+              st.petDog(autoSeqIdx.current % 2 === 0 ? 'bo' : 'mochi', false, 'girl')
+            } else {
+              st.startActivity(nextAct, false, 'girl')
+            }
+            return
+          }
         }
       } else {
+        walkWatchdog.current = 0
+        outdoorStrollTarget.current = null
+        outdoorStrollYaw.current = null
+        outdoorStrollPause.current = 0
         walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
       }
 
@@ -2357,6 +2415,17 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
             st.returnOverview()
             return
           } else if (st.girlAutoLife) {
+            if (autoSeqIdx.current > 0 && autoSeqIdx.current % 3 === 0) {
+              const spot = GIRL_OUTDOOR_STROLL_SPOTS[outdoorStrollIdx.current % GIRL_OUTDOOR_STROLL_SPOTS.length]
+              outdoorStrollIdx.current += 1
+              outdoorStrollTarget.current = spot.pos
+              outdoorStrollYaw.current = spot.lookYaw
+              outdoorStrollPause.current = 5.0
+              walkWatchdog.current = 0
+              autoIdleTimer.current = 0.8
+              st.startActivity('idle', false, 'girl')
+              return
+            }
             const nextAct = AUTO_SEQUENCE_GIRL[autoSeqIdx.current % AUTO_SEQUENCE_GIRL.length]
             autoSeqIdx.current += 1
             if (nextAct === 'pet') {
