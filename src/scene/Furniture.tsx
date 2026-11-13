@@ -778,7 +778,6 @@ function PanoramicWindow() {
       const rightCut =
         st.mode === 'orbit' &&
         st.wallMode === 'ghost' &&
-        !(st.viewPreset === 'overview' && st.roofVisible) &&
         isWallCutByCamera(camera.position, [1, 0, 0])
       groupRef.current.visible = !rightCut
     }
