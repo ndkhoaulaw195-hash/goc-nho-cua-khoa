@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, RBB, Sph } from './prims'
+import { WallAttached } from './ArchitectureShell'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { useStore } from '../store'
 
@@ -181,15 +182,17 @@ function ShowerBooth({ glassMat }: { glassMat: THREE.Material }) {
         <BB p={[0, 1.05, 0.05]} s={[0.14, 0.28, 0.06]} c="#2B2D2F" metal={0.65} rough={0.3} />
       </G>
 
-      {/* Hốc âm tường để dầu gội & sữa tắm có đèn LED 3000K (#FFD7A3) */}
-      <G p={[-1.48, 1.45, 0]}>
-        <B s={[0.06, 0.55, 0.75]} c="#2B2D2F" />
-        <B p={[0.01, 0.24, 0]} s={[0.04, 0.03, 0.72]} c="#FFD7A3" emissive="#FFD7A3" ei={1.6} shadow={false} />
-        {/* Chai sữa tắm & dầu gội trung tính */}
-        <Cyl p={[0.02, -0.12, -0.2]} rt={0.038} h={0.16} c="#4A5E6F" rough={0.28} />
-        <Cyl p={[0.02, -0.12, 0.02]} rt={0.038} h={0.18} c="#B7AFA5" rough={0.28} />
-        <Cyl p={[0.02, -0.12, 0.22]} rt={0.034} h={0.14} c="#2B2D2F" rough={0.35} />
-      </G>
+      {/* Hốc âm tường để dầu gội & sữa tắm có đèn LED 3000K (#FFD7A3) — ẩn cùng tường trái khi cắt */}
+      <WallAttached normal={[-1, 0, 0]} floor={1}>
+        <G p={[-1.48, 1.45, 0]}>
+          <B s={[0.06, 0.55, 0.75]} c="#2B2D2F" />
+          <B p={[0.01, 0.24, 0]} s={[0.04, 0.03, 0.72]} c="#FFD7A3" emissive="#FFD7A3" ei={1.6} shadow={false} />
+          {/* Chai sữa tắm & dầu gội trung tính */}
+          <Cyl p={[0.02, -0.12, -0.2]} rt={0.038} h={0.16} c="#4A5E6F" rough={0.28} />
+          <Cyl p={[0.02, -0.12, 0.02]} rt={0.038} h={0.18} c="#B7AFA5" rough={0.28} />
+          <Cyl p={[0.02, -0.12, 0.22]} rt={0.034} h={0.14} c="#2B2D2F" rough={0.35} />
+        </G>
+      </WallAttached>
     </G>
   )
 }
@@ -372,15 +375,17 @@ function SmartToilet() {
 /* ---------- Giàn sấy khăn Matte Charcoal (#2B2D2F) treo tường ---------- */
 function TowelWarmer() {
   return (
-    <G p={[-15.54, 1.4, -2.1]}>
-      <Cyl p={[0, 0, -0.32]} rt={0.016} h={1.4} c="#2B2D2F" metal={0.65} rough={0.3} />
-      <Cyl p={[0, 0, 0.32]} rt={0.016} h={1.4} c="#2B2D2F" metal={0.65} rough={0.3} />
-      {[-0.5, -0.2, 0.1, 0.4, 0.6].map((ty, i) => (
-        <Cyl key={i} p={[0, ty, 0]} r={[Math.PI / 2, 0, 0]} rt={0.014} h={0.64} c="#2B2D2F" metal={0.65} rough={0.3} />
-      ))}
-      <BB p={[0.04, 0.02, 0]} s={[0.06, 0.48, 0.42]} c="#EFECE6" rough={0.85} />
-      <BB p={[0.04, -0.3, 0]} s={[0.06, 0.45, 0.46]} c="#D6D1C9" rough={0.85} />
-    </G>
+    <WallAttached normal={[-1, 0, 0]} floor={1}>
+      <G p={[-15.54, 1.4, -2.1]}>
+        <Cyl p={[0, 0, -0.32]} rt={0.016} h={1.4} c="#2B2D2F" metal={0.65} rough={0.3} />
+        <Cyl p={[0, 0, 0.32]} rt={0.016} h={1.4} c="#2B2D2F" metal={0.65} rough={0.3} />
+        {[-0.5, -0.2, 0.1, 0.4, 0.6].map((ty, i) => (
+          <Cyl key={i} p={[0, ty, 0]} r={[Math.PI / 2, 0, 0]} rt={0.014} h={0.64} c="#2B2D2F" metal={0.65} rough={0.3} />
+        ))}
+        <BB p={[0.04, 0.02, 0]} s={[0.06, 0.48, 0.42]} c="#EFECE6" rough={0.85} />
+        <BB p={[0.04, -0.3, 0]} s={[0.06, 0.45, 0.46]} c="#D6D1C9" rough={0.85} />
+      </G>
+    </WallAttached>
   )
 }
 
@@ -389,56 +394,58 @@ function MasterBathLounge() {
   const bathFullMirrorLightOn = useStore((s) => s.bathFullMirrorLightOn)
   return (
     <group>
-      {/* 1. Tủ kệ đồ Master Spa Warm Taupe/Greige (#B7AFA5) */}
-      <G p={[-15.26, 0, 3.65]} r={[0, Math.PI / 2, 0]}>
-        <RBB p={[0, 0, 0]} s={[1.6, 2.15, 0.52]} c="#B7AFA5" rough={0.65} radius={0.03} shadow />
-        {[-0.45, 0.45].map((kx, i) => (
-          <group key={i}>
-            <Cyl p={[kx, 0.35, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#EFECE6" rough={0.85} />
-            <Cyl p={[kx, 0.85, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#EFECE6" rough={0.85} />
-            <Cyl p={[kx, 1.35, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#D6D1C9" rough={0.85} />
-          </group>
-        ))}
-        <Cyl p={[0, 0.28, 0]} rt={0.22} rb={0.18} h={0.34} c="#C4AF97" rough={0.85} />
-        <Cyl p={[-0.35, 2.22, 0]} rt={0.045} h={0.1} c="#EFECE6" />
-        <Cyl p={[0.35, 2.24, 0]} rt={0.04} h={0.14} c="#2B2D2F" />
-      </G>
-
-      {/* 2. Gương soi toàn thân viền Matte Charcoal (#2B2D2F) & LED 3000K (#FFD7A3) */}
-      <Interact
-        hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
-        onClick={() => useStore.getState().toggleBathFullMirrorLight()}
-      >
-        <G p={[-15.52, 1.6, 1.4]}>
-          <B
-            p={[0.01, 0, 0]}
-            s={[0.02, 2.24, 0.94]}
-            c="#FFD7A3"
-            emissive="#FFD7A3"
-            ei={bathFullMirrorLightOn ? 2.4 : 0.05}
-            shadow={false}
-            polyOffset
-          />
-          <B p={[0.02, 0, 0]} s={[0.02, 2.18, 0.88]} c="#2B2D2F" polyOffset />
-          <mesh position={[0.035, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-            <planeGeometry args={[0.82, 2.12]} />
-            <meshStandardMaterial
-              color="#D6D1C9"
-              metalness={0.95}
-              roughness={0.05}
-              polygonOffset
-              polygonOffsetFactor={-1}
-              polygonOffsetUnits={-1}
-            />
-          </mesh>
-          {bathFullMirrorLightOn && (
-            <mesh position={[0.015, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
-              <planeGeometry args={[0.96, 2.26]} />
-              <meshBasicMaterial color="#FFD7A3" transparent opacity={0.24} depthWrite={false} />
-            </mesh>
-          )}
+      {/* 1. Tủ kệ đồ Master Spa & Gương soi toàn thân (ẩn cùng tường trái khi cắt để không lộ mặt lưng) */}
+      <WallAttached normal={[-1, 0, 0]} floor={1}>
+        <G p={[-15.26, 0, 3.65]} r={[0, Math.PI / 2, 0]}>
+          <RBB p={[0, 0, 0]} s={[1.6, 2.15, 0.52]} c="#B7AFA5" rough={0.65} radius={0.03} shadow />
+          {[-0.45, 0.45].map((kx, i) => (
+            <group key={i}>
+              <Cyl p={[kx, 0.35, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#EFECE6" rough={0.85} />
+              <Cyl p={[kx, 0.85, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#EFECE6" rough={0.85} />
+              <Cyl p={[kx, 1.35, 0]} r={[0, 0, Math.PI / 2]} rt={0.065} h={0.28} c="#D6D1C9" rough={0.85} />
+            </group>
+          ))}
+          <Cyl p={[0, 0.28, 0]} rt={0.22} rb={0.18} h={0.34} c="#C4AF97" rough={0.85} />
+          <Cyl p={[-0.35, 2.22, 0]} rt={0.045} h={0.1} c="#EFECE6" />
+          <Cyl p={[0.35, 2.24, 0]} rt={0.04} h={0.14} c="#2B2D2F" />
         </G>
-      </Interact>
+
+        {/* 2. Gương soi toàn thân viền Matte Charcoal (#2B2D2F) & LED 3000K (#FFD7A3) */}
+        <Interact
+          hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
+          onClick={() => useStore.getState().toggleBathFullMirrorLight()}
+        >
+          <G p={[-15.52, 1.6, 1.4]}>
+            <B
+              p={[0.01, 0, 0]}
+              s={[0.02, 2.24, 0.94]}
+              c="#FFD7A3"
+              emissive="#FFD7A3"
+              ei={bathFullMirrorLightOn ? 2.4 : 0.05}
+              shadow={false}
+              polyOffset
+            />
+            <B p={[0.02, 0, 0]} s={[0.02, 2.18, 0.88]} c="#2B2D2F" polyOffset />
+            <mesh position={[0.035, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[0.82, 2.12]} />
+              <meshStandardMaterial
+                color="#D6D1C9"
+                metalness={0.95}
+                roughness={0.05}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+            {bathFullMirrorLightOn && (
+              <mesh position={[0.015, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+                <planeGeometry args={[0.96, 2.26]} />
+                <meshBasicMaterial color="#FFD7A3" transparent opacity={0.24} depthWrite={false} />
+              </mesh>
+            )}
+          </G>
+        </Interact>
+      </WallAttached>
 
       {/* 3. Thảm đá thấm nước Diatomite (#D6D1C9) */}
       <BB p={[-13.8, 0.016, 2.4]} s={[1.4, 0.02, 0.95]} c="#D6D1C9" rough={0.85} polyOffset />

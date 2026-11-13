@@ -29,6 +29,35 @@ export function isWallCutByCamera(cameraPos: THREE.Vector3, normal: V3): boolean
   return _camToCenter.dot(_wallNormal) < WALL_CUT_DOT_THRESHOLD
 }
 
+/** Ẩn đồng bộ các đồ vật ốp/dính lên tường khi tường đó đang hạ thấp hoặc mờ */
+export function WallAttached({
+  normal,
+  floor,
+  hideInGhost = true,
+  children,
+}: {
+  normal: V3
+  floor: 1 | 2
+  hideInGhost?: boolean
+  children: ReactNode
+}) {
+  const ref = useRef<THREE.Group>(null)
+
+  useFrame(({ camera }) => {
+    if (!ref.current) return
+    const st = useStore.getState()
+    const cutawayActive =
+      st.mode === 'orbit' &&
+      (st.wallMode === 'cutaway' || (hideInGhost && st.wallMode === 'ghost')) &&
+      (st.viewPreset === (floor === 1 ? 'floor1' : 'floor2') ||
+        (st.viewPreset === 'overview' && !st.roofVisible))
+    const cut = cutawayActive && isWallCutByCamera(camera.position, normal)
+    ref.current.visible = !cut
+  })
+
+  return <group ref={ref}>{children}</group>
+}
+
 interface ArchitectureShellProps {
   onFloorClick?: (e: ThreeEvent<MouseEvent>) => void
 }

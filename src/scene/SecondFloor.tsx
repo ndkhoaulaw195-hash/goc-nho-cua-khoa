@@ -3,7 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, Sph, RB, RBB } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
-import { isWallCutByCamera } from './ArchitectureShell'
+import { WallAttached, isWallCutByCamera } from './ArchitectureShell'
 import {
   AUTO_DURATION,
   AUTO_SEQUENCE_GIRL,
@@ -518,25 +518,28 @@ function WallsAndDoor() {
       {/* 1. Vách lam Slate Blue & vách ngăn nội thất Tầng 2 dày 0.15 units tại x = -1.05 */}
       <WoodSlatsWall H2={H2} />
 
-      {/* Cửa đôi màu Slate Blue (#5E7487) viền Matte Charcoal (#2B2D2F) ốp tường trái */}
-      <G p={[-9.95, Y, -2.9]}>
-        <BB p={[0, 0, 0]} s={[0.05, 3.55, 3.44]} c="#2B2D2F" rough={0.6} shadow={false} polyOffset />
-        <BB p={[0.015, 0, 0]} s={[0.045, 3.42, 3.3]} c="#5E7487" rough={0.75} shadow={false} polyOffset />
-        <B p={[0.04, 1.72, 0]} s={[0.02, 3.35, 0.03]} c="#4A5E6F" shadow={false} polyOffset />
-        <B p={[0.048, 1.5, -0.1]} s={[0.025, 0.26, 0.025]} c="#2B2D2F" metal={0.5} rough={0.35} shadow={false} />
-        <B p={[0.048, 1.5, 0.1]} s={[0.025, 0.26, 0.025]} c="#2B2D2F" metal={0.5} rough={0.35} shadow={false} />
-      </G>
+      {/* Cửa đôi & 2 khung tranh ốp tường trái — ẩn đồng bộ khi tường trái Tầng 2 hạ/mờ */}
+      <WallAttached normal={[-1, 0, 0]} floor={2}>
+        {/* Cửa đôi màu Slate Blue (#5E7487) viền Matte Charcoal (#2B2D2F) ốp tường trái */}
+        <G p={[-9.95, Y, -2.9]}>
+          <BB p={[0, 0, 0]} s={[0.05, 3.55, 3.44]} c="#2B2D2F" rough={0.6} shadow={false} polyOffset />
+          <BB p={[0.015, 0, 0]} s={[0.045, 3.42, 3.3]} c="#5E7487" rough={0.75} shadow={false} polyOffset />
+          <B p={[0.04, 1.72, 0]} s={[0.02, 3.35, 0.03]} c="#4A5E6F" shadow={false} polyOffset />
+          <B p={[0.048, 1.5, -0.1]} s={[0.025, 0.26, 0.025]} c="#2B2D2F" metal={0.5} rough={0.35} shadow={false} />
+          <B p={[0.048, 1.5, 0.1]} s={[0.025, 0.26, 0.025]} c="#2B2D2F" metal={0.5} rough={0.35} shadow={false} />
+        </G>
 
-      {/* 2 Khung tranh nghệ thuật tối giản bên cạnh cửa trái */}
-      <G p={[-9.96, Y + 2.2, 0.8]} r={[0, Math.PI / 2, 0]}>
-        <B p={[-0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#2B2D2F" shadow={false} polyOffset />
-        <B p={[-0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#EFECE6" shadow={false} polyOffset />
-        <Sph p={[-0.45, 0, 0.025]} s={[0.16, 0.24, 0.01]} c="#566E4C" />
+        {/* 2 Khung tranh nghệ thuật tối giản bên cạnh cửa trái */}
+        <G p={[-9.96, Y + 2.2, 0.8]} r={[0, Math.PI / 2, 0]}>
+          <B p={[-0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#2B2D2F" shadow={false} polyOffset />
+          <B p={[-0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#EFECE6" shadow={false} polyOffset />
+          <Sph p={[-0.45, 0, 0.025]} s={[0.16, 0.24, 0.01]} c="#566E4C" />
 
-        <B p={[0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#2B2D2F" shadow={false} polyOffset />
-        <B p={[0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#EFECE6" shadow={false} polyOffset />
-        <Sph p={[0.45, 0, 0.025]} s={[0.17, 0.2, 0.01]} c="#C4834E" />
-      </G>
+          <B p={[0.45, 0, 0]} s={[0.62, 0.84, 0.03]} c="#2B2D2F" shadow={false} polyOffset />
+          <B p={[0.45, 0, 0.014]} s={[0.54, 0.76, 0.015]} c="#EFECE6" shadow={false} polyOffset />
+          <Sph p={[0.45, 0, 0.025]} s={[0.17, 0.2, 0.01]} c="#C4834E" />
+        </G>
+      </WallAttached>
 
       {/* Cây Bàng Singapore ở góc tường bên trái */}
       <G p={[-9.15, Y, -4.85]}>
