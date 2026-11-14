@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Interact } from './prims'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
+import { getProximityDoorOpen } from './interactionEngine'
 import { LuxuryLandscaping } from './LuxuryLandscaping'
 import { RooftopTerrace } from './RooftopTerrace'
 import { isHouseClosedOverview, isValidClick, registerOccluderMesh } from './raycastRegistry'
@@ -482,8 +483,8 @@ function HangingBalconyPlanter({
     <group position={pos}>
       {/* Thân chậu chữ nhật viền đen mờ #1E2229 & ngàm thép treo vào mép ban công */}
       <B p={[0, 0.12, 0]} s={[0.92, 0.24, 0.24]} c={TRIM_BLACK} rough={0.42} metal={0.35} shadow={false} />
-      <B p={[0, 0.235, 0]} s={[0.96, 0.024, 0.27]} c={TRIM_BLACK} rough={0.34} metal={0.55} shadow={false} />
-      <B p={[0, 0.228, 0]} s={[0.84, 0.02, 0.18]} c="#3A3027" rough={0.94} shadow={false} />
+      <B p={[0, 0.232, 0]} s={[0.96, 0.02, 0.27]} c={TRIM_BLACK} rough={0.34} metal={0.55} shadow={false} />
+      <B p={[0, 0.242, 0]} s={[0.84, 0.02, 0.18]} c="#3A3027" rough={0.94} shadow={false} />
       {[-0.3, 0.3].map((bx, idx) => (
         <B key={`br-${idx}`} p={[bx, 0.14, -0.13]} s={[0.045, 0.045, 0.12]} c={TRIM_BLACK} metal={0.6} rough={0.35} shadow={false} />
       ))}
@@ -599,7 +600,7 @@ function StructuralCornerColumns({
         <B
           key={`c1-${i}`}
           p={[cx, H1 / 2, cz]}
-          s={[0.34, H1, 0.34]}
+          s={[0.352, H1 - 0.004, 0.352]}
           map={travTex}
           c={colColor}
           rough={0.4}
@@ -611,7 +612,7 @@ function StructuralCornerColumns({
           <B
             key={`c2-${i}`}
             p={[cx, Y + H2 / 2, cz]}
-            s={[0.34, H2, 0.34]}
+            s={[0.352, H2 - 0.004, 0.352]}
             map={travTex}
             c={colColor}
             rough={0.4}
@@ -983,7 +984,7 @@ function Window3DMullioned({
       />
       <B
         p={isZ ? [-W / 2 + frameThick / 2, 0, 0] : [0, 0, -W / 2 + frameThick / 2]}
-        s={isZ ? [frameThick, H, frameDepth] : [frameDepth, H, frameThick]}
+        s={isZ ? [frameThick, H - frameThick * 2, frameDepth] : [frameDepth, H - frameThick * 2, frameThick]}
         c={frameC}
         rough={0.34}
         metal={0.62}
@@ -991,7 +992,7 @@ function Window3DMullioned({
       />
       <B
         p={isZ ? [W / 2 - frameThick / 2, 0, 0] : [0, 0, W / 2 - frameThick / 2]}
-        s={isZ ? [frameThick, H, frameDepth] : [frameDepth, H, frameThick]}
+        s={isZ ? [frameThick, H - frameThick * 2, frameDepth] : [frameDepth, H - frameThick * 2, frameThick]}
         c={frameC}
         rough={0.34}
         metal={0.62}
@@ -1145,15 +1146,17 @@ function MainEntranceDoor({
     if (!leafRef.current) return
     const DOOR_X = -1.4
     const DOOR_Z = 6.14
-    const PROXIMITY_RADIUS = 1.8
-    const khoaNear =
-      LIVE_ACTORS.khoaFloorY < 1.2 &&
-      Math.hypot(LIVE_ACTORS.khoaPos[0] - DOOR_X, LIVE_ACTORS.khoaPos[1] - DOOR_Z) <= PROXIMITY_RADIUS
-    const girlNear =
-      LIVE_ACTORS.girlPos[1] < 1.2 &&
-      Math.hypot(LIVE_ACTORS.girlPos[0] - DOOR_X, LIVE_ACTORS.girlPos[2] - DOOR_Z) <= PROXIMITY_RADIUS
-    const isOpen = doorOpen || khoaNear || girlNear
-    const targetRot = isOpen ? -1.35 : 0
+    const khoaDistSq =
+      LIVE_ACTORS.khoaFloorY < 1.2
+        ? (LIVE_ACTORS.khoaPos[0] - DOOR_X) ** 2 + (LIVE_ACTORS.khoaPos[1] - DOOR_Z) ** 2
+        : Infinity
+    const girlDistSq =
+      LIVE_ACTORS.girlPos[1] < 1.2
+        ? (LIVE_ACTORS.girlPos[0] - DOOR_X) ** 2 + (LIVE_ACTORS.girlPos[2] - DOOR_Z) ** 2
+        : Infinity
+    const minDistSq = Math.min(khoaDistSq, girlDistSq)
+    const isOpen = doorOpen || getProximityDoorOpen('main_door', minDistSq, 3.24, 4.84)
+    const targetRot = isOpen ? -Math.PI / 2 : 0
     const k = 1 - Math.exp(-Math.min(dt, 0.05) * 9)
     leafRef.current.rotation.y = THREE.MathUtils.lerp(leafRef.current.rotation.y, targetRot, k)
   })
@@ -1196,7 +1199,11 @@ function MainEntranceDoor({
 
       {/* Cánh cửa gỗ Teak bản lớn dạng trục xoay Pivot cao kịch trần */}
       <Interact
+        id="main_door"
         zone="exterior"
+        category="DOOR_STAIR"
+        label={closedOverview ? 'Bước vào khám phá bên trong nhà' : doorOpen ? 'Đóng cửa chính Pivot' : 'Mở cửa chính Pivot'}
+        customStandOffset={[-1.4, 0, 7.15]}
         hint={
           closedOverview
             ? '🚶 Bước vào khám phá bên trong nhà'
@@ -1256,19 +1263,19 @@ function MainEntranceDoor({
       {/* MÁI HIÊN ĐUA RA CHE SẢNH CHÍNH TỚI z = 8.05 (bước tiếp nối sạch từ mép đua Tầng 2 z = 7.18 -> z = 8.05, zero z-fighting) */}
       <group ref={canopyRef} position={[0.2, 4.26, 1.476]}>
         {/* Khối mái hiên viền thép đen mờ #1E2229 & mặt trên chống thấm */}
-        <B p={[0, 0, 0]} s={[4.64, 0.18, 0.868]} c={canopyTrim} rough={0.4} metal={0.55} shadow />
-        <B p={[0, 0.095, 0]} s={[4.48, 0.016, 0.78]} c="#2B303A" rough={0.86} />
+        <B p={[0, 0, 0]} s={[4.64, 0.172, 0.868]} c={canopyTrim} rough={0.4} metal={0.55} shadow />
+        <B p={[0, 0.094, 0]} s={[4.48, 0.016, 0.78]} c="#2B303A" rough={0.86} />
         {/* Mặt dưới trần mái hiên ốp gỗ Teak ấm #C68642 */}
         <B
-          p={[0, -0.092, 0]}
-          s={[4.48, 0.02, 0.78]}
+          p={[0, -0.094, 0]}
+          s={[4.48, 0.016, 0.78]}
           map={soffitTex}
           c={darkMode ? '#EADBC6' : '#FFFFFF'}
           rough={0.48}
         />
         {/* Dải LED âm trần #FFAE52 chạy dài theo mũi mái hiên sáng cả ban ngày */}
         <B
-          p={[0, -0.106, 0.34]}
+          p={[0, -0.111, 0.34]}
           s={[4.3, 0.018, 0.045]}
           c={WARM_LED}
           emissive={WARM_LED}
@@ -1279,7 +1286,7 @@ function MainEntranceDoor({
         {[-1.15, 1.15].map((dx, idx) => (
           <B
             key={idx}
-            p={[dx, -0.106, -0.02]}
+            p={[dx, -0.11, -0.02]}
             s={[0.14, 0.016, 0.14]}
             c={WARM_LED}
             emissive={WARM_LED}
@@ -1433,14 +1440,16 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
   useFrame((_, dt) => {
     const DOOR_X = -10.14
     const DOOR_Z = 3.1
-    const PROXIMITY_RADIUS = 2.0
-    const khoaNear =
-      LIVE_ACTORS.khoaFloorY > 2.5 &&
-      Math.hypot(LIVE_ACTORS.khoaPos[0] - DOOR_X, LIVE_ACTORS.khoaPos[1] - DOOR_Z) <= PROXIMITY_RADIUS
-    const girlNear =
-      LIVE_ACTORS.girlPos[1] > 2.5 &&
-      Math.hypot(LIVE_ACTORS.girlPos[0] - DOOR_X, LIVE_ACTORS.girlPos[2] - DOOR_Z) <= PROXIMITY_RADIUS
-    const isOpen = doorOpen || khoaNear || girlNear
+    const khoaDistSq =
+      LIVE_ACTORS.khoaFloorY > 2.5
+        ? (LIVE_ACTORS.khoaPos[0] - DOOR_X) ** 2 + (LIVE_ACTORS.khoaPos[1] - DOOR_Z) ** 2
+        : Infinity
+    const girlDistSq =
+      LIVE_ACTORS.girlPos[1] > 2.5
+        ? (LIVE_ACTORS.girlPos[0] - DOOR_X) ** 2 + (LIVE_ACTORS.girlPos[2] - DOOR_Z) ** 2
+        : Infinity
+    const minDistSq = Math.min(khoaDistSq, girlDistSq)
+    const isOpen = doorOpen || getProximityDoorOpen('terrace_door', minDistSq, 3.24, 4.84)
     const k = 1 - Math.exp(-Math.min(dt, 0.05) * 9)
     if (leftLeafRef.current) {
       leftLeafRef.current.position.z = THREE.MathUtils.lerp(
@@ -1467,15 +1476,19 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
       {/* Khung bao nhôm đen mờ quanh ô cửa lùa */}
       <group ref={frameRef}>
         <B p={[0, 3.575, 0]} s={[WALL_THICKNESS + 0.04, 0.05, 2.04]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
-        <B p={[0, 1.8, -0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
-        <B p={[0, 1.8, 0.99]} s={[WALL_THICKNESS + 0.04, 3.6, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <B p={[0, 1.789, -0.99]} s={[WALL_THICKNESS + 0.04, 3.522, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
+        <B p={[0, 1.789, 0.99]} s={[WALL_THICKNESS + 0.04, 3.522, 0.045]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
         {/* Ngưỡng ray trượt sát sàn & thanh ray dẫn hướng mở rộng dọc mặt ngoài tường */}
         <B p={[0, 0.014, 0]} s={[WALL_THICKNESS + 0.06, 0.028, 2.02]} c={darkMode ? '#1F232A' : '#2C313A'} rough={0.55} shadow={false} />
         <B p={[-0.17, 3.56, 0]} s={[0.07, 0.06, 3.9]} c={frameC} rough={0.34} metal={0.62} shadow={false} />
       </group>
 
       <Interact
+        id="terrace_door"
         zone="interior_f2"
+        category="DOOR_STAIR"
+        label={doorOpen ? 'Đóng cửa lùa Sân thượng' : 'Mở cửa lùa Sân thượng'}
+        customStandOffset={[-9.3, 4.35, 3.1]}
         hint={doorOpen ? '🚪 Đóng cửa lùa Sân thượng' : '🚪 Mở cửa lùa Sân thượng'}
         onClick={(e) => {
           if (e && !isValidClick(e.clientX, e.clientY)) return
@@ -1488,8 +1501,8 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
           </mesh>
           <B p={[0, leafH / 2 - st / 2, 0]} s={[0.042, st, leafW]} c={frameC} rough={0.32} metal={0.65} />
           <B p={[0, -leafH / 2 + st / 2, 0]} s={[0.042, st, leafW]} c={frameC} rough={0.32} metal={0.65} />
-          <B p={[0, 0, -leafW / 2 + st / 2]} s={[0.042, leafH, st]} c={frameC} rough={0.32} metal={0.65} />
-          <B p={[0, 0, leafW / 2 - st / 2]} s={[0.042, leafH, st]} c={frameC} rough={0.32} metal={0.65} />
+          <B p={[0, 0, -leafW / 2 + st / 2]} s={[0.042, leafH - st * 2, st]} c={frameC} rough={0.32} metal={0.65} />
+          <B p={[0, 0, leafW / 2 - st / 2]} s={[0.042, leafH - st * 2, st]} c={frameC} rough={0.32} metal={0.65} />
           <B p={[0.032, -0.35, leafW / 2 - 0.09]} s={[0.02, 0.42, 0.024]} c={handleC} metal={0.85} rough={0.22} />
           <B p={[-0.032, -0.35, leafW / 2 - 0.09]} s={[0.02, 0.42, 0.024]} c={handleC} metal={0.85} rough={0.22} />
         </group>
@@ -1500,8 +1513,8 @@ function TerraceSlidingDoor({ darkMode }: { darkMode: boolean }) {
           </mesh>
           <B p={[0, leafH / 2 - st / 2, 0]} s={[0.042, st, leafW]} c={frameC} rough={0.32} metal={0.65} />
           <B p={[0, -leafH / 2 + st / 2, 0]} s={[0.042, st, leafW]} c={frameC} rough={0.32} metal={0.65} />
-          <B p={[0, 0, -leafW / 2 + st / 2]} s={[0.042, leafH, st]} c={frameC} rough={0.32} metal={0.65} />
-          <B p={[0, 0, leafW / 2 - st / 2]} s={[0.042, leafH, st]} c={frameC} rough={0.32} metal={0.65} />
+          <B p={[0, 0, -leafW / 2 + st / 2]} s={[0.042, leafH - st * 2, st]} c={frameC} rough={0.32} metal={0.65} />
+          <B p={[0, 0, leafW / 2 - st / 2]} s={[0.042, leafH - st * 2, st]} c={frameC} rough={0.32} metal={0.65} />
           <B p={[0.032, -0.35, -leafW / 2 + 0.09]} s={[0.02, 0.42, 0.024]} c={handleC} metal={0.85} rough={0.22} />
           <B p={[-0.032, -0.35, -leafW / 2 + 0.09]} s={[0.02, 0.42, 0.024]} c={handleC} metal={0.85} rough={0.22} />
         </group>
@@ -2035,21 +2048,21 @@ function Floor2Envelope({
             <group>
               <group ref={balconySlabRef}>
                 {/* Kết cấu sàn đua dưới & mũi đá Travertine #F5F2EB nổi khối */}
-                <B p={[-0.04, -0.064, 6.6825]} s={[19.96, 0.128, 0.795]} c={extC} map={travTex} rough={0.4} shadow />
-                <B p={[-0.04, 0.056, 6.77]} s={[19.96, 0.112, 0.62]} c={railColor} rough={0.45} metal={0.35} shadow />
-                <B p={[-0.04, 0.001, 7.13]} s={[19.96, 0.258, 0.1]} c={extC} map={travTex} rough={0.4} shadow />
+                <B p={[-0.04, -0.064, 6.6825]} s={[19.90, 0.128, 0.795]} c={extC} map={travTex} rough={0.4} shadow />
+                <B p={[-0.04, 0.056, 6.765]} s={[19.86, 0.104, 0.57]} c={railColor} rough={0.45} metal={0.35} shadow />
+                <B p={[-0.04, 0.001, 7.13]} s={[19.95, 0.258, 0.1]} c={extC} map={travTex} rough={0.4} shadow />
                 {/* Sàn hành lang ban công ốp gỗ Teak ấm chạy dài suốt mặt tiền */}
                 <B
                   p={[-0.04, 0.122, 6.7725]}
-                  s={[19.96, 0.02, 0.605]}
+                  s={[19.90, 0.02, 0.605]}
                   map={balconyDeckTex}
                   c={darkMode ? '#EADBC6' : '#FFFFFF'}
                   rough={0.48}
                 />
                 {/* Mặt dưới khối đua Tầng 2 ốp kín Gỗ Teak #C68642 */}
                 <B
-                  p={[-0.04, -0.136, 6.7225]}
-                  s={[19.96, 0.016, 0.875]}
+                  p={[-0.04, -0.137, 6.7225]}
+                  s={[19.90, 0.016, 0.875]}
                   map={teakTex}
                   c={darkMode ? '#EADBC6' : '#FFFFFF'}
                   rough={0.48}
@@ -2088,10 +2101,10 @@ function Floor2Envelope({
             <group ref={lFrameRef}>
               {/* Thanh ngang trên của chữ L ngược (x: +0.96..+10.56, y: 3.84..4.16 dưới diềm gỗ mái hiên, z: 6.495..7.24) */}
               <B p={[5.76, 4.0, 6.8675]} s={[9.6, 0.32, 0.745]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
-              {/* Trụ đứng bên phải của chữ L ngược (x: +9.94..+10.56, y: -0.15..3.84, z: 6.495..7.24) */}
-              <B p={[10.25, 1.845, 6.8675]} s={[0.62, 3.99, 0.745]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
+              {/* Trụ đứng bên phải của chữ L ngược (x: +9.94..+10.56, y: -0.15..3.838, z: 6.495..7.24) */}
+              <B p={[10.25, 1.844, 6.8675]} s={[0.62, 3.988, 0.745]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
               {/* Hồi góc ôm cạnh phải tạo khối L kiến trúc chắc khỏe */}
-              <B p={[10.44, 2.005, 5.9475]} s={[0.24, 4.31, 1.095]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
+              <B p={[10.44, 2.003, 5.946]} s={[0.24, 4.306, 1.092]} c={palette.facadeFrame} map={travTex} rough={0.4} shadow />
               {/* Dải đèn LED #FFAE52 hắt âm mặt dưới khung chữ L ngược sáng ấm cả Ban ngày & Ban đêm */}
               <B
                 p={[5.45, 3.828, 7.12]}
@@ -2170,29 +2183,29 @@ function RoofSystem({
       <B p={[-10.59, ROOF_Y + 0.45, 0.635]} s={[0.22, 0.3, 13.79]} map={travTex} c={roofColor} rough={0.4} shadow />
       <B p={[10.79, ROOF_Y + 0.45, 0.635]} s={[0.22, 0.3, 13.79]} map={travTex} c={roofColor} rough={0.4} shadow />
 
-      <B p={[0.1, ROOF_Y + 0.62, -6.37]} s={[21.68, 0.05, 0.26]} c={senoCapColor} rough={0.36} metal={0.55} />
-      <B p={[0.1, ROOF_Y + 0.62, 7.64]} s={[21.68, 0.05, 0.26]} c={senoCapColor} rough={0.36} metal={0.55} />
-      <B p={[-10.59, ROOF_Y + 0.62, 0.635]} s={[0.26, 0.05, 13.79]} c={senoCapColor} rough={0.36} metal={0.55} />
-      <B p={[10.79, ROOF_Y + 0.62, 0.635]} s={[0.26, 0.05, 13.79]} c={senoCapColor} rough={0.36} metal={0.55} />
+      <B p={[0.1, ROOF_Y + 0.625, -6.37]} s={[21.68, 0.05, 0.26]} c={senoCapColor} rough={0.36} metal={0.55} />
+      <B p={[0.1, ROOF_Y + 0.625, 7.64]} s={[21.68, 0.05, 0.26]} c={senoCapColor} rough={0.36} metal={0.55} />
+      <B p={[-10.59, ROOF_Y + 0.625, 0.635]} s={[0.26, 0.05, 13.74]} c={senoCapColor} rough={0.36} metal={0.55} />
+      <B p={[10.79, ROOF_Y + 0.625, 0.635]} s={[0.26, 0.05, 13.74]} c={senoCapColor} rough={0.36} metal={0.55} />
 
       {/* Mặt dưới trần mái đua (Soffit) ốp kín Gỗ Teak #C68642 mặt tiền (z: 6.46..7.73) & hai hông */}
       <B
-        p={[0.1, ROOF_Y - 0.008, 7.095]}
+        p={[0.1, ROOF_Y - 0.012, 7.095]}
         s={[21.48, 0.022, 1.27]}
         map={frontSoffitTex}
         c={darkMode ? '#EADBC6' : '#FFFFFF'}
         rough={0.48}
       />
       <B
-        p={[10.57, ROOF_Y - 0.008, 0.01]}
-        s={[0.58, 0.022, 12.9]}
+        p={[10.57, ROOF_Y - 0.012, 0.01]}
+        s={[0.58, 0.022, 12.88]}
         map={sideSoffitTex}
         c={darkMode ? '#EADBC6' : '#FFFFFF'}
         rough={0.48}
       />
       <B
-        p={[-10.47, ROOF_Y - 0.008, 0.01]}
-        s={[0.38, 0.022, 12.9]}
+        p={[-10.47, ROOF_Y - 0.012, 0.01]}
+        s={[0.38, 0.022, 12.88]}
         map={sideSoffitTex}
         c={darkMode ? '#EADBC6' : '#FFFFFF'}
         rough={0.48}
