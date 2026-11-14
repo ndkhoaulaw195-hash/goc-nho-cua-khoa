@@ -26,7 +26,7 @@ let orbitDragging = false
 const occluderEntries = new Map<THREE.Object3D, OccluderKind>()
 const interactableEntries = new Map<THREE.Object3D, InteractZone>()
 
-function isHierarchyVisible(obj: THREE.Object3D | null | undefined): boolean {
+export function isHierarchyVisible(obj: THREE.Object3D | null | undefined): boolean {
   let cur: THREE.Object3D | null | undefined = obj
   while (cur) {
     if (!cur.visible) return false
@@ -278,6 +278,20 @@ export function getVisibleOccluderMeshes(): THREE.Object3D[] {
 /** Trả về danh sách Mesh vật cản vững chắc (wall/slab/roof) cho GTA Spring Arm camera */
 export function getSpringArmOccluders(): THREE.Object3D[] {
   return queryVisibleOccluders(SPRING_ARM_KINDS)
+}
+
+/** Trả về toàn bộ các group gốc đã đăng ký tương tác kèm zone tương ứng */
+export function getAllInteractableEntries(): Array<{ root: THREE.Object3D; zone: InteractZone }> {
+  const res: Array<{ root: THREE.Object3D; zone: InteractZone }> = []
+  interactableEntries.forEach((zone, root) => {
+    res.push({ root, zone })
+  })
+  return res
+}
+
+/** Trả về toàn bộ các Object3D gốc đã đăng ký với <Interact> */
+export function getAllInteractableRoots(): THREE.Object3D[] {
+  return Array.from(interactableEntries.keys())
 }
 
 /** Trả về danh sách Mesh tương tác thuộc vùng đang mở khóa và đang hiển thị */

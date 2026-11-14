@@ -3,8 +3,17 @@ import { type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { LIVE_ACTORS, type V3 } from '../data/config'
-import { useStore } from '../store'
+import { useStore, type Activity } from '../store'
 import {
+  handleInteractClickOrQueue,
+  refreshInteractableBounds,
+  registerInteractableArchetype,
+  type CustomSitAnchor,
+  type InteractionCategory,
+  type InteractionMeta,
+} from './interactionEngine'
+import {
+  isHouseClosedOverview,
   isOccluderHit,
   isOrbitDragging,
   isValidClick,
@@ -327,41 +336,173 @@ export function Occluder({
   )
 }
 
+const FP_CLICK_QUEUE_DIST = Math.max(MAX_FP_INTERACT_DIST, 14.0)
+
 /** Component tương tác dùng chung: kiểm tra zone, vật cản, khoảng cách, ngưỡng kéo chuột & hiển thị tooltip */
 export function Interact({
+  id,
   hint,
   onClick,
   zone = 'interior_f1',
   maxDistance,
+  category,
+  label,
+  standOffset,
+  customStandOffset,
+  customSitAnchor,
+  infoTitle,
+  infoBody,
+  icon,
+  linkedStation,
+  userData: extraUserData,
   children,
 }: {
+  id?: string
   hint?: string
   onClick?: (e: ThreeEvent<MouseEvent>) => void
   zone?: InteractZone
   maxDistance?: number
+  category?: InteractionCategory
+  label?: string
+  standOffset?: V3
+  customStandOffset?: V3
+  customSitAnchor?: CustomSitAnchor
+  infoTitle?: string
+  infoBody?: string
+  icon?: string
+  linkedStation?: Activity
+  userData?: Record<string, unknown>
   children: ReactNode
 }) {
   const groupRef = useRef<THREE.Group>(null)
   const hoveredRef = useRef(false)
   const hintRef = useRef(hint)
   hintRef.current = hint
-  const interactive = Boolean(onClick)
+  const interactive = Boolean(onClick || category || infoTitle || label)
 
-  const userData = useMemo(
-    () => ({
-      interactHint: hint,
-      interactZone: zone,
-      onInteractClick: onClick,
-      isInteractableRoot: true,
-    }),
-    [hint, zone, onClick],
-  )
+  const resolvedStand =
+    customStandOffset ??
+    standOffset ??
+    (Array.isArray(extraUserData?.customStandOffset)
+      ? (extraUserData.customStandOffset as V3)
+      : undefined)
+  const resolvedSitAnchor =
+    customSitAnchor ??
+    (extraUserData?.customSitAnchor && typeof extraUserData.customSitAnchor === 'object'
+      ? (extraUserData.customSitAnchor as CustomSitAnchor)
+      : undefined)
+
+  const latestPropsRef = useRef({
+    id,
+    hint,
+    onClick,
+    zone,
+    category,
+    label,
+    standOffset: resolvedStand,
+    customStandOffset: resolvedStand,
+    customSitAnchor: resolvedSitAnchor,
+    infoTitle,
+    infoBody,
+    icon,
+    linkedStation,
+    extraUserData,
+  })
+  latestPropsRef.current = {
+    id,
+    hint,
+    onClick,
+    zone,
+    category,
+    label,
+    standOffset: resolvedStand,
+    customStandOffset: resolvedStand,
+    customSitAnchor: resolvedSitAnchor,
+    infoTitle,
+    infoBody,
+    icon,
+    linkedStation,
+    extraUserData,
+  }
 
   useEffect(() => {
     const el = groupRef.current
     if (!el) return
-    return registerInteractableGroup(el, zone)
-  }, [zone])
+    const p = latestPropsRef.current
+    if (p.extraUserData) {
+      Object.assign(el.userData, p.extraUserData)
+    }
+    el.userData.interactHint = p.hint
+    el.userData.interactZone = zone
+    el.userData.onInteractClick = p.onClick
+    el.userData.isInteractableRoot = true
+
+    const unregisterGroup = registerInteractableGroup(el, zone)
+    const unregisterArchetype = registerInteractableArchetype(el, {
+      id: p.id ?? id,
+      hint: p.hint,
+      zone,
+      onClick: p.onClick,
+      category: p.category,
+      label: p.label,
+      standOffset: p.standOffset,
+      customStandOffset: p.customStandOffset,
+      customSitAnchor: p.customSitAnchor,
+      infoTitle: p.infoTitle,
+      infoBody: p.infoBody,
+      icon: p.icon,
+      linkedStation: p.linkedStation,
+    })
+
+    let rafId = 0
+    let timerId: ReturnType<typeof setTimeout> | undefined
+    const refreshBounds = () => {
+      const meta = el.userData?.interaction as InteractionMeta | undefined
+      if (meta) refreshInteractableBounds(meta)
+    }
+    if (typeof requestAnimationFrame !== 'undefined') {
+      rafId = requestAnimationFrame(refreshBounds)
+    }
+    timerId = setTimeout(refreshBounds, 90)
+
+    return () => {
+      if (rafId && typeof cancelAnimationFrame !== 'undefined') {
+        cancelAnimationFrame(rafId)
+      }
+      if (timerId !== undefined) clearTimeout(timerId)
+      unregisterArchetype?.()
+      unregisterGroup()
+    }
+  }, [id, zone])
+
+  useEffect(() => {
+    const el = groupRef.current
+    if (!el) return
+    if (extraUserData) {
+      Object.assign(el.userData, extraUserData)
+    }
+    el.userData.interactHint = hint
+    el.userData.interactZone = zone
+    el.userData.onInteractClick = onClick
+
+    const meta = el.userData?.interaction as InteractionMeta | undefined
+    if (meta) {
+      meta.originalOnClick = onClick
+      if (hint) meta.rawHint = hint
+      if (label) meta.label = label
+      if (infoTitle) meta.infoTitle = infoTitle
+      if (infoBody) meta.infoBody = infoBody
+      if (icon) meta.icon = icon
+      if (linkedStation) meta.linkedStation = linkedStation
+      if (resolvedSitAnchor) {
+        meta.customSitAnchor = resolvedSitAnchor
+        if (resolvedSitAnchor.pose) meta.pose = resolvedSitAnchor.pose
+      }
+      if (resolvedStand) {
+        meta.standOffset = [resolvedStand[0], resolvedStand[1], resolvedStand[2]]
+      }
+    }
+  })
 
   useEffect(() => {
     if (hoveredRef.current && hint) {
@@ -407,7 +548,7 @@ export function Interact({
       return
     }
     if (st.mode === 'fp' && e.point) {
-      const limit = maxDistance ?? MAX_FP_INTERACT_DIST
+      const limit = maxDistance ?? FP_CLICK_QUEUE_DIST
       if (getFpInteractionDistance(st, e.camera, e.point) > limit) {
         clearHover()
         return
@@ -439,15 +580,14 @@ export function Interact({
   return (
     <group
       ref={groupRef}
-      userData={userData}
       onClick={
-        onClick
+        interactive
           ? (e: ThreeEvent<MouseEvent>) => {
               if (!isValidClick(e.clientX, e.clientY)) return
               const st = useStore.getState()
               if (!isZoneInteractive(zone, st)) return
               if (st.mode === 'fp' && e.point) {
-                const limit = maxDistance ?? MAX_FP_INTERACT_DIST
+                const limit = maxDistance ?? FP_CLICK_QUEUE_DIST
                 if (getFpInteractionDistance(st, e.camera, e.point) > limit) return
               }
               const first = e.intersections?.[0]
@@ -460,7 +600,20 @@ export function Interact({
                 return
               }
               e.stopPropagation()
-              onClick(e)
+
+              const meta = groupRef.current?.userData?.interaction as InteractionMeta | undefined
+              const closedOverview = isHouseClosedOverview(st)
+              if (
+                !meta ||
+                (closedOverview && meta.id === 'main_door') ||
+                (closedOverview && meta.zone !== 'exterior')
+              ) {
+                onClick?.(e)
+                return
+              }
+              if (!handleInteractClickOrQueue(meta, e)) {
+                onClick?.(e)
+              }
             }
           : undefined
       }

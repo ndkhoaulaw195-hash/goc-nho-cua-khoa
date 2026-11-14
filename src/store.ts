@@ -34,6 +34,42 @@ import {
 
 export type Mode = 'orbit' | 'fp'
 export type ActiveChar = 'boy' | 'girl'
+
+export interface DynamicSeatTarget {
+  id: string
+  char: ActiveChar
+  pos: V3
+  yaw: number
+  pose: 'sit' | 'lie' | 'recline'
+  label: string
+}
+
+export interface OrientCommand {
+  char: ActiveChar
+  yaw: number
+  tick: number
+}
+
+export interface ActiveTargetUi {
+  id: string
+  label: string
+  category: string
+}
+
+export interface ContainerCard {
+  id: string
+  title: string
+  body: string
+  icon: string
+  anchor: V3
+  zone: 'exterior' | 'interior_f1' | 'interior_f2'
+}
+
+export interface AutoIntent {
+  icon: string
+  label: string
+  targetId: string | null
+}
 export type Activity =
   | 'idle'
   | 'tv'
@@ -105,7 +141,7 @@ interface State {
   setActivityPhase: (phase: ActivityPhase, forChar?: ActiveChar) => void
 
   avatarTarget: V3 | null
-  setAvatarTarget: (p: V3 | null, fromRemote?: boolean) => void
+  setAvatarTarget: (p: V3 | null, fromRemote?: boolean, fromQueue?: boolean) => void
   outfitId: string
   outfitSpinTick: number
   setOutfitId: (id: string, fromRemote?: boolean) => void
@@ -119,7 +155,7 @@ interface State {
   girlChairSpinTick: number
   spinGirlChair: () => void
   girlLampOn: boolean
-  toggleGirlLamp: () => void
+  toggleGirlLamp: (next?: boolean) => boolean
   girlVanityLightOn: boolean
   toggleGirlVanityLight: () => void
   girlShelfLedOn: boolean
@@ -216,6 +252,7 @@ interface State {
   triggerSinkWater: () => void
   laundryRunning: boolean
   toggleLaundry: () => void
+  setLaundryRunning: (running: boolean) => void
 
   // Đọc sách Tầng 1
   readBookPage: number
@@ -237,6 +274,25 @@ interface State {
   setHoverHint: (h: string | null) => void
   toastMessage: string | null
   notify: (msg: string) => void
+
+  // Universal Archetype Interaction Engine states & actions
+  dynamicSeatTarget: DynamicSeatTarget | null
+  setDynamicSeatTarget: (seat: DynamicSeatTarget | null) => void
+  clearCharacterPosture: (char?: ActiveChar) => void
+  orientCommand: OrientCommand | null
+  setOrientCommand: (char: ActiveChar, yaw: number) => void
+  activeTargetUi: ActiveTargetUi | null
+  setActiveTargetUi: (t: ActiveTargetUi | null) => void
+  containerCard: ContainerCard | null
+  setContainerCard: (c: ContainerCard | null) => void
+  autoIntent: Record<ActiveChar, AutoIntent | null>
+  setAutoIntent: (char: ActiveChar, intent: AutoIntent | null) => void
+  electronicStates: Record<string, boolean>
+  toggleElectronicState: (id: string, next?: boolean) => boolean
+  firepitLit: boolean
+  toggleFirepit: (next?: boolean) => boolean
+  floor1FloorLampOn: boolean
+  toggleFloor1FloorLamp: (next?: boolean) => boolean
 }
 
 const getInitialRole = (): ActiveChar | null => {
@@ -252,6 +308,137 @@ const FP_DIST_TOASTS: Record<FpDistPreset, string> = {
   far: '🎥 Cự ly: Toàn cảnh xa',
 }
 
+let orientCommandSeq = 0
+let pendingClearCallback: (() => void) | null = null
+
+/** Đăng ký callback xóa pendingInteractionTarget khi người chơi chủ động đi bộ (tránh circular import) */
+export function setPendingClearCallback(cb: (() => void) | null): void {
+  pendingClearCallback = cb
+}
+
+type KnownElectronicKey =
+  | 'tv'
+  | 'ac'
+  | 'pc'
+  | 'girl_pc'
+  | 'floor1_floor_lamp'
+  | 'floor1_bed_lamp'
+  | 'floor1_desk_lamp'
+  | 'floor1_headboard_led'
+  | 'bath_mirror_light'
+  | 'bath_full_mirror_light'
+  | 'laundry'
+  | 'firepit'
+  | 'floor2_reading_lamp'
+  | 'floor2_arch_light'
+  | 'girl_lamp'
+  | 'girl_vanity_light'
+  | 'girl_shelf_led'
+
+function resolveCanonicalElectronicKey(id: string): KnownElectronicKey | null {
+  const k = id.toLowerCase()
+  if (k === 'tv' || k === 'tvon' || k.startsWith('tv_')) return 'tv'
+  if (k === 'ac' || k === 'acon' || k.startsWith('ac_') || k.includes('air_con')) return 'ac'
+  if (k === 'girl_pc' || k === 'girlpcstate' || k.startsWith('girl_pc_')) return 'girl_pc'
+  if (k === 'pc' || k === 'pcstate' || k.startsWith('pc_')) return 'pc'
+  if (
+    k === 'floor1_floor_lamp' ||
+    k === 'floor1floorlampon' ||
+    k === 'lampon' ||
+    k === 'lamp' ||
+    k === 'living_lamp' ||
+    k.startsWith('floor1_floor_lamp_')
+  ) {
+    return 'floor1_floor_lamp'
+  }
+  if (k === 'floor1_bed_lamp' || k === 'floor1bedlampon' || k.startsWith('floor1_bed_lamp_')) {
+    return 'floor1_bed_lamp'
+  }
+  if (k === 'floor1_desk_lamp' || k === 'floor1desklampon' || k.startsWith('floor1_desk_lamp_')) {
+    return 'floor1_desk_lamp'
+  }
+  if (
+    k === 'floor1_headboard_led' ||
+    k === 'floor1headboardledon' ||
+    k.startsWith('floor1_headboard_led_')
+  ) {
+    return 'floor1_headboard_led'
+  }
+  if (k === 'bath_mirror_light' || k === 'bathmirrorlighton' || k.startsWith('bath_mirror_light_')) {
+    return 'bath_mirror_light'
+  }
+  if (
+    k === 'bath_full_mirror_light' ||
+    k === 'bathfullmirrorlighton' ||
+    k.startsWith('bath_full_mirror_light_')
+  ) {
+    return 'bath_full_mirror_light'
+  }
+  if (k === 'laundry' || k === 'washer' || k === 'laundryrunning' || k.startsWith('washer_')) {
+    return 'laundry'
+  }
+  if (k === 'firepit' || k === 'firepitlit' || k.startsWith('firepit_')) return 'firepit'
+  if (
+    k === 'floor2_reading_lamp' ||
+    k === 'floor2readinglampon' ||
+    k.startsWith('floor2_reading_lamp_')
+  ) {
+    return 'floor2_reading_lamp'
+  }
+  if (k === 'floor2_arch_light' || k === 'floor2archlighton' || k.startsWith('floor2_arch_light_')) {
+    return 'floor2_arch_light'
+  }
+  if (k === 'girl_lamp' || k === 'girllampon' || k === 'girl_bed_lamp' || k.startsWith('girl_lamp_')) {
+    return 'girl_lamp'
+  }
+  if (k === 'girl_vanity_light' || k === 'girlvanitylighton' || k.startsWith('girl_vanity_light_')) {
+    return 'girl_vanity_light'
+  }
+  if (k === 'girl_shelf_led' || k === 'girlshelfledon' || k.startsWith('girl_shelf_led_')) {
+    return 'girl_shelf_led'
+  }
+  return null
+}
+
+function readKnownElectronicBool(s: State, key: KnownElectronicKey): boolean {
+  switch (key) {
+    case 'tv':
+      return s.tvOn
+    case 'ac':
+      return s.acOn
+    case 'pc':
+      return s.pcState !== 'off'
+    case 'girl_pc':
+      return s.girlPcState !== 'off'
+    case 'floor1_floor_lamp':
+      return s.floor1FloorLampOn
+    case 'floor1_bed_lamp':
+      return s.floor1BedLampOn
+    case 'floor1_desk_lamp':
+      return s.floor1DeskLampOn
+    case 'floor1_headboard_led':
+      return s.floor1HeadboardLedOn
+    case 'bath_mirror_light':
+      return s.bathMirrorLightOn
+    case 'bath_full_mirror_light':
+      return s.bathFullMirrorLightOn
+    case 'laundry':
+      return s.laundryRunning
+    case 'firepit':
+      return s.firepitLit
+    case 'floor2_reading_lamp':
+      return s.floor2ReadingLampOn
+    case 'floor2_arch_light':
+      return s.floor2ArchLightOn
+    case 'girl_lamp':
+      return s.girlLampOn
+    case 'girl_vanity_light':
+      return s.girlVanityLightOn
+    case 'girl_shelf_led':
+      return s.girlShelfLedOn
+  }
+}
+
 function broadcastWorldChange(key: string, val: any) {
   if (typeof window === 'undefined') return
   const role = useStore?.getState?.()?.userRole || 'boy'
@@ -260,7 +447,7 @@ function broadcastWorldChange(key: string, val: any) {
 
 export const useStore = create<State>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       userRole: initRole,
       roleOccupancy: { boy: initRole === 'boy', girl: initRole === 'girl' },
       activeChar: initRole || 'boy',
@@ -602,6 +789,9 @@ export const useStore = create<State>()(
             activePhoto: fromUser ? null : s.activePhoto,
             wardrobeOpen: fromUser && act === 'wardrobe',
             girlWardrobeOpen: fromUser && act === 'girl_wardrobe',
+            dynamicSeatTarget:
+              s.dynamicSeatTarget && s.dynamicSeatTarget.char === char ? null : s.dynamicSeatTarget,
+            containerCard: fromUser ? null : s.containerCard,
             girlOutfitId:
               !fromUser && act === 'girl_wardrobe'
                 ? GIRL_OUTFITS[(GIRL_OUTFITS.findIndex((o) => o.id === s.girlOutfitId) + 1) % GIRL_OUTFITS.length].id
@@ -681,10 +871,13 @@ export const useStore = create<State>()(
         }),
 
       avatarTarget: null,
-      setAvatarTarget: (avatarTarget, fromRemote = false) => {
+      setAvatarTarget: (avatarTarget, fromRemote = false, fromQueue = false) => {
         if (avatarTarget && !fromRemote) {
           const char = useStore.getState().userRole || useStore.getState().activeChar || 'boy'
           broadcastPlayerAction(char, 'walkTo', { target: avatarTarget })
+        }
+        if (avatarTarget !== null && !fromQueue) {
+          pendingClearCallback?.()
         }
         set((s) => ({
           boyActivity: s.activeChar === 'boy' ? 'idle' : s.boyActivity,
@@ -696,6 +889,15 @@ export const useStore = create<State>()(
           isUserInitiated: false,
           wardrobeOpen: s.activeChar === 'boy' ? false : s.wardrobeOpen,
           girlWardrobeOpen: s.activeChar === 'girl' ? false : s.girlWardrobeOpen,
+          ...(avatarTarget !== null
+            ? {
+                dynamicSeatTarget:
+                  s.dynamicSeatTarget && s.dynamicSeatTarget.char !== s.activeChar
+                    ? s.dynamicSeatTarget
+                    : null,
+                containerCard: null,
+              }
+            : {}),
           avatarTarget,
         }))
       },
@@ -827,7 +1029,8 @@ export const useStore = create<State>()(
               ? { roofVisible: true, wallMode: 'full', nearInteriorOpen: false }
               : {}),
         })),
-      returnOverview: () =>
+      returnOverview: () => {
+        pendingClearCallback?.()
         set((s) => {
           const char = s.userRole || s.activeChar || 'boy'
           return {
@@ -842,6 +1045,9 @@ export const useStore = create<State>()(
             wardrobeOpen: false,
             girlWardrobeOpen: false,
             activePhoto: null,
+            dynamicSeatTarget: null,
+            activeTargetUi: null,
+            containerCard: null,
             walkthroughSpawn: null,
             viewPreset: 'overview',
             roofVisible: true,
@@ -849,21 +1055,27 @@ export const useStore = create<State>()(
             nearInteriorOpen: false,
             focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
           }
-        }),
-      resetCamera: () =>
+        })
+      },
+      resetCamera: () => {
+        pendingClearCallback?.()
         set(() => ({
           mode: 'orbit',
           activePhoto: null,
           walkthroughSpawn: null,
           wardrobeOpen: false,
           girlWardrobeOpen: false,
+          dynamicSeatTarget: null,
+          activeTargetUi: null,
+          containerCard: null,
           viewPreset: 'overview',
           roofVisible: true,
           wallMode: 'full',
           nearInteriorOpen: false,
           focus: { pos: [...HOME_VIEW.pos], target: [...HOME_VIEW.target] },
           toastMessage: '↺ Đã đặt lại góc nhìn mặc định',
-        })),
+        }))
+      },
       randomCameraView: () =>
         set((s) => {
           let nextIdx = Math.floor(Math.random() * RANDOM_VIEWS.length)
@@ -893,11 +1105,27 @@ export const useStore = create<State>()(
         set((s) => {
           const next = !s.lampOn
           broadcastWorldChange('lampOn', next)
+          broadcastWorldChange('floor1FloorLampOn', next)
           return {
             lampOn: next,
+            floor1FloorLampOn: next,
+            electronicStates: { ...s.electronicStates, floor1_floor_lamp: next, lamp: next },
             toastMessage: next ? '💡 Bật đèn cây phòng khách' : '💡 Tắt đèn cây phòng khách',
           }
         }),
+      floor1FloorLampOn: true,
+      toggleFloor1FloorLamp: (next?: boolean) => {
+        const val = typeof next === 'boolean' ? next : !get().floor1FloorLampOn
+        broadcastWorldChange('floor1FloorLampOn', val)
+        broadcastWorldChange('lampOn', val)
+        set((s) => ({
+          floor1FloorLampOn: val,
+          lampOn: val,
+          electronicStates: { ...s.electronicStates, floor1_floor_lamp: val, lamp: val },
+          toastMessage: val ? '💡 Bật đèn cây phòng khách' : '💡 Tắt đèn cây phòng khách',
+        }))
+        return val
+      },
       floor1BedLampOn: true,
       toggleFloor1BedLamp: () =>
         set((s) => {
@@ -1157,9 +1385,18 @@ export const useStore = create<State>()(
           broadcastWorldChange('laundryRunning', next)
           return {
             laundryRunning: next,
+            electronicStates: { ...s.electronicStates, laundry: next, washer: next },
             toastMessage: next ? '🧺 Bật máy giặt' : '⏹️ Tắt máy giặt',
           }
         }),
+      setLaundryRunning: (running: boolean) => {
+        broadcastWorldChange('laundryRunning', running)
+        set((s) => ({
+          laundryRunning: running,
+          electronicStates: { ...s.electronicStates, laundry: running, washer: running },
+          toastMessage: running ? '🧺 Bật máy giặt' : '⏹️ Tắt máy giặt',
+        }))
+      },
       readBookPage: 1,
       nextBookPage: () =>
         set((s) => ({
@@ -1200,15 +1437,16 @@ export const useStore = create<State>()(
         })),
 
       girlLampOn: true,
-      toggleGirlLamp: () =>
-        set((s) => {
-          const next = !s.girlLampOn
-          broadcastWorldChange('girlLampOn', next)
-          return {
-            girlLampOn: next,
-            toastMessage: next ? '💡 Bật đèn ngủ Tầng 2' : '💡 Tắt đèn ngủ Tầng 2',
-          }
-        }),
+      toggleGirlLamp: (next?: boolean) => {
+        const val = typeof next === 'boolean' ? next : !get().girlLampOn
+        broadcastWorldChange('girlLampOn', val)
+        set((s) => ({
+          girlLampOn: val,
+          electronicStates: { ...s.electronicStates, girl_lamp: val, girlLampOn: val },
+          toastMessage: val ? '💡 Bật đèn ngủ Tầng 2' : '💡 Tắt đèn ngủ Tầng 2',
+        }))
+        return val
+      },
 
       girlVanityLightOn: true,
       toggleGirlVanityLight: () =>
@@ -1279,6 +1517,150 @@ export const useStore = create<State>()(
 
       toastMessage: null,
       notify: (toastMessage: string) => set({ toastMessage }),
+
+      // Universal Archetype Interaction Engine states & actions
+      dynamicSeatTarget: null,
+      setDynamicSeatTarget: (dynamicSeatTarget) => set({ dynamicSeatTarget }),
+      clearCharacterPosture: (char?: ActiveChar) =>
+        set((s) => {
+          const targetChar = char ?? s.activeChar
+          return {
+            boyActivity: targetChar === 'boy' ? 'idle' : s.boyActivity,
+            boyPhase: targetChar === 'boy' ? 'active' : s.boyPhase,
+            girlActivity: targetChar === 'girl' ? 'idle' : s.girlActivity,
+            girlPhase: targetChar === 'girl' ? 'active' : s.girlPhase,
+            activity: s.activeChar === targetChar ? 'idle' : s.activity,
+            activityPhase: s.activeChar === targetChar ? 'active' : s.activityPhase,
+            wardrobeOpen: targetChar === 'boy' ? false : s.wardrobeOpen,
+            girlWardrobeOpen: targetChar === 'girl' ? false : s.girlWardrobeOpen,
+            dynamicSeatTarget:
+              s.dynamicSeatTarget && (!char || s.dynamicSeatTarget.char === targetChar)
+                ? null
+                : s.dynamicSeatTarget,
+            containerCard: null,
+          }
+        }),
+      orientCommand: null,
+      setOrientCommand: (char: ActiveChar, yaw: number) =>
+        set({ orientCommand: { char, yaw, tick: ++orientCommandSeq } }),
+      activeTargetUi: null,
+      setActiveTargetUi: (activeTargetUi) => set({ activeTargetUi }),
+      containerCard: null,
+      setContainerCard: (containerCard) => set({ containerCard }),
+      autoIntent: { boy: null, girl: null },
+      setAutoIntent: (char: ActiveChar, intent: AutoIntent | null) =>
+        set((s) => ({ autoIntent: { ...s.autoIntent, [char]: intent } })),
+      firepitLit: true,
+      toggleFirepit: (next?: boolean) => {
+        const val = typeof next === 'boolean' ? next : !get().firepitLit
+        broadcastWorldChange('firepitLit', val)
+        set((s) => ({
+          firepitLit: val,
+          electronicStates: { ...s.electronicStates, firepit: val },
+          toastMessage: val ? '🔥 Nhóm lửa Firepit sưởi ấm sân vườn' : '🧯 Tắt lửa Firepit',
+        }))
+        return val
+      },
+      electronicStates: {
+        tv: true,
+        ac: true,
+        pc: true,
+        girl_pc: true,
+        floor1_floor_lamp: true,
+        lamp: true,
+        floor1_bed_lamp: true,
+        floor1_desk_lamp: true,
+        floor1_headboard_led: true,
+        bath_mirror_light: true,
+        bath_full_mirror_light: true,
+        laundry: false,
+        washer: false,
+        firepit: true,
+        floor2_reading_lamp: true,
+        floor2_arch_light: true,
+        girl_lamp: true,
+        girl_vanity_light: true,
+        girl_shelf_led: true,
+      },
+      toggleElectronicState: (id: string, next?: boolean) => {
+        const s = get()
+        const canonical = resolveCanonicalElectronicKey(id)
+        const current = canonical
+          ? readKnownElectronicBool(s, canonical)
+          : (s.electronicStates[id] ?? false)
+        const val = typeof next === 'boolean' ? next : !current
+
+        const nextElectronicStates: Record<string, boolean> = {
+          ...s.electronicStates,
+          [id]: val,
+          ...(canonical ? { [canonical]: val } : {}),
+        }
+        const updates: Partial<State> = {
+          electronicStates: nextElectronicStates,
+        }
+
+        if (canonical === 'tv') {
+          updates.tvOn = val
+          broadcastWorldChange('tvOn', val)
+        } else if (canonical === 'ac') {
+          updates.acOn = val
+          broadcastWorldChange('acOn', val)
+        } else if (canonical === 'pc') {
+          const nextPc: PcState = val ? (s.pcState === 'off' ? 'on' : s.pcState) : 'off'
+          updates.pcState = nextPc
+          broadcastWorldChange('pcState', nextPc)
+        } else if (canonical === 'girl_pc') {
+          const nextGirlPc: PcState = val ? (s.girlPcState === 'off' ? 'on' : s.girlPcState) : 'off'
+          updates.girlPcState = nextGirlPc
+          broadcastWorldChange('girlPcState', nextGirlPc)
+        } else if (canonical === 'floor1_floor_lamp') {
+          updates.floor1FloorLampOn = val
+          updates.lampOn = val
+          nextElectronicStates.lamp = val
+          broadcastWorldChange('floor1FloorLampOn', val)
+          broadcastWorldChange('lampOn', val)
+        } else if (canonical === 'floor1_bed_lamp') {
+          updates.floor1BedLampOn = val
+          broadcastWorldChange('floor1BedLampOn', val)
+        } else if (canonical === 'floor1_desk_lamp') {
+          updates.floor1DeskLampOn = val
+          broadcastWorldChange('floor1DeskLampOn', val)
+        } else if (canonical === 'floor1_headboard_led') {
+          updates.floor1HeadboardLedOn = val
+          broadcastWorldChange('floor1HeadboardLedOn', val)
+        } else if (canonical === 'bath_mirror_light') {
+          updates.bathMirrorLightOn = val
+          broadcastWorldChange('bathMirrorLightOn', val)
+        } else if (canonical === 'bath_full_mirror_light') {
+          updates.bathFullMirrorLightOn = val
+          broadcastWorldChange('bathFullMirrorLightOn', val)
+        } else if (canonical === 'laundry') {
+          updates.laundryRunning = val
+          nextElectronicStates.washer = val
+          broadcastWorldChange('laundryRunning', val)
+        } else if (canonical === 'firepit') {
+          updates.firepitLit = val
+          broadcastWorldChange('firepitLit', val)
+        } else if (canonical === 'floor2_reading_lamp') {
+          updates.floor2ReadingLampOn = val
+          broadcastWorldChange('floor2ReadingLampOn', val)
+        } else if (canonical === 'floor2_arch_light') {
+          updates.floor2ArchLightOn = val
+          broadcastWorldChange('floor2ArchLightOn', val)
+        } else if (canonical === 'girl_lamp') {
+          updates.girlLampOn = val
+          broadcastWorldChange('girlLampOn', val)
+        } else if (canonical === 'girl_vanity_light') {
+          updates.girlVanityLightOn = val
+          broadcastWorldChange('girlVanityLightOn', val)
+        } else if (canonical === 'girl_shelf_led') {
+          updates.girlShelfLedOn = val
+          broadcastWorldChange('girlShelfLedOn', val)
+        }
+
+        set(updates)
+        return val
+      },
     }),
     {
       name: 'goc-nho-cua-khoa-v10',
@@ -1300,6 +1682,81 @@ export const useStore = create<State>()(
     },
   ),
 )
+
+const SYNCED_ELECTRONIC_KEYS: KnownElectronicKey[] = [
+  'tv',
+  'ac',
+  'pc',
+  'girl_pc',
+  'floor1_floor_lamp',
+  'floor1_bed_lamp',
+  'floor1_desk_lamp',
+  'floor1_headboard_led',
+  'bath_mirror_light',
+  'bath_full_mirror_light',
+  'laundry',
+  'firepit',
+  'floor2_reading_lamp',
+  'floor2_arch_light',
+  'girl_lamp',
+  'girl_vanity_light',
+  'girl_shelf_led',
+]
+
+useStore.subscribe((state, prevState) => {
+  let lampFix: Partial<State> | null = null
+  if (state.lampOn !== prevState.lampOn && state.floor1FloorLampOn !== state.lampOn) {
+    lampFix = { floor1FloorLampOn: state.lampOn }
+  } else if (
+    state.floor1FloorLampOn !== prevState.floor1FloorLampOn &&
+    state.lampOn !== state.floor1FloorLampOn
+  ) {
+    lampFix = { lampOn: state.floor1FloorLampOn }
+  }
+
+  let elecChanged = false
+  let nextElec: Record<string, boolean> | null = null
+  const curElec = state.electronicStates
+
+  for (let i = 0; i < SYNCED_ELECTRONIC_KEYS.length; i++) {
+    const k = SYNCED_ELECTRONIC_KEYS[i]
+    const v =
+      k === 'floor1_floor_lamp' && lampFix?.floor1FloorLampOn !== undefined
+        ? lampFix.floor1FloorLampOn
+        : readKnownElectronicBool(state, k)
+    if (curElec[k] !== v) {
+      if (!nextElec) nextElec = { ...curElec }
+      nextElec[k] = v
+      if (k === 'floor1_floor_lamp') nextElec.lamp = v
+      if (k === 'laundry') nextElec.washer = v
+      elecChanged = true
+    }
+  }
+
+  const existingKeys = Object.keys(curElec)
+  for (let i = 0; i < existingKeys.length; i++) {
+    const instKey = existingKeys[i]
+    const mapped = resolveCanonicalElectronicKey(instKey)
+    if (mapped) {
+      const v =
+        mapped === 'floor1_floor_lamp' && lampFix?.floor1FloorLampOn !== undefined
+          ? lampFix.floor1FloorLampOn
+          : readKnownElectronicBool(state, mapped)
+      if ((nextElec ?? curElec)[instKey] !== v) {
+        if (!nextElec) nextElec = { ...curElec }
+        nextElec[instKey] = v
+        elecChanged = true
+      }
+    }
+  }
+
+  if (lampFix || elecChanged) {
+    useStore.setState({
+      ...(lampFix ?? {}),
+      ...(elecChanged && nextElec ? { electronicStates: nextElec } : {}),
+    })
+  }
+})
 
 if (typeof window !== 'undefined') {
   ;(window as unknown as Record<string, unknown>).__store = useStore
