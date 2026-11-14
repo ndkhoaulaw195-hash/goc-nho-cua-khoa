@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { LoginLobby } from './LoginLobby'
 import { PianoModal } from './PianoModal'
+import { PROJECTED_UI_STATE, triggerActiveTargetFKey } from '../scene/interactionEngine'
 import {
   GIRL_OUTFITS,
   OUTFITS,
@@ -17,18 +18,6 @@ const I = {
       <path d="M18 6L6 18M6 6l12 12" />
     </svg>
   ),
-}
-
-function requestCanvasPointerLock() {
-  try {
-    const canvas = document.querySelector('canvas')
-    const maybePromise = canvas?.requestPointerLock?.() as unknown as Promise<void> | undefined
-    if (maybePromise && typeof maybePromise.catch === 'function') {
-      maybePromise.catch(() => {})
-    }
-  } catch {
-    // Bỏ qua nếu trình duyệt chặn hoặc chưa hỗ trợ Pointer Lock
-  }
 }
 
 function releaseCanvasPointerLock() {
@@ -112,6 +101,7 @@ export function Overlay() {
       if (st.girlWardrobeOpen) {
         return useStore.setState({ girlWardrobeOpen: false, girlActivity: 'idle', girlPhase: 'active', isUserInitiated: false })
       }
+      if (st.containerCard) return st.setContainerCard(null)
       if (st.activePhoto !== null) return st.returnOverview()
     }
     window.addEventListener('keydown', onKeyDown)
@@ -137,7 +127,7 @@ export function Overlay() {
 
       {showOnboarding && <OnboardingHint />}
 
-      {mode === 'fp' && !hasModalOpen && (
+      {mode === 'fp' && !hasModalOpen && isPointerLocked && (
         <div className={`fp-crosshair ${hoverHint ? 'active' : ''}`} aria-hidden="true" />
       )}
 
@@ -154,12 +144,243 @@ export function Overlay() {
 
       {mode === 'fp' && !hasModalOpen && <GtaHudHint isPointerLocked={isPointerLocked} />}
 
+      <FloatingInteractionPill hidden={hasModalOpen} />
+      <ContainerInfoCard hidden={hasModalOpen} />
+      <AvatarIntentIcons hidden={hasModalOpen} />
+
       {toastMessage && (
         <div className="toast" role="status" aria-live="polite">
           {toastMessage}
         </div>
       )}
     </div>
+  )
+}
+
+/* ---------- Floating Pill [F] {label} (60 FPS translate3d từ PROJECTED_UI_STATE) ---------- */
+function FloatingInteractionPill({ hidden }: { hidden: boolean }) {
+  const pillRef = useRef<HTMLButtonElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = pillRef.current
+    if (!el) return
+    if (hidden) {
+      el.classList.remove('is-visible')
+      return
+    }
+
+    let rafId = 0
+    let lastLabel = ''
+    let lastVisible = false
+
+    const tick = () => {
+      const visible = PROJECTED_UI_STATE.pillVisible && Boolean(PROJECTED_UI_STATE.pillLabel)
+      if (visible) {
+        const nextLabel = PROJECTED_UI_STATE.pillLabel
+        if (nextLabel !== lastLabel && labelRef.current) {
+          labelRef.current.textContent = nextLabel
+          lastLabel = nextLabel
+        }
+        const w = el.offsetWidth || 168
+        const h = el.offsetHeight || 34
+        const px = Math.max(12, Math.min(window.innerWidth - w - 12, PROJECTED_UI_STATE.pillX - w * 0.5))
+        const py = Math.max(58, Math.min(window.innerHeight - 66 - h, PROJECTED_UI_STATE.pillY - h))
+        el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0)`
+      }
+      if (visible !== lastVisible) {
+        el.classList.toggle('is-visible', visible)
+        el.setAttribute('aria-hidden', visible ? 'false' : 'true')
+        lastVisible = visible
+      }
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    rafId = window.requestAnimationFrame(tick)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      el.classList.remove('is-visible')
+    }
+  }, [hidden])
+
+  return (
+    <button
+      ref={pillRef}
+      type="button"
+      className="floating-interact-pill"
+      aria-hidden="true"
+      onClick={(e) => {
+        e.stopPropagation()
+        triggerActiveTargetFKey()
+      }}
+    >
+      <span className="floating-interact-inner">
+        <kbd className="floating-interact-keycap">F</kbd>
+        <span ref={labelRef} className="floating-interact-label" />
+      </span>
+    </button>
+  )
+}
+
+/* ---------- Floating Container Info Card (CONTAINER_INFO glassmorphism) ---------- */
+function ContainerInfoCard({ hidden }: { hidden: boolean }) {
+  const containerCard = useStore((s) => s.containerCard)
+  const setContainerCard = useStore((s) => s.setContainerCard)
+  const cardRef = useRef<HTMLElement>(null)
+
+  const active = Boolean(containerCard) && !hidden
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    if (!active) {
+      el.classList.remove('is-visible')
+      return
+    }
+
+    let rafId = 0
+    const tick = () => {
+      const w = el.offsetWidth || 276
+      const h = el.offsetHeight || 132
+      let px: number
+      let py: number
+
+      if (PROJECTED_UI_STATE.cardVisible) {
+        const rightCandidate = PROJECTED_UI_STATE.cardX + 20
+        const leftCandidate = PROJECTED_UI_STATE.cardX - w - 20
+        const preferredX =
+          rightCandidate + w <= window.innerWidth - 14 ? rightCandidate : leftCandidate
+        px = Math.max(14, Math.min(window.innerWidth - w - 14, preferredX))
+        py = Math.max(66, Math.min(window.innerHeight - h - 72, PROJECTED_UI_STATE.cardY - h * 0.5))
+      } else {
+        px = Math.max(14, window.innerWidth - w - 18)
+        py = 74
+      }
+
+      el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0)`
+      el.classList.add('is-visible')
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    rafId = window.requestAnimationFrame(tick)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      el.classList.remove('is-visible')
+    }
+  }, [active, containerCard?.id])
+
+  if (!containerCard || hidden) return null
+
+  return (
+    <aside
+      ref={cardRef}
+      className="container-info-card"
+      role="dialog"
+      aria-label={containerCard.title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="container-info-card-inner">
+        <div className="container-info-head">
+          <div className="container-info-title-wrap">
+            <span className="container-info-icon" aria-hidden="true">
+              {containerCard.icon}
+            </span>
+            <h3 className="container-info-title">{containerCard.title}</h3>
+          </div>
+          <button
+            type="button"
+            className="container-info-close"
+            onClick={() => setContainerCard(null)}
+            aria-label="Đóng thông tin"
+          >
+            ×
+          </button>
+        </div>
+        <p className="container-info-body">{containerCard.body}</p>
+      </div>
+    </aside>
+  )
+}
+
+/* ---------- Avatar Overhead Intention Bubbles (Auto-Life) ---------- */
+function AvatarIntentIcons({ hidden }: { hidden: boolean }) {
+  const boyIntent = useStore((s) => s.autoIntent.boy)
+  const girlIntent = useStore((s) => s.autoIntent.girl)
+  const boyRef = useRef<HTMLDivElement>(null)
+  const girlRef = useRef<HTMLDivElement>(null)
+
+  const hasAny = !hidden && Boolean(boyIntent || girlIntent)
+
+  useEffect(() => {
+    const bEl = boyRef.current
+    const gEl = girlRef.current
+    if (!hasAny) {
+      bEl?.classList.remove('is-visible')
+      gEl?.classList.remove('is-visible')
+      return
+    }
+
+    let rafId = 0
+    const placeBubble = (
+      el: HTMLDivElement | null,
+      visible: boolean,
+      sx: number,
+      sy: number,
+    ) => {
+      if (!el) return
+      if (!visible) {
+        el.classList.remove('is-visible')
+        return
+      }
+      const w = el.offsetWidth || 92
+      const h = el.offsetHeight || 26
+      const px = Math.max(10, Math.min(window.innerWidth - w - 10, sx - w * 0.5))
+      const py = Math.max(54, Math.min(window.innerHeight - 66 - h, sy - h - 6))
+      el.style.transform = `translate3d(${px.toFixed(1)}px, ${py.toFixed(1)}px, 0)`
+      el.classList.add('is-visible')
+    }
+
+    const tick = () => {
+      placeBubble(
+        bEl,
+        Boolean(boyIntent) && PROJECTED_UI_STATE.boyIntentVisible,
+        PROJECTED_UI_STATE.boyIntentX,
+        PROJECTED_UI_STATE.boyIntentY,
+      )
+      placeBubble(
+        gEl,
+        Boolean(girlIntent) && PROJECTED_UI_STATE.girlIntentVisible,
+        PROJECTED_UI_STATE.girlIntentX,
+        PROJECTED_UI_STATE.girlIntentY,
+      )
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    rafId = window.requestAnimationFrame(tick)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      bEl?.classList.remove('is-visible')
+      gEl?.classList.remove('is-visible')
+    }
+  }, [hasAny, boyIntent, girlIntent])
+
+  if (!hasAny) return null
+
+  return (
+    <>
+      {boyIntent && (
+        <div ref={boyRef} className="avatar-intent-bubble" aria-hidden="true">
+          <span className="avatar-intent-icon">{boyIntent.icon}</span>
+          <span className="avatar-intent-text">{boyIntent.label}</span>
+        </div>
+      )}
+      {girlIntent && (
+        <div ref={girlRef} className="avatar-intent-bubble" aria-hidden="true">
+          <span className="avatar-intent-icon">{girlIntent.icon}</span>
+          <span className="avatar-intent-text">{girlIntent.label}</span>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -242,36 +463,24 @@ function GtaHudHint({ isPointerLocked }: { isPointerLocked: boolean }) {
         </button>
 
         {!isPointerLocked && (
-          <>
-            <button
-              type="button"
-              className="gta-hint-lock-btn"
-              onClick={requestCanvasPointerLock}
-              title="Khóa chuột để lia xoay 360° tự do chuẩn GTA"
-            >
-              <span aria-hidden="true">🖱️</span>
-              <span>Khóa chuột</span>
-            </button>
-            <button
-              type="button"
-              className="gta-hint-exit-btn"
-              onClick={() => {
-                releaseCanvasPointerLock()
-                useStore.getState().returnOverview()
-              }}
-              title="Quay lại góc nhìn Toàn cảnh"
-            >
-              <span aria-hidden="true">🏠</span>
-              <span>Toàn cảnh</span>
-            </button>
-          </>
+          <button
+            type="button"
+            className="gta-hint-exit-btn"
+            onClick={() => {
+              releaseCanvasPointerLock()
+              useStore.getState().returnOverview()
+            }}
+            title="Quay lại góc nhìn Toàn cảnh"
+          >
+            <span aria-hidden="true">🏠</span>
+            <span>Toàn cảnh</span>
+          </button>
         )}
       </div>
 
       <div className="gta-hud-guide" role="status" aria-live="polite">
         <span>
-          WASD di chuyển theo hướng nhìn · Chuột xoay 360° (Tự canh sau 2s) · Cuộn chuột / Phím V thu phóng · Click đồ để tương tác
-          {isPointerLocked ? ' · Esc nhả chuột' : ''}
+          WASD / Click sàn để đi · Kéo chuột xoay 360° · Cuộn / V thu phóng · [F] Tương tác gần
         </span>
       </div>
     </div>
@@ -619,11 +828,10 @@ function TopRight() {
             className={`dock-pill-btn segment-btn ${isFp ? 'active' : ''}`}
             onClick={() => {
               setMode('fp')
-              requestCanvasPointerLock()
             }}
             aria-pressed={isFp}
-            data-tooltip="Góc nhìn Tầm mắt GTA · Lia chuột xoay 360°"
-            title="Góc nhìn Tầm mắt GTA · Lia chuột xoay 360°"
+            data-tooltip="Góc nhìn Tầm mắt GTA · Kéo chuột xoay 360°"
+            title="Góc nhìn Tầm mắt GTA · Kéo chuột xoay 360°"
           >
             <span aria-hidden="true">👁️</span>
             <span>Tầm mắt</span>

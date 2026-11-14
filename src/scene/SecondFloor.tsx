@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { B, BB, Cyl, G, Interact, Sph, RB, RBB } from './prims'
 import {
+  isOccluderHit,
   isOrbitDragging,
   isValidClick,
   isZoneInteractive,
@@ -12,12 +13,17 @@ import { getArchitecturalGlassMat } from './GlassCurtainWall'
 import { WallAttached, isWallCutByCamera } from './ArchitectureShell'
 import {
   AUTO_DURATION,
-  AUTO_SEQUENCE_GIRL,
   CharacterRoleIndicator,
   computeCharActivityPose,
   getStationEntryForChar,
   stepCharacterWalk,
 } from './Characters'
+import { isBlocked, isBlockedTier2 } from './Furniture'
+import {
+  executeInteraction,
+  pickUtilityAutoTarget,
+  type InteractionMeta,
+} from './interactionEngine'
 import {
   aoContactShadow,
   aoLinearFalloff,
@@ -220,13 +226,25 @@ function FloorAndBeams({ showFloor2 }: { showFloor2: boolean }) {
   )
 
   const handleFloor2Click = (e: ThreeEvent<MouseEvent>) => {
-    if (!isValidClick(e.clientX, e.clientY) || !isZoneInteractive('interior_f2')) return
+    if (!isValidClick(e.clientX, e.clientY)) return
     const st = useStore.getState()
-    if (st.viewPreset === 'floor1') return
+    if (st.mode !== 'orbit' && st.mode !== 'fp') return
+    if (!isZoneInteractive('interior_f2', st)) return
+    if (st.mode === 'orbit' && st.viewPreset === 'floor1') return
+    const first = e.intersections?.[0]
+    const isGhostThrough =
+      st.mode === 'orbit' &&
+      st.wallMode === 'ghost' &&
+      first?.object.userData?.occluderKind !== 'slab'
+    if (first && first.object !== e.object && isOccluderHit(first.object) && !isGhostThrough) return
     e.stopPropagation()
     const p = e.point
     const x = THREE.MathUtils.clamp(p.x, -10.2, 9.2)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 4.3)
+    const ctrlChar = st.userRole || st.activeChar
+    if (st.dynamicSeatTarget?.char === ctrlChar || (ctrlChar === 'boy' ? st.boyActivity !== 'idle' : st.girlActivity !== 'idle')) {
+      st.clearCharacterPosture(ctrlChar)
+    }
     st.setAvatarTarget([x, Y, z])
   }
 
@@ -984,8 +1002,6 @@ function GirlRoomFurniture() {
   const girlPcState = useStore((s) => s.girlPcState)
   const girlChairSpinTick = useStore((s) => s.girlChairSpinTick)
   const girlBookPage = useStore((s) => s.girlBookPage)
-  const userRole = useStore((s) => s.userRole)
-  const canUseGirlWardrobe = userRole === 'girl'
 
   const glassMat = useMemo(() => getArchitecturalGlassMat(darkMode), [darkMode])
   const creamRugTex = useMemo(() => fluffyCreamRug(), [])
@@ -1031,7 +1047,7 @@ function GirlRoomFurniture() {
        * ===================================================================== */}
 
       {/* 1. Thảm chữ nhật trung tính (#B6B7B5) dưới gầm giường */}
-      <mesh position={[-5.0, Y + 0.022, -3.85]} receiveShadow>
+      <mesh position={[-5.0, Y + 0.022, -3.85]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <boxGeometry args={[3.45, 0.02, 3.65]} />
         <meshStandardMaterial
           color="#B6B7B5"
@@ -1043,7 +1059,7 @@ function GirlRoomFurniture() {
       </mesh>
 
       {/* 2. Hai tấm thảm dệt họa tiết trung tính (#8E908F / #B6B7B5) hai bên hông giường */}
-      <mesh position={[-7.35, Y + 0.024, -3.55]} receiveShadow>
+      <mesh position={[-7.35, Y + 0.024, -3.55]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <boxGeometry args={[1.08, 0.02, 1.72]} />
         <meshStandardMaterial
           map={persianRugTex}
@@ -1053,7 +1069,7 @@ function GirlRoomFurniture() {
           polygonOffsetUnits={-1}
         />
       </mesh>
-      <mesh position={[-2.65, Y + 0.024, -3.55]} receiveShadow>
+      <mesh position={[-2.65, Y + 0.024, -3.55]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <boxGeometry args={[1.08, 0.02, 1.72]} />
         <meshStandardMaterial
           map={persianRugTex}
@@ -1104,25 +1120,25 @@ function GirlRoomFurniture() {
           <mesh position={[0, 2.25, 0]}>
             <torusGeometry args={[1.62, 0.036, 16, 64, Math.PI]} />
             <meshStandardMaterial
-              color="#FFAE52"
-              emissive="#FFAE52"
-              emissiveIntensity={floor2ArchLightOn ? 1.5 : 0.15}
+              color={floor2ArchLightOn ? '#FFAE52' : '#D6D1C9'}
+              emissive={floor2ArchLightOn ? '#FFAE52' : '#000000'}
+              emissiveIntensity={floor2ArchLightOn ? 1.65 : 0}
             />
           </mesh>
           <B
             p={[-1.62, 1.42, 0]}
             s={[0.07, 1.68, 0.05]}
-            c="#FFAE52"
-            emissive="#FFAE52"
-            ei={floor2ArchLightOn ? 1.5 : 0.15}
+            c={floor2ArchLightOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={floor2ArchLightOn ? '#FFAE52' : '#000000'}
+            ei={floor2ArchLightOn ? 1.65 : 0}
             shadow={false}
           />
           <B
             p={[1.62, 1.42, 0]}
             s={[0.07, 1.68, 0.05]}
-            c="#FFAE52"
-            emissive="#FFAE52"
-            ei={floor2ArchLightOn ? 1.5 : 0.15}
+            c={floor2ArchLightOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={floor2ArchLightOn ? '#FFAE52' : '#000000'}
+            ei={floor2ArchLightOn ? 1.65 : 0}
             shadow={false}
           />
           {floor2ArchLightOn && (
@@ -1180,9 +1196,9 @@ function GirlRoomFurniture() {
             <Sph
               p={[0, 0.78, 0]}
               s={[0.16, 0.15, 0.16]}
-              c="#FFAE52"
-              emissive="#FFAE52"
-              ei={girlLampOn ? 1.5 : 0.15}
+              c={girlLampOn ? '#FFAE52' : '#D6D1C9'}
+              emissive={girlLampOn ? '#FFAE52' : '#000000'}
+              ei={girlLampOn ? 1.65 : 0}
             />
             {girlLampOn && (
               <mesh position={[0, 0.78, 0]}>
@@ -1201,7 +1217,7 @@ function GirlRoomFurniture() {
 
       {/* 6. Cụm thảm tròn trung tính #B6B7B5 + Ghế lười Bouclé #EFECE6 + Bàn trà gỗ sồi #D8C7B2 */}
       <G p={[-3.55, Y, 1.15]}>
-        <mesh position={[0, 0.024, 0]} receiveShadow>
+        <mesh position={[0, 0.024, 0]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
           <cylinderGeometry args={[1.7, 1.7, 0.02, 48]} />
           <meshStandardMaterial
             map={creamRugTex}
@@ -1285,7 +1301,7 @@ function GirlRoomFurniture() {
           />
         </mesh>
       </G>
-      <mesh position={[-2.0, Y + 0.024, -4.92]} receiveShadow>
+      <mesh position={[-2.0, Y + 0.024, -4.92]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <cylinderGeometry args={[0.58, 0.58, 0.02, 36]} />
         <meshStandardMaterial
           map={creamRugTex}
@@ -1297,47 +1313,11 @@ function GirlRoomFurniture() {
       </mesh>
 
       {/* 2. Giá treo quần áo chữ A khung Matte Charcoal #2B2D2F & gỗ #B7AFA5 */}
-      {canUseGirlWardrobe ? (
-        <Interact
-          zone="interior_f2"
-          hint="👗 Giá treo trang phục"
-          onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
-        >
-          <G p={[-1.12, Y, -5.32]}>
-            {[-0.56, 0.56].map((rx, side) => (
-              <group key={side} position={[rx, 0, 0]}>
-                <Cyl p={[0, 0.82, -0.14]} r={[0.17, 0, 0]} rt={0.02} rb={0.024} h={1.66} c="#2B2D2F" />
-                <Cyl p={[0, 0.82, 0.14]} r={[-0.17, 0, 0]} rt={0.02} rb={0.024} h={1.66} c="#2B2D2F" />
-                <B p={[0, 0.16, 0]} s={[0.035, 0.03, 0.52]} c="#2B2D2F" />
-              </group>
-            ))}
-            <Cyl p={[0, 1.58, 0]} r={[0, 0, Math.PI / 2]} rt={0.016} h={1.24} c="#2B2D2F" metal={0.55} rough={0.3} />
-            <BB p={[0, 0.14, 0]} s={[1.1, 0.03, 0.46]} c="#B7AFA5" rough={0.52} />
-
-            {[
-              { x: -0.36, c: '#C4834E', skirt: '#9E6338', h: 0.96 },
-              { x: -0.12, c: '#EFECE6', skirt: '#D6D1C9', h: 1.04 },
-              { x: 0.12, c: '#5E7487', skirt: '#4A5E6F', h: 0.98 },
-              { x: 0.36, c: '#566E4C', skirt: '#6F8763', h: 0.92 },
-            ].map((dr, idx) => (
-              <group key={idx} position={[dr.x, 1.56, 0]}>
-                <Cyl p={[0, -0.04, 0]} rt={0.006} h={0.08} c="#2B2D2F" metal={0.5} />
-                <BB p={[0, -0.32, 0]} s={[0.14, 0.42, 0.28]} c={dr.c} rough={0.85} />
-                <Cyl p={[0, -0.68, 0]} rt={0.08} rb={0.16} h={dr.h - 0.35} c={dr.skirt} rough={0.85} />
-              </group>
-            ))}
-
-            <BB p={[-0.34, 0.17, 0.04]} s={[0.2, 0.19, 0.12]} c="#9E6338" rough={0.55} />
-            <Cyl p={[-0.34, 0.38, 0.04]} r={[Math.PI / 2, 0, 0]} rt={0.055} h={0.015} c="#2B2D2F" metal={0.5} />
-            <BB p={[-0.08, 0.17, -0.02]} s={[0.22, 0.21, 0.13]} c="#B7AFA5" rough={0.55} />
-            <Cyl p={[-0.08, 0.4, -0.02]} r={[Math.PI / 2, 0, 0]} rt={0.06} h={0.015} c="#2B2D2F" metal={0.5} />
-            <BB p={[0.28, 0.17, 0]} s={[0.32, 0.13, 0.26]} c="#EFECE6" rough={0.75} />
-            <BB p={[0.28, 0.29, 0]} s={[0.33, 0.025, 0.27]} c="#D6D1C9" />
-            <BB p={[0.28, 0.315, 0.01]} s={[0.28, 0.11, 0.23]} c="#D6D1C9" rough={0.75} />
-            <BB p={[0.28, 0.415, 0.01]} s={[0.29, 0.022, 0.24]} c="#B7AFA5" />
-          </G>
-        </Interact>
-      ) : (
+      <Interact
+        zone="interior_f2"
+        hint="👗 Giá treo trang phục"
+        onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+      >
         <G p={[-1.12, Y, -5.32]}>
           {[-0.56, 0.56].map((rx, side) => (
             <group key={side} position={[rx, 0, 0]}>
@@ -1371,7 +1351,7 @@ function GirlRoomFurniture() {
           <BB p={[0.28, 0.315, 0.01]} s={[0.28, 0.11, 0.23]} c="#D6D1C9" rough={0.75} />
           <BB p={[0.28, 0.415, 0.01]} s={[0.29, 0.022, 0.24]} c="#B7AFA5" />
         </G>
-      )}
+      </Interact>
 
       {/* 3. CHẬU CÂY CẢNH LỚN TÁN LÁ MUTED SAGE / OLIVE (#566E4C & #6F8763) */}
       <G p={[0.12, Y, -5.05]}>
@@ -1541,7 +1521,7 @@ function GirlRoomFurniture() {
        * ===================================================================== */}
       <Interact
         zone="interior_f2"
-        hint="✨ Đèn LED kệ sách"
+        hint={girlShelfLedOn ? '✨ Tắt đèn LED kệ sách' : '✨ Bật đèn LED kệ sách'}
         onClick={() => useStore.getState().toggleGirlShelfLed()}
       >
         <G p={[3.55, Y, -5.85]}>
@@ -1549,27 +1529,21 @@ function GirlRoomFurniture() {
           <B
             p={[0, 2.34, 0.05]}
             s={[5.05, 0.028, 0.05]}
-            c="#FFAE52"
-            emissive="#FFAE52"
-            ei={girlShelfLedOn ? 1.5 : 0.15}
+            c={girlShelfLedOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={girlShelfLedOn ? '#FFAE52' : '#000000'}
+            ei={girlShelfLedOn ? 1.6 : 0}
             shadow={false}
           />
 
           <BB p={[0, 2.88, 0]} s={[5.2, 0.055, 0.28]} c="#B7AFA5" rough={0.5} />
-          <Interact
-            zone="interior_f2"
-            hint={girlShelfLedOn ? '✨ Tắt LED kệ sách' : '✨ Bật LED kệ sách'}
-            onClick={() => useStore.getState().toggleGirlShelfLed()}
-          >
-            <B
-              p={[0, 2.84, 0.05]}
-              s={[5.05, 0.028, 0.05]}
-              c="#FFAE52"
-              emissive="#FFAE52"
-              ei={girlShelfLedOn ? 1.5 : 0.15}
-              shadow={false}
-            />
-          </Interact>
+          <B
+            p={[0, 2.84, 0.05]}
+            s={[5.05, 0.028, 0.05]}
+            c={girlShelfLedOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={girlShelfLedOn ? '#FFAE52' : '#000000'}
+            ei={girlShelfLedOn ? 1.6 : 0}
+            shadow={false}
+          />
 
           {girlShelfLedOn && (
             <mesh position={[0, 2.6, 0.01]}>
@@ -1642,7 +1616,7 @@ function GirlRoomFurniture() {
        * D. BÀN HỌC WARM TAUPE (#B7AFA5), CHÂN CHARCOAL (#2B2D2F), GHẾ SLATE BLUE (#5E7487)
        * ===================================================================== */}
       {/* Thảm dệt họa tiết trung tính (#8E908F / #B6B7B5) dưới bàn học */}
-      <mesh position={[2.25, Y + 0.024, -4.68]} receiveShadow>
+      <mesh position={[2.25, Y + 0.024, -4.68]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
         <boxGeometry args={[2.3, 0.02, 1.38]} />
         <meshStandardMaterial
           map={persianRugTex}
@@ -1766,9 +1740,9 @@ function GirlRoomFurniture() {
               <mesh position={[0, 0, 0.028]}>
                 <torusGeometry args={[0.48, 0.032, 20, 64]} />
                 <meshStandardMaterial
-                  color="#FFAE52"
-                  emissive="#FFAE52"
-                  emissiveIntensity={girlVanityLightOn ? 1.5 : 0.2}
+                  color={girlVanityLightOn ? '#FFAE52' : '#D6D1C9'}
+                  emissive={girlVanityLightOn ? '#FFAE52' : '#000000'}
+                  emissiveIntensity={girlVanityLightOn ? 1.65 : 0}
                 />
               </mesh>
               {girlVanityLightOn && (
@@ -1829,105 +1803,13 @@ function GirlRoomFurniture() {
       {/* =====================================================================
        * F. TỦ QUẦN ÁO WARM TAUPE/GREIGE (#B7AFA5) + TAY NẮM CHARCOAL (#2B2D2F) + LED #FFAE52
        * ===================================================================== */}
-      {canUseGirlWardrobe ? (
-        <Interact
-          zone="interior_f2"
-          hint="👗 Tủ quần áo Bạn Gái"
-          onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
-        >
-          <G p={[7.65, Y, -5.25]}>
-            {/* Khung vỏ tủ Warm Taupe/Greige #B7AFA5 */}
-            <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#B7AFA5" rough={0.62} shadow />
-            <RBB p={[-0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#B7AFA5" rough={0.62} radius={0.02} shadow />
-            <RBB p={[0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#B7AFA5" rough={0.62} radius={0.02} shadow />
-            <BB p={[0, 0, 0]} s={[2.05, 0.12, 1.08]} c="#2B2D2F" rough={0.55} />
-            <BB p={[0, 3.32, 0]} s={[2.06, 0.1, 1.1]} c="#B7AFA5" rough={0.6} shadow />
-            <RBB p={[0, 3.42, 0.02]} s={[2.16, 0.1, 1.16]} c="#D6D1C9" rough={0.58} radius={0.025} shadow />
-            <BB p={[0, 0.12, -0.04]} s={[0.045, 3.2, 0.96]} c="#D6D1C9" rough={0.65} />
-            <BB p={[0, 0.12, -0.48]} s={[1.9, 3.2, 0.02]} c="#EFECE6" rough={0.75} />
-
-            <BB p={[0, 2.68, -0.02]} s={[1.92, 0.045, 0.96]} c="#D6D1C9" />
-            <BB p={[0, 0.96, -0.02]} s={[1.92, 0.045, 0.96]} c="#D6D1C9" />
-            <BB p={[0, 0.52, -0.02]} s={[1.92, 0.04, 0.96]} c="#D6D1C9" />
-
-            <BB p={[-0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#EFECE6" rough={0.85} />
-            <BB p={[0.48, 2.73, -0.05]} s={[0.58, 0.34, 0.65]} c="#D6D1C9" rough={0.85} />
-
-            <Cyl p={[-0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#2B2D2F" metal={0.5} rough={0.35} />
-            <Cyl p={[0.48, 2.52, 0.02]} r={[0, 0, Math.PI / 2]} rt={0.016} h={0.88} c="#2B2D2F" metal={0.5} rough={0.35} />
-            {[
-              { x: -0.72, h: 1.15, c: '#C4834E' },
-              { x: -0.5, h: 1.25, c: '#EFECE6' },
-              { x: -0.28, h: 1.05, c: '#5E7487' },
-              { x: 0.28, h: 1.2, c: '#EFECE6' },
-              { x: 0.5, h: 1.1, c: '#B7AFA5' },
-              { x: 0.72, h: 1.22, c: '#4A5E6F' },
-            ].map((cl, idx) => (
-              <BB
-                key={idx}
-                p={[cl.x, 2.48 - cl.h, 0.02]}
-                s={[0.16, cl.h, 0.46]}
-                c={cl.c}
-                rough={0.85}
-              />
-            ))}
-
-            <BB p={[-0.48, 0.56, 0]} s={[0.52, 0.22, 0.55]} c="#D6D1C9" />
-            <BB p={[0.48, 0.56, 0]} s={[0.52, 0.22, 0.55]} c="#B7AFA5" />
-            <BB p={[-0.48, 0.14, 0]} s={[0.54, 0.26, 0.55]} c="#C4834E" />
-            <BB p={[0.48, 0.14, 0]} s={[0.54, 0.26, 0.55]} c="#9E6338" />
-
-            {[-0.48, 0.48].map((lx, idx) => (
-              <group key={idx}>
-                <B
-                  p={[lx, 3.26, 0.22]}
-                  s={[0.82, 0.025, 0.04]}
-                  c="#FFAE52"
-                  emissive="#FFAE52"
-                  ei={1.5}
-                  shadow={false}
-                />
-                <B
-                  p={[lx, 2.64, 0.22]}
-                  s={[0.82, 0.025, 0.04]}
-                  c="#FFAE52"
-                  emissive="#FFAE52"
-                  ei={1.5}
-                  shadow={false}
-                />
-                <B
-                  p={[lx, 0.93, 0.22]}
-                  s={[0.82, 0.02, 0.04]}
-                  c="#FFAE52"
-                  emissive="#FFAE52"
-                  ei={1.5}
-                  shadow={false}
-                />
-              </group>
-            ))}
-
-            {[-0.48, 0.48].map((dx, side) => (
-              <group key={side} position={[dx, 0.12, 0.52]}>
-                <BB p={[-0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#B7AFA5" />
-                <BB p={[0.44, 0, 0]} s={[0.07, 3.2, 0.04]} c="#B7AFA5" />
-                <BB p={[0, 0, 0]} s={[0.95, 0.08, 0.04]} c="#B7AFA5" />
-                <BB p={[0, 3.12, 0]} s={[0.95, 0.08, 0.04]} c="#B7AFA5" />
-                <mesh position={[0, 1.6, 0]} material={glassMat}>
-                  <boxGeometry args={[0.82, 3.04, 0.018]} />
-                </mesh>
-                <BB
-                  p={[side === 0 ? 0.38 : -0.38, 1.35, 0.03]}
-                  s={[0.025, 0.72, 0.025]}
-                  c="#2B2D2F"
-                  metal={0.45}
-                  rough={0.35}
-                />
-              </group>
-            ))}
-          </G>
-        </Interact>
-      ) : (
+      <Interact
+        zone="interior_f2"
+        hint="👗 Tủ quần áo Bạn Gái"
+        onClick={() => useStore.getState().startActivity('girl_wardrobe', true)}
+      >
         <G p={[7.65, Y, -5.25]}>
+          {/* Khung vỏ tủ Warm Taupe/Greige #B7AFA5 */}
           <BB p={[0, 0, -0.52]} s={[2.05, 3.42, 0.06]} c="#B7AFA5" rough={0.62} shadow />
           <RBB p={[-0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#B7AFA5" rough={0.62} radius={0.02} shadow />
           <RBB p={[0.99, 0, 0]} s={[0.07, 3.42, 1.08]} c="#B7AFA5" rough={0.62} radius={0.02} shadow />
@@ -1973,25 +1855,25 @@ function GirlRoomFurniture() {
               <B
                 p={[lx, 3.26, 0.22]}
                 s={[0.82, 0.025, 0.04]}
-                c="#FFD7A3"
-                emissive="#FFD7A3"
-                ei={2.2}
+                c="#FFAE52"
+                emissive="#FFAE52"
+                ei={1.5}
                 shadow={false}
               />
               <B
                 p={[lx, 2.64, 0.22]}
                 s={[0.82, 0.025, 0.04]}
-                c="#FFD7A3"
-                emissive="#FFD7A3"
-                ei={2.2}
+                c="#FFAE52"
+                emissive="#FFAE52"
+                ei={1.5}
                 shadow={false}
               />
               <B
                 p={[lx, 0.93, 0.22]}
                 s={[0.82, 0.02, 0.04]}
-                c="#FFD7A3"
-                emissive="#FFD7A3"
-                ei={1.9}
+                c="#FFAE52"
+                emissive="#FFAE52"
+                ei={1.5}
                 shadow={false}
               />
             </group>
@@ -2016,13 +1898,13 @@ function GirlRoomFurniture() {
             </group>
           ))}
         </G>
-      )}
+      </Interact>
 
       {/* =====================================================================
        * G. GÓC ĐỌC SÁCH SÁT LAN CAN KÍNH BÊN PHẢI (SLATE BLUE #5E7487 + ĐÈN #FFD7A3)
        * ===================================================================== */}
       <G p={[6.55, Y, -1.28]}>
-        <mesh position={[0, 0.024, 0]} receiveShadow>
+        <mesh position={[0, 0.024, 0]} receiveShadow raycast={NOOP_RAYCAST} userData={{ noRaycast: true }}>
           <boxGeometry args={[3.75, 0.02, 1.75]} />
           <meshStandardMaterial
             map={persianRugTex}
@@ -2128,9 +2010,9 @@ function GirlRoomFurniture() {
               rt={0.23}
               rb={0.26}
               h={0.42}
-              c="#FFAE52"
-              emissive="#FFAE52"
-              ei={floor2ReadingLampOn ? 1.5 : 0.15}
+              c={floor2ReadingLampOn ? '#FFAE52' : '#D6D1C9'}
+              emissive={floor2ReadingLampOn ? '#FFAE52' : '#000000'}
+              ei={floor2ReadingLampOn ? 1.65 : 0}
             />
             {floor2ReadingLampOn && (
               <mesh position={[0, 1.45, 0]}>
@@ -2205,11 +2087,9 @@ function SleepingCat({ p }: { p: V3 }) {
 /* ============================================================================
  * 5. NHÂN VẬT BẠN GÁI (GIRLFRIEND AVATAR – ĐI BỘ ĐA TẦNG & DÙNG CHUNG TẤT CẢ ĐỒ ĐẠC)
  * ============================================================================ */
-const GIRL_OUTDOOR_STROLL_SPOTS: { pos: V3; lookYaw: number }[] = [
-  { pos: [-8.8, -0.165, 12.6], lookYaw: Math.PI },    // Sân Firepit Lounge ấm áp
-  { pos: [4.65, -0.15, 10.5], lookYaw: Math.PI / 2 }, // Sundeck ngắm hồ bơi vô cực
-  { pos: [-1.45, -0.14, 13.8], lookYaw: 0 },          // Lối đá bước dạo nổi trên mặt nước
-]
+const GIRL_ORIENT_Y_AXIS = new THREE.Vector3(0, 1, 0)
+const GIRL_ORIENT_QUAT = new THREE.Quaternion()
+const GIRL_ORIENT_EULER = new THREE.Euler()
 
 function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean } = {}) {
   const root = useRef<THREE.Group>(null)
@@ -2245,12 +2125,17 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
   const prevGirlAct = useRef<Activity>(girlActivity)
   const phaseTimer = useRef(0)
   const walkWatchdog = useRef(0)
-  const autoIdleTimer = useRef(1.8)
-  const autoSeqIdx = useRef(0)
-  const outdoorStrollTarget = useRef<V3 | null>(null)
-  const outdoorStrollYaw = useRef<number | null>(null)
-  const outdoorStrollPause = useRef(0)
-  const outdoorStrollIdx = useRef(0)
+  const autoNextTimer = useRef(2.2)
+  const autoTargetMeta = useRef<InteractionMeta | null>(null)
+  const autoRecentIds = useRef<string[]>([])
+  const autoEnjoyTimer = useRef(0)
+  const activeEnjoyDur = useRef(0)
+  const orientTargetYaw = useRef<number | null>(null)
+  const orientUntil = useRef(0)
+  const lastOrientTick = useRef(0)
+  const wasDynamicSeated = useRef(false)
+  const seatSavedStandPos = useRef<[number, number] | null>(null)
+  const seatSavedStandFloorY = useRef<number>(FLOOR2_Y)
   const lastSpinTick = useRef(girlOutfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
@@ -2295,12 +2180,18 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
         walkFloorY.current = spawn.pos[1]
         walkYaw.current = spawn.yaw
         walkPhase.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
+        autoTargetMeta.current = null
+        autoEnjoyTimer.current = 0
+        activeEnjoyDur.current = 0
+        orientTargetYaw.current = null
+        orientUntil.current = 0
+        wasDynamicSeated.current = false
+        seatSavedStandPos.current = null
         walkWatchdog.current = 0
         phaseTimer.current = 0
         prevGirlAct.current = 'idle'
+        st.setAutoIntent('girl', null)
+        st.clearCharacterPosture('girl')
         root.current.position.set(spawn.pos[0], spawn.pos[1], spawn.pos[2])
         root.current.rotation.set(0, spawn.yaw, 0)
         root.current.visible = !(isFpEyeNow && st.userRole === 'girl') && !Boolean(hideIfUpstairsRef.current && spawn.pos[1] > 2.0)
@@ -2355,9 +2246,45 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
       }
     }
 
-    if ((moveX !== 0 || moveZ !== 0) && st.girlActivity !== 'idle') {
-      st.startActivity('idle', true, 'girl')
-      return
+    const oc = st.orientCommand
+    if (oc && oc.char === 'girl' && oc.tick !== lastOrientTick.current) {
+      lastOrientTick.current = oc.tick
+      orientTargetYaw.current = oc.yaw
+      orientUntil.current = t + 0.65
+    }
+
+    const dynSeat = st.dynamicSeatTarget
+    const isGirlDynamicSeated = Boolean(dynSeat && dynSeat.char === 'girl')
+    if (isGirlDynamicSeated && !wasDynamicSeated.current) {
+      seatSavedStandPos.current = [walkPos.current[0], walkPos.current[1]]
+      seatSavedStandFloorY.current = walkFloorY.current
+      autoEnjoyTimer.current = 10 + Math.random() * 5
+    } else if (!isGirlDynamicSeated && wasDynamicSeated.current) {
+      const saved = seatSavedStandPos.current
+      if (saved) {
+        const blocked =
+          seatSavedStandFloorY.current <= 0.1
+            ? isBlocked(saved[0], saved[1], 0.28)
+            : seatSavedStandFloorY.current >= 2.0
+              ? isBlockedTier2(saved[0], saved[1], 0.28)
+              : false
+        if (!blocked) {
+          walkPos.current = [saved[0], saved[1]]
+          walkFloorY.current = seatSavedStandFloorY.current
+        }
+        seatSavedStandPos.current = null
+      }
+      autoNextTimer.current = 1.2
+    }
+    wasDynamicSeated.current = isGirlDynamicSeated
+
+    if (moveX !== 0 || moveZ !== 0) {
+      orientTargetYaw.current = null
+      orientUntil.current = 0
+      if (st.girlActivity !== 'idle' || isGirlDynamicSeated) {
+        st.clearCharacterPosture('girl')
+        return
+      }
     }
 
     let pos: V3 = [walkPos.current[0], walkFloorY.current, walkPos.current[1]]
@@ -2378,14 +2305,61 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
     let showRemote = false
     let showBook = false
 
-    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1 <-> Sân vườn)
+    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 2 <-> Cầu thang <-> Tầng 1 <-> Sân vườn) & Dynamic Seat
     if (st.girlActivity === 'idle') {
       let moving = false
-      if (isControllingGirl && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
+      if (isGirlDynamicSeated && dynSeat) {
+        if (isControllingGirl && st.avatarTarget) {
+          st.clearCharacterPosture('girl')
+          return
+        }
         walkWatchdog.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
+        autoTargetMeta.current = null
+        walkPhase.current = 0
+        pos = [dynSeat.pos[0], dynSeat.pos[1], dynSeat.pos[2]]
+        rotY = dynSeat.yaw
+        if (dynSeat.pose === 'lie') {
+          rotX = -Math.PI / 2
+          lArmX = -0.15
+          lArmZ = 0.2
+          rArmX = -0.15
+          rArmZ = -0.2
+          lHipX = 0.04
+          rHipX = -0.04
+          headX = 0.06
+        } else if (dynSeat.pose === 'recline') {
+          lHipX = -1.18
+          rHipX = -1.18
+          lKneeX = 0.85
+          rKneeX = 0.85
+          lArmX = -0.45
+          rArmX = -0.45
+          lArmZ = 0.14
+          rArmZ = -0.14
+          headX = -0.08 + Math.sin(t * 0.7) * 0.04
+        } else {
+          lHipX = -1.42
+          rHipX = -1.42
+          lKneeX = 1.38
+          rKneeX = 1.38
+          lArmX = -0.52
+          rArmX = -0.52
+          lArmZ = 0.1
+          rArmZ = -0.1
+          headY = Math.sin(t * 0.8) * 0.14
+          showCup = Math.sin(t * 0.25) > 0.35
+        }
+        if (st.girlAutoLife) {
+          autoEnjoyTimer.current -= delta
+          if (autoEnjoyTimer.current <= 0) {
+            st.clearCharacterPosture('girl')
+            autoNextTimer.current = 1.2
+          }
+        }
+      } else if (isControllingGirl && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
+        walkWatchdog.current = 0
+        autoTargetMeta.current = null
+        if (st.autoIntent?.girl) st.setAutoIntent('girl', null)
         moving = stepCharacterWalk(
           walkPos,
           walkFloorY,
@@ -2400,13 +2374,37 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
           [LIVE_ACTORS.khoaPos[0], LIVE_ACTORS.khoaPos[1]],
           LIVE_ACTORS.khoaFloorY,
         )
-        if (moving) autoIdleTimer.current = 4.0
+        if (moving) autoNextTimer.current = 3.5
       } else if (st.girlAutoLife) {
-        if (outdoorStrollTarget.current) {
+        const autoMeta = autoTargetMeta.current
+        if (autoMeta) {
           walkWatchdog.current += delta
-          const [ox, , oz] = outdoorStrollTarget.current
-          const distOutdoor = Math.hypot(walkPos.current[0] - ox, walkPos.current[1] - oz)
-          if (distOutdoor > 0.25 && walkWatchdog.current < 28.0) {
+          const [tx, ty, tz] = autoMeta.standOffset
+          const distStand = Math.hypot(walkPos.current[0] - tx, walkPos.current[1] - tz)
+          const distCenter = Math.hypot(
+            walkPos.current[0] - autoMeta.center[0],
+            walkPos.current[1] - autoMeta.center[2],
+          )
+          const sameFloor = Math.abs(walkFloorY.current - ty) < 0.35
+          const midStair = walkFloorY.current > 0.1 && walkFloorY.current < FLOOR2_Y - 0.1
+
+          if (!midStair && sameFloor && (distStand < 0.55 || (distCenter < 1.4 && distStand < 1.8))) {
+            autoRecentIds.current = [autoMeta.id, ...autoRecentIds.current].slice(0, 6)
+            autoTargetMeta.current = null
+            walkWatchdog.current = 0
+            st.setAutoIntent('girl', null)
+            activeEnjoyDur.current = 10 + Math.random() * 5
+            autoEnjoyTimer.current = activeEnjoyDur.current
+            autoNextTimer.current = 1.2
+            executeInteraction(autoMeta, { forChar: 'girl', fromAuto: true })
+            return
+          } else if (walkWatchdog.current >= 25.0) {
+            autoRecentIds.current = [autoMeta.id, ...autoRecentIds.current].slice(0, 6)
+            autoTargetMeta.current = null
+            walkWatchdog.current = 0
+            st.setAutoIntent('girl', null)
+            autoNextTimer.current = 1.0
+          } else {
             moving = stepCharacterWalk(
               walkPos,
               walkFloorY,
@@ -2415,74 +2413,61 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
               0,
               0,
               false,
-              outdoorStrollTarget.current,
-              () => {
-                outdoorStrollTarget.current = null
-              },
+              autoMeta.standOffset,
+              () => {},
               delta,
               [LIVE_ACTORS.khoaPos[0], LIVE_ACTORS.khoaPos[1]],
               LIVE_ACTORS.khoaFloorY,
             )
-          } else {
-            outdoorStrollTarget.current = null
-            walkWatchdog.current = 0
-            walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
           }
-        } else if (outdoorStrollPause.current > 0) {
-          walkWatchdog.current = 0
-          outdoorStrollPause.current -= delta
-          if (outdoorStrollYaw.current !== null) {
-            const diff = Math.atan2(
-              Math.sin(outdoorStrollYaw.current - walkYaw.current),
-              Math.cos(outdoorStrollYaw.current - walkYaw.current),
-            )
-            walkYaw.current += diff * Math.min(1, delta * 4)
-          }
-          headY = Math.sin(t * 0.85) * 0.24
-          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
         } else {
           walkWatchdog.current = 0
-          outdoorStrollYaw.current = null
-          autoIdleTimer.current -= delta
-          if (autoIdleTimer.current <= 0) {
-            const nextAct = AUTO_SEQUENCE_GIRL[autoSeqIdx.current % AUTO_SEQUENCE_GIRL.length]
-            autoSeqIdx.current += 1
-            autoIdleTimer.current = 1.6
-            if (nextAct === 'pet') {
-              st.petDog(autoSeqIdx.current % 2 === 0 ? 'bo' : 'mochi', false, 'girl')
+          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+          autoNextTimer.current -= delta
+          if (autoNextTimer.current <= 0) {
+            const nextMeta = pickUtilityAutoTarget('girl', st.darkMode, autoRecentIds.current)
+            if (nextMeta) {
+              autoTargetMeta.current = nextMeta
+              st.setAutoIntent('girl', {
+                icon: nextMeta.icon,
+                label: nextMeta.label,
+                targetId: nextMeta.id,
+              })
+              autoNextTimer.current = 1.2
             } else {
-              st.startActivity(nextAct, false, 'girl')
+              st.setAutoIntent('girl', null)
+              autoNextTimer.current = 2.0
             }
-            return
           }
         }
       } else {
+        if (st.autoIntent?.girl) st.setAutoIntent('girl', null)
+        autoTargetMeta.current = null
         walkWatchdog.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
         walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
       }
 
-      if (moving) {
-        const s = Math.sin(walkPhase.current)
-        const swing = s * 0.52
-        const bob = Math.abs(Math.cos(walkPhase.current)) * 0.032
-        pos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
-        rotY = walkYaw.current
-        lHipX = swing
-        rHipX = -swing
-        lKneeX = Math.max(0, -swing * 0.65)
-        rKneeX = Math.max(0, swing * 0.65)
-        lArmX = -0.22 - swing * 0.65
-        rArmX = -0.22 + swing * 0.65
-        headY = Math.sin(t * 1.5) * 0.05
-      } else {
-        pos = [walkPos.current[0], walkFloorY.current, walkPos.current[1]]
-        rotY = walkYaw.current
-        headY = Math.sin(t * 1.1) * 0.12
-        rArmX = -0.22 + Math.sin(t * 1.6) * 0.05
-        lArmX = -0.22 - Math.sin(t * 1.6) * 0.05
+      if (!isGirlDynamicSeated) {
+        if (moving) {
+          const s = Math.sin(walkPhase.current)
+          const swing = s * 0.52
+          const bob = Math.abs(Math.cos(walkPhase.current)) * 0.032
+          pos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
+          rotY = walkYaw.current
+          lHipX = swing
+          rHipX = -swing
+          lKneeX = Math.max(0, -swing * 0.65)
+          rKneeX = Math.max(0, swing * 0.65)
+          lArmX = -0.22 - swing * 0.65
+          rArmX = -0.22 + swing * 0.65
+          headY = Math.sin(t * 1.5) * 0.05
+        } else {
+          pos = [walkPos.current[0], walkFloorY.current, walkPos.current[1]]
+          rotY = walkYaw.current
+          headY = Math.sin(t * 1.1) * 0.12
+          rArmX = -0.22 + Math.sin(t * 1.6) * 0.05
+          lArmX = -0.22 - Math.sin(t * 1.6) * 0.05
+        }
       }
     } else {
       // 2. Đi bộ đa tầng (leo/xuống cầu thang) và sử dụng mọi đồ vật trong nhà
@@ -2607,34 +2592,23 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
         showRemote = pose.showRemote
         showBook = pose.showBook
 
-        const maxDur = AUTO_DURATION[st.girlActivity]
         const isOneShot =
           st.girlActivity === 'drink' ||
           st.girlActivity === 'darts' ||
           st.girlActivity === 'feed'
+        if (!isOneShot && activeEnjoyDur.current <= 0) {
+          activeEnjoyDur.current = 10 + Math.random() * 5
+        }
+        const maxDur = isOneShot ? AUTO_DURATION[st.girlActivity] : activeEnjoyDur.current
         if (phaseTimer.current >= maxDur) {
           if (st.isUserInitiated && isOneShot && st.activeChar === 'girl') {
+            activeEnjoyDur.current = 0
             st.returnOverview()
             return
           } else if (st.girlAutoLife) {
-            if (autoSeqIdx.current > 0 && autoSeqIdx.current % 3 === 0) {
-              const spot = GIRL_OUTDOOR_STROLL_SPOTS[outdoorStrollIdx.current % GIRL_OUTDOOR_STROLL_SPOTS.length]
-              outdoorStrollIdx.current += 1
-              outdoorStrollTarget.current = spot.pos
-              outdoorStrollYaw.current = spot.lookYaw
-              outdoorStrollPause.current = 5.0
-              walkWatchdog.current = 0
-              autoIdleTimer.current = 0.8
-              st.startActivity('idle', false, 'girl')
-              return
-            }
-            const nextAct = AUTO_SEQUENCE_GIRL[autoSeqIdx.current % AUTO_SEQUENCE_GIRL.length]
-            autoSeqIdx.current += 1
-            if (nextAct === 'pet') {
-              st.petDog(autoSeqIdx.current % 2 === 0 ? 'bo' : 'mochi', false, 'girl')
-            } else {
-              st.startActivity(nextAct, false, 'girl')
-            }
+            activeEnjoyDur.current = 0
+            autoNextTimer.current = 1.0
+            st.startActivity('idle', false, 'girl')
             return
           }
         }
@@ -2648,11 +2622,24 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
     root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, pos[0], k)
     root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, pos[1], k)
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, pos[2], k)
-    const isGirlSleeping = (st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active'
+    const isGirlSleeping =
+      ((st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active') ||
+      (isGirlDynamicSeated && dynSeat?.pose === 'lie')
     if (isGirlSleeping) {
       root.current.rotation.x = -Math.PI / 2
-      root.current.rotation.y = -0.05
+      root.current.rotation.y = isGirlDynamicSeated && dynSeat ? dynSeat.yaw : -0.05
       root.current.rotation.z = 0
+    } else if (
+      orientTargetYaw.current !== null &&
+      t < orientUntil.current &&
+      !isGirlDynamicSeated &&
+      st.girlActivity === 'idle'
+    ) {
+      root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, rotX, k)
+      GIRL_ORIENT_QUAT.setFromAxisAngle(GIRL_ORIENT_Y_AXIS, orientTargetYaw.current)
+      root.current.quaternion.slerp(GIRL_ORIENT_QUAT, Math.min(1, delta * 12))
+      GIRL_ORIENT_EULER.setFromQuaternion(root.current.quaternion, 'YXZ')
+      walkYaw.current = GIRL_ORIENT_EULER.y
     } else {
       root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, rotX, k)
       const rotDiff = Math.atan2(
@@ -2733,7 +2720,8 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
     if (bookRef.current) bookRef.current.visible = showBook
 
     const isSleepingLying =
-      (st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active'
+      ((st.girlActivity === 'sleep' || st.girlActivity === 'girl_sleep') && st.girlPhase === 'active') ||
+      (isGirlDynamicSeated && dynSeat?.pose === 'lie')
     if (zzzRef.current) {
       zzzRef.current.visible = isSleepingLying
       if (isSleepingLying) {

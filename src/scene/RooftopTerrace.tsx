@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import {
   FLOOR2_Y,
@@ -10,9 +10,10 @@ import {
 } from './ArchitectureShell'
 import { HedgeRow, PottedVillaTree } from './Botanicals'
 import { getArchitecturalGlassMat } from './GlassCurtainWall'
-import { B, BB, Cyl, G, RBB } from './prims'
+import { B, BB, Cyl, G, Interact, RBB } from './prims'
 import { registerOccluderMesh } from './raycastRegistry'
 import { getHousePalette } from '../data/config'
+import { useStore } from '../store'
 
 const UNIT_BOX_GEOM = new THREE.BoxGeometry(1, 1, 1)
 
@@ -149,6 +150,7 @@ function TerracePergola({ darkMode, deckTop }: { darkMode: boolean; deckTop: num
 export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
   const Y = FLOOR2_Y // 4.35
   const DECK_TOP = Y + 0.31 // 4.66
+  const [lanternOn, setLanternOn] = useState(true)
   const palette = useMemo(() => getHousePalette(darkMode), [darkMode])
   const trimColor = TRIM_BLACK
   const slabColor = palette.extWall
@@ -187,7 +189,7 @@ export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
 
       {/* Đường nẹp viền đá Travertine #F5F2EB & gờ chống tràn quanh mép Sân thượng */}
       <B p={[-13.205, Y + 0.28, 6.45]} s={[5.85, 0.08, 0.12]} c={frameWhite} map={travTex} rough={0.4} shadow={false} />
-      <B p={[-16.02, Y + 0.28, 0]} s={[0.12, 0.08, 12.96]} c={frameWhite} map={travTex} rough={0.4} shadow={false} />
+      <B p={[-16.02, Y + 0.28, 0]} s={[0.12, 0.08, 12.78]} c={frameWhite} map={travTex} rough={0.4} shadow={false} />
       <B p={[-13.18, Y + 0.28, -6.45]} s={[5.9, 0.08, 0.12]} c={frameWhite} map={travTex} rough={0.4} shadow={false} />
 
       {/* Đèn LED #FFAE52 hắt dưới diềm mặt tiền Sân thượng phát sáng ấm (không dùng pointLight) */}
@@ -203,53 +205,53 @@ export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
       {/* 2. Mặt sàn gỗ Teak ngoài trời (chừa gọn ô giếng trời phòng tắm) */}
       <B p={[-13.08, DECK_TOP - 0.01, -4.42]} s={[5.35, 0.04, 3.35]} map={frontDeckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
       <B p={[-13.08, DECK_TOP - 0.01, 2.82]} s={[5.35, 0.04, 6.55]} map={deckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
-      <B p={[-14.8, DECK_TOP - 0.01, -1.6]} s={[1.92, 0.04, 2.3]} map={frontDeckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
-      <B p={[-10.98, DECK_TOP - 0.01, -1.6]} s={[1.55, 0.04, 2.3]} map={frontDeckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
+      <B p={[-14.8, DECK_TOP - 0.01, -1.6]} s={[1.92, 0.04, 2.16]} map={frontDeckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
+      <B p={[-10.98, DECK_TOP - 0.01, -1.6]} s={[1.55, 0.04, 2.16]} map={frontDeckTex} c={darkMode ? '#DFCBB2' : '#FFFFFF'} rough={0.5} shadow={false} />
 
       {/* 3. Giếng trời kính cường lực phòng tắm khung nhôm đen mờ phẳng gọn (x: -13.8..-11.8, z: -2.7..-0.5) */}
       <group position={[-12.8, DECK_TOP + 0.05, -1.6]}>
         <B p={[0, 0, -1.12]} s={[2.12, 0.14, 0.07]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
         <B p={[0, 0, 1.12]} s={[2.12, 0.14, 0.07]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
-        <B p={[-1.02, 0, 0]} s={[0.07, 0.14, 2.18]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
-        <B p={[1.02, 0, 0]} s={[0.07, 0.14, 2.18]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
+        <B p={[-1.02, 0, 0]} s={[0.07, 0.14, 2.17]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
+        <B p={[1.02, 0, 0]} s={[0.07, 0.14, 2.17]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
         <B p={[0, 0.04, 0]} s={[0.04, 0.05, 2.14]} c={trimColor} rough={0.35} metal={0.55} shadow={false} />
       </group>
 
       {/* 4. Hệ lan can kính cường lực không khung bao quanh 3 mặt Sân thượng (h = 1.02m) */}
       <B p={[-13.14, DECK_TOP + 0.04, 6.22]} s={[5.76, 0.08, 0.09]} c={trimColor} rough={0.45} metal={0.45} shadow={false} />
       <B p={[-13.14, DECK_TOP + 0.04, -6.22]} s={[5.76, 0.08, 0.09]} c={trimColor} rough={0.45} metal={0.45} shadow={false} />
-      <B p={[-15.96, DECK_TOP + 0.04, 0]} s={[0.09, 0.08, 12.52]} c={trimColor} rough={0.45} metal={0.45} shadow={false} />
+      <B p={[-15.96, DECK_TOP + 0.04, 0]} s={[0.09, 0.08, 12.34]} c={trimColor} rough={0.45} metal={0.45} shadow={false} />
 
       {/* Các tấm kính giếng trời & lan can kính đăng ký Occluder 'glass' */}
       <group ref={glassOccluderRef}>
         <mesh position={[-12.8, DECK_TOP + 0.1, -1.6]} material={glassMat}>
           <boxGeometry args={[2.0, 0.03, 2.16]} />
         </mesh>
-        <mesh position={[-13.14, DECK_TOP + 0.56, 6.22]} material={glassMat}>
-          <boxGeometry args={[5.72, 0.96, 0.025]} />
+        <mesh position={[-13.11, DECK_TOP + 0.56, 6.22]} material={glassMat}>
+          <boxGeometry args={[5.66, 0.96, 0.025]} />
         </mesh>
-        <mesh position={[-13.14, DECK_TOP + 0.56, -6.22]} material={glassMat}>
-          <boxGeometry args={[5.72, 0.96, 0.025]} />
+        <mesh position={[-13.11, DECK_TOP + 0.56, -6.22]} material={glassMat}>
+          <boxGeometry args={[5.66, 0.96, 0.025]} />
         </mesh>
         <mesh position={[-15.96, DECK_TOP + 0.56, 0]} material={glassMat}>
-          <boxGeometry args={[0.025, 0.96, 12.44]} />
+          <boxGeometry args={[0.025, 0.96, 12.41]} />
         </mesh>
       </group>
 
       {/* Tay vịn mảnh kim loại đen phía trên kính (castShadow=false) */}
       <B p={[-13.14, DECK_TOP + 1.05, 6.22]} s={[5.8, 0.045, 0.07]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
       <B p={[-13.14, DECK_TOP + 1.05, -6.22]} s={[5.8, 0.045, 0.07]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
-      <B p={[-15.96, DECK_TOP + 1.05, 0]} s={[0.07, 0.045, 12.52]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
+      <B p={[-15.96, DECK_TOP + 1.05, 0]} s={[0.07, 0.045, 12.37]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
 
       {/* Trụ kẹp kính tối giản */}
       {[-15.96, -13.9, -11.9, -10.28].map((px, i) => (
         <group key={`tp-posts-${i}`}>
-          <B p={[px, DECK_TOP + 0.52, 6.22]} s={[0.045, 1.04, 0.05]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
-          <B p={[px, DECK_TOP + 0.52, -6.22]} s={[0.045, 1.04, 0.05]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
+          <B p={[px, DECK_TOP + 0.553, 6.22]} s={[0.045, 0.945, 0.05]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
+          <B p={[px, DECK_TOP + 0.553, -6.22]} s={[0.045, 0.945, 0.05]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
         </group>
       ))}
       {[-4.2, -2.0, 0.2, 2.4, 4.5].map((pz, i) => (
-        <B key={`tp-left-${i}`} p={[-15.96, DECK_TOP + 0.52, pz]} s={[0.05, 1.04, 0.045]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
+        <B key={`tp-left-${i}`} p={[-15.96, DECK_TOP + 0.553, pz]} s={[0.05, 0.945, 0.045]} c={trimColor} metal={0.6} rough={0.32} shadow={false} />
       ))}
 
       {/* 5. Bộ bàn ghế Lounge thư giãn ngoài trời (vùng phía trước sân thượng) */}
@@ -258,42 +260,95 @@ export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
         <BB p={[0, 0, 0]} s={[3.2, 0.025, 3.6]} c={darkMode ? '#6B6D6E' : '#B6B7B5'} rough={0.92} shadow={false} />
 
         {/* 2 Ghế Lounge Thư Giãn góc nghiêng hướng ra mặt tiền */}
-        {[
-          { x: -1.05, z: -0.75, ry: 0.42 },
-          { x: 0.95, z: -0.82, ry: -0.38 },
-        ].map((ch, idx) => (
-          <G key={idx} p={[ch.x, 0.02, ch.z]} r={[0, ch.ry, 0]}>
-            <BB p={[0, 0.22, 0]} s={[0.96, 0.08, 0.92]} c={TEAK_DEEP} rough={0.55} shadow={false} />
-            {[-0.42, 0.42].map((lx) =>
-              [-0.4, 0.4].map((lz) => (
-                <Cyl key={`${lx}-${lz}`} p={[lx, 0.11, lz]} rt={0.025} h={0.22} c={TRIM_BLACK} metal={0.5} shadow={false} />
-              )),
-            )}
-            <RBB p={[0, 0.3, 0.02]} s={[0.88, 0.14, 0.84]} c="#EFECE6" rough={0.85} radius={0.04} shadow={false} />
-            <RBB p={[0, 0.44, -0.36]} r={[-0.2, 0, 0]} s={[0.86, 0.52, 0.14]} c="#EFECE6" rough={0.85} radius={0.04} shadow={false} />
-            <RBB p={[0, 0.48, -0.22]} r={[-0.25, 0.12, 0]} s={[0.42, 0.34, 0.12]} c="#C4834E" rough={0.88} radius={0.04} shadow={false} />
-            <B p={[-0.46, 0.42, 0]} s={[0.06, 0.28, 0.86]} c={TEAK_DEEP} rough={0.55} shadow={false} />
-            <B p={[0.46, 0.42, 0]} s={[0.06, 0.28, 0.86]} c={TEAK_DEEP} rough={0.55} shadow={false} />
-          </G>
-        ))}
+        <Interact
+          id="rooftop_lounge"
+          zone="interior_f2"
+          category="SEAT"
+          label="Ghế Lounge Sân thượng"
+          hint="🪑 Ngồi ghế Lounge Sân thượng"
+          customStandOffset={[-12.2, 4.35, 2.3]}
+          customSitAnchor={{ pos: [-14.05, 4.68, 1.95], yaw: 0.42, pose: 'sit' }}
+          userData={{
+            customStandOffset: [-12.2, 4.35, 2.3],
+            customSitAnchor: { pos: [-14.05, 4.68, 1.95], yaw: 0.42 },
+          }}
+          onClick={() => {
+            const st = useStore.getState()
+            st.setDynamicSeatTarget({
+              id: 'rooftop_lounge',
+              char: st.activeChar,
+              pos: [-14.05, 4.68, 1.95],
+              yaw: 0.42,
+              pose: 'sit',
+              label: 'Ghế Lounge Sân thượng',
+            })
+            st.notify('🪑 Ngồi thư giãn ghế Lounge Sân thượng')
+          }}
+        >
+          <group>
+            {[
+              { x: -1.05, z: -0.75, ry: 0.42 },
+              { x: 0.95, z: -0.82, ry: -0.38 },
+            ].map((ch, idx) => (
+              <G key={idx} p={[ch.x, 0.02, ch.z]} r={[0, ch.ry, 0]}>
+                <BB p={[0, 0.22, 0]} s={[0.96, 0.08, 0.92]} c={TEAK_DEEP} rough={0.55} shadow={false} />
+                {[-0.42, 0.42].map((lx) =>
+                  [-0.4, 0.4].map((lz) => (
+                    <Cyl key={`${lx}-${lz}`} p={[lx, 0.11, lz]} rt={0.025} h={0.22} c={TRIM_BLACK} metal={0.5} shadow={false} />
+                  )),
+                )}
+                <RBB p={[0, 0.3, 0.02]} s={[0.88, 0.14, 0.84]} c="#EFECE6" rough={0.85} radius={0.04} shadow={false} />
+                <RBB p={[0, 0.44, -0.36]} r={[-0.2, 0, 0]} s={[0.86, 0.52, 0.14]} c="#EFECE6" rough={0.85} radius={0.04} shadow={false} />
+                <RBB p={[0, 0.48, -0.22]} r={[-0.25, 0.12, 0]} s={[0.42, 0.34, 0.12]} c="#C4834E" rough={0.88} radius={0.04} shadow={false} />
+                <B p={[-0.46, 0.42, 0]} s={[0.06, 0.28, 0.86]} c={TEAK_DEEP} rough={0.55} shadow={false} />
+                <B p={[0.46, 0.42, 0]} s={[0.06, 0.28, 0.86]} c={TEAK_DEEP} rough={0.55} shadow={false} />
+              </G>
+            ))}
+          </group>
+        </Interact>
 
         {/* Bàn trà tròn đá Travertine ở giữa + Khay trà & Đèn lồng sân thượng */}
-        <G p={[-0.05, 0.02, 0.35]}>
-          <Cyl p={[0, 0.18, 0]} rt={0.14} rb={0.22} h={0.36} c={TRIM_BLACK} rough={0.45} metal={0.35} shadow={false} />
-          <Cyl p={[0, 0.38, 0]} rt={0.56} rb={0.54} h={0.055} c="#F5F2EB" rough={0.38} shadow={false} />
-          {/* Đèn lồng năng lượng mặt trời phát sáng ấm 3000K */}
-          <B p={[0.16, 0.52, 0.08]} s={[0.15, 0.24, 0.15]} c={TRIM_BLACK} metal={0.55} rough={0.35} shadow={false} />
-          <B
-            p={[0.16, 0.52, 0.08]}
-            s={[0.1, 0.16, 0.1]}
-            c={WARM_LED}
-            emissive={WARM_LED}
-            ei={darkMode ? 2.4 : 1.85}
-            shadow={false}
-          />
-          <Cyl p={[-0.14, 0.44, -0.06]} rt={0.045} rb={0.04} h={0.075} c="#EFECE6" rough={0.3} shadow={false} />
-          <Cyl p={[-0.02, 0.44, -0.14]} rt={0.045} rb={0.04} h={0.075} c="#EFECE6" rough={0.3} shadow={false} />
-        </G>
+        <Interact
+          id="rooftop_lantern"
+          zone="interior_f2"
+          category="ELECTRONIC"
+          label="Đèn lồng & Bàn trà Sân thượng"
+          infoTitle="Bàn trà Pergola Sân thượng"
+          infoBody="Thưởng trà ấm dưới dàn lam gỗ Teak & ánh đèn lồng năng lượng mặt trời."
+          customStandOffset={[-12.2, 4.35, 3.15]}
+          userData={{ customStandOffset: [-12.2, 4.35, 3.15] }}
+          hint={lanternOn ? '🏮 Tắt đèn lồng & Ngắm cảnh Sân thượng' : '🏮 Thắp đèn lồng & Thưởng trà Sân thượng'}
+          onClick={() => {
+            setLanternOn((v) => {
+              const next = !v
+              useStore
+                .getState()
+                .notify(
+                  next
+                    ? '🍵 Thưởng trà ấm dưới dàn lam gỗ Pergola Sân thượng!'
+                    : '🏮 Đã tắt đèn lồng Sân thượng',
+                )
+              return next
+            })
+          }}
+        >
+          <G p={[-0.05, 0.02, 0.35]}>
+            <Cyl p={[0, 0.18, 0]} rt={0.14} rb={0.22} h={0.36} c={TRIM_BLACK} rough={0.45} metal={0.35} shadow={false} />
+            <Cyl p={[0, 0.38, 0]} rt={0.56} rb={0.54} h={0.055} c="#F5F2EB" rough={0.38} shadow={false} />
+            {/* Đèn lồng năng lượng mặt trời phát sáng ấm 3000K */}
+            <B p={[0.16, 0.52, 0.08]} s={[0.15, 0.24, 0.15]} c={TRIM_BLACK} metal={0.55} rough={0.35} shadow={false} />
+            <B
+              p={[0.16, 0.52, 0.08]}
+              s={[0.1, 0.16, 0.1]}
+              c={lanternOn ? WARM_LED : '#3A3A3A'}
+              emissive={lanternOn ? WARM_LED : '#000000'}
+              ei={lanternOn ? (darkMode ? 2.4 : 1.85) : 0}
+              shadow={false}
+            />
+            <Cyl p={[-0.14, 0.44, -0.06]} rt={0.045} rb={0.04} h={0.075} c="#EFECE6" rough={0.3} shadow={false} />
+            <Cyl p={[-0.02, 0.44, -0.14]} rt={0.045} rb={0.04} h={0.075} c="#EFECE6" rough={0.3} shadow={false} />
+          </G>
+        </Interact>
       </G>
 
       {/* 6. Hệ mái Pergola Sân thượng với thanh lam Teak InstancedMesh */}

@@ -51,6 +51,7 @@ export function Furniture() {
       <WindowPlantBench />
       <FloorLamp />
       <DogCorner />
+      <KitchenDiningCorner />
       <SmartTvUnit />
       <Monstera p={[0.55, 0, -0.25]} />
       <Ottoman />
@@ -63,17 +64,24 @@ export function Furniture() {
 /* ---------- Tủ quần áo cánh kính tối màu có đèn LED hắt sáng bên trong ---------- */
 function Wardrobe() {
   const open = useStore((s) => s.wardrobeOpen)
-  const userRole = useStore((s) => s.userRole)
-  const canUseWardrobe = userRole === 'boy'
+  const containerCardOpen = useStore((s) => {
+    const card = s.containerCard
+    return Boolean(
+      card &&
+        card.zone === 'interior_f1' &&
+        (card.id.includes('wardrobe') || card.title.includes('Tủ quần áo')),
+    )
+  })
+  const doorOpen = open || containerCardOpen
   const leftDoor = useRef<THREE.Group>(null)
   const midDoor = useRef<THREE.Group>(null)
   const rightDoor = useRef<THREE.Group>(null)
 
   useFrame((_, dt) => {
     const k = 1 - Math.exp(-dt * 8)
-    if (leftDoor.current) leftDoor.current.rotation.y = THREE.MathUtils.lerp(leftDoor.current.rotation.y, open ? -1.65 : 0, k)
-    if (midDoor.current) midDoor.current.rotation.y = THREE.MathUtils.lerp(midDoor.current.rotation.y, open ? -1.45 : 0, k)
-    if (rightDoor.current) rightDoor.current.rotation.y = THREE.MathUtils.lerp(rightDoor.current.rotation.y, open ? 1.65 : 0, k)
+    if (leftDoor.current) leftDoor.current.rotation.y = THREE.MathUtils.lerp(leftDoor.current.rotation.y, doorOpen ? -1.65 : 0, k)
+    if (midDoor.current) midDoor.current.rotation.y = THREE.MathUtils.lerp(midDoor.current.rotation.y, doorOpen ? -1.45 : 0, k)
+    if (rightDoor.current) rightDoor.current.rotation.y = THREE.MathUtils.lerp(rightDoor.current.rotation.y, doorOpen ? 1.65 : 0, k)
   })
 
   const shirts = [
@@ -135,8 +143,6 @@ function Wardrobe() {
       </group>
     </G>
   )
-
-  if (!canUseWardrobe) return wardrobeBody
 
   return (
     <Interact
@@ -916,28 +922,154 @@ function WindowPlantBench() {
   )
 }
 
+/* ---------- Khu vực Bếp mở rộng & Quầy Bar ăn sáng Tầng 1 (0 PointLight) ---------- */
+function KitchenDiningCorner() {
+  const stoolPositions: [number, number, number][] = [
+    [-2.68, 0, 2.94],
+    [-2.14, 0, 2.94],
+  ]
+
+  return (
+    <group>
+      {/* 1. Tủ lạnh thông minh Matte Charcoal & Viền Taupe (CONTAINER_INFO) */}
+      <Interact
+        zone="interior_f1"
+        hint="🧊 Tủ lạnh thông minh"
+        category="CONTAINER_INFO"
+        infoTitle="Tủ lạnh thông minh · 4°C"
+        infoBody={
+          '• Ngăn mát: Sữa tươi organic, dâu tây Đà Lạt & cold brew\n• Ngăn đá: Đá viên tinh khiết & kem matcha\n• Tiết kiệm điện Eco Mode ban đêm'
+        }
+        customStandOffset={[-3.48, 0, 1.38]}
+        onClick={() => useStore.getState().notify('🧊 Tủ lạnh 4°C · Đầy đủ sữa tươi, trái cây & cold brew!')}
+      >
+        <G p={[-3.48, 0, 2.38]}>
+          <RBB p={[0, 0, 0]} s={[0.62, 2.02, 0.64]} c={DARK} rough={0.38} metal={0.4} radius={0.025} shadow />
+          <BB p={[0, 0.92, 0.322]} s={[0.58, 1.06, 0.014]} c="#3A3D40" metal={0.35} rough={0.34} />
+          <BB p={[0, 0.08, 0.322]} s={[0.58, 0.78, 0.014]} c="#3A3D40" metal={0.35} rough={0.34} />
+          <B p={[0.21, 1.38, 0.342]} s={[0.02, 0.42, 0.024]} c={WALNUT} metal={0.45} shadow={false} />
+          <B p={[0.21, 0.52, 0.342]} s={[0.02, 0.34, 0.024]} c={WALNUT} metal={0.45} shadow={false} />
+          <B p={[-0.14, 1.56, 0.334]} s={[0.14, 0.08, 0.008]} c="#181A1E" shadow={false} />
+          <B p={[-0.14, 1.56, 0.34]} s={[0.1, 0.022, 0.006]} c="#FFAE52" emissive="#FFAE52" ei={1.0} shadow={false} />
+        </G>
+      </Interact>
+
+      {/* 2. Đảo bếp Travertine/Walnut, Bếp từ & Máy pha cà phê Espresso (CONTAINER_INFO) */}
+      <Interact
+        zone="interior_f1"
+        hint="🍳 Quầy bếp & Bàn ăn"
+        category="CONTAINER_INFO"
+        infoTitle="Quầy bếp & Espresso Bar"
+        infoBody={
+          '• Bếp từ đôi mặt kính gốm & chảo gang nóng sẵn\n• Máy pha Espresso rang mộc Arabica Cầu Đất\n• Khay bánh sừng bò & 2 tách cà phê sáng'
+        }
+        customStandOffset={[-2.42, 0, 1.38]}
+        onClick={() => useStore.getState().notify('🍳 Quầy bếp & Espresso Bar sẵn sàng phục vụ bữa sáng ấm cúng!')}
+      >
+        <G p={[-2.42, 0, 2.38]}>
+          <RBB p={[0, 0.04, 0]} s={[1.34, 0.82, 0.72]} c={WALNUT} rough={0.58} radius={0.02} shadow />
+          <BB p={[0, 0, 0]} s={[1.28, 0.045, 0.66]} c={DARK} rough={0.55} />
+          {/* Dải LED hắt gầm quầy bar vàng ấm 3000K */}
+          <B p={[0, 0.84, 0.37]} s={[1.28, 0.018, 0.02]} c="#FFAE52" emissive="#FFAE52" ei={0.95} shadow={false} />
+          {/* Mặt bàn gỗ sồi nhô nhẹ cho ghế bar */}
+          <RBB p={[0, 0.86, 0.08]} s={[1.42, 0.055, 0.9]} c={OAK} rough={0.46} radius={0.025} shadow />
+
+          {/* Bếp từ âm mặt kính tối & chảo nhỏ */}
+          <B p={[-0.32, 0.922, -0.06]} s={[0.46, 0.014, 0.34]} c="#1B1D20" rough={0.22} metal={0.2} shadow={false} />
+          <Cyl p={[-0.38, 0.945, -0.08]} rt={0.11} rb={0.1} h={0.04} c={DARK} metal={0.5} shadow={false} />
+          <B p={[-0.22, 0.955, -0.08]} s={[0.14, 0.016, 0.024]} c={DARK} shadow={false} />
+
+          {/* Máy pha cà phê Espresso & bộ tách sứ */}
+          <RBB p={[0.4, 0.915, -0.14]} s={[0.24, 0.3, 0.26]} c={DARK} metal={0.4} rough={0.35} radius={0.02} shadow={false} />
+          <B p={[0.4, 1.07, -0.01]} s={[0.16, 0.02, 0.04]} c="#FFAE52" emissive="#FFAE52" ei={1.1} shadow={false} />
+          <Cyl p={[0.4, 0.955, 0.02]} rt={0.032} rb={0.026} h={0.065} c="#EFECE6" shadow={false} />
+
+          {/* Khay bánh & 2 ly cà phê sáng */}
+          <RBB p={[0.06, 0.92, 0.16]} s={[0.32, 0.018, 0.22]} c={WALNUT_LIGHT} radius={0.008} shadow={false} />
+          <Cyl p={[-0.02, 0.96, 0.16]} rt={0.034} rb={0.028} h={0.068} c="#EFECE6" shadow={false} />
+          <Cyl p={[0.12, 0.96, 0.18]} rt={0.034} rb={0.028} h={0.068} c="#D6D1C9" shadow={false} />
+          <Sph p={[0.05, 0.945, 0.12]} s={[0.045, 0.03, 0.035]} c={CAMEL} shadow={false} />
+        </G>
+      </Interact>
+
+      {/* 3. Hai ghế Bar ăn sáng tại quầy bếp (SEAT) */}
+      {stoolPositions.map(([sx, sy, sz], idx) => (
+        <Interact
+          key={idx}
+          zone="interior_f1"
+          hint="🪑 Ghế quầy bếp"
+          category="SEAT"
+          customStandOffset={[sx, 0, 3.45]}
+          customSitAnchor={{ pos: [sx, 0.1, sz], yaw: Math.PI, pose: 'sit' }}
+          onClick={() => useStore.getState().notify('🪑 Thư giãn thưởng thức bữa sáng tại quầy bar bếp!')}
+        >
+          <G p={[sx, sy, sz]}>
+            <Cyl p={[0, 0.02, 0]} rt={0.18} rb={0.2} h={0.035} c={DARK} metal={0.5} shadow={false} />
+            <Cyl p={[0, 0.28, 0]} rt={0.022} h={0.52} c={DARK} metal={0.55} shadow={false} />
+            <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[0.12, 0.012, 8, 20]} />
+              <meshStandardMaterial color={DARK} metalness={0.5} roughness={0.35} />
+            </mesh>
+            <Cyl p={[0, 0.56, 0]} rt={0.19} rb={0.18} h={0.065} c={SLATE} rough={0.82} shadow={false} />
+            <RBB p={[0, 0.62, 0.15]} s={[0.3, 0.14, 0.055]} c={SLATE_DARK} rough={0.82} radius={0.02} shadow={false} />
+          </G>
+        </Interact>
+      ))}
+    </group>
+  )
+}
+
 /* ---------- Đèn cây đứng Matte Charcoal ánh vàng 3000K (#FFD7A3) ---------- */
 function FloorLamp() {
-  const lampOn = useStore((s) => s.lampOn)
+  const floor1FloorLampOn = useStore((s) => s.floor1FloorLampOn)
+  const lampGroupRef = useRef<THREE.Group>(null)
+  const prevOnRef = useRef(floor1FloorLampOn)
+  const bounceTimer = useRef(0)
+
+  useFrame((_, dt) => {
+    if (prevOnRef.current !== floor1FloorLampOn) {
+      prevOnRef.current = floor1FloorLampOn
+      bounceTimer.current = 0.28
+    }
+    if (!lampGroupRef.current) return
+    if (bounceTimer.current > 0) {
+      bounceTimer.current = Math.max(0, bounceTimer.current - dt)
+      const phase = 1 - bounceTimer.current / 0.28
+      const pulse = 1 + Math.sin(phase * Math.PI) * 0.08
+      lampGroupRef.current.scale.set(pulse, 1 + Math.sin(phase * Math.PI) * 0.04, pulse)
+    } else if (lampGroupRef.current.scale.x !== 1 || lampGroupRef.current.scale.y !== 1) {
+      lampGroupRef.current.scale.set(1, 1, 1)
+    }
+  })
+
   return (
     <Interact
       zone="interior_f1"
       hint="💡 Đèn cây"
-      onClick={() => useStore.getState().toggleLamp()}
+      category="ELECTRONIC"
+      onClick={() => useStore.getState().toggleFloor1FloorLamp()}
     >
       <G p={[8.75, 0, 3.45]}>
-        <Cyl p={[0, 0.025, 0]} rt={0.26} h={0.05} c={DARK} metal={0.5} />
-        <Cyl p={[0, 1.05, 0]} rt={0.022} h={2.05} c={DARK} metal={0.5} />
-        <Cyl
-          p={[0, 2.12, 0]}
-          rt={0.32}
-          rb={0.38}
-          h={0.48}
-          c={lampOn ? '#FFAE52' : '#D6D1C9'}
-          emissive={lampOn ? '#FFAE52' : '#000000'}
-          ei={lampOn ? 1.5 : 0}
-          seg={32}
-        />
+        <group ref={lampGroupRef}>
+          <Cyl p={[0, 0.025, 0]} rt={0.26} h={0.05} c={DARK} metal={0.5} />
+          <Cyl p={[0, 1.05, 0]} rt={0.022} h={2.05} c={DARK} metal={0.5} />
+          <Cyl
+            p={[0, 2.12, 0]}
+            rt={0.32}
+            rb={0.38}
+            h={0.48}
+            c={floor1FloorLampOn ? '#FFAE52' : '#D6D1C9'}
+            emissive={floor1FloorLampOn ? '#FFAE52' : '#000000'}
+            ei={floor1FloorLampOn ? 1.65 : 0}
+            seg={32}
+          />
+          {floor1FloorLampOn && (
+            <mesh position={[0, 2.12, 0]}>
+              <sphereGeometry args={[0.46, 16, 12]} />
+              <meshBasicMaterial color="#FFAE52" transparent opacity={0.18} depthWrite={false} />
+            </mesh>
+          )}
+        </group>
       </G>
     </Interact>
   )
@@ -1080,7 +1212,7 @@ function SmartTvUnit() {
   const tvChannel = useStore((s) => s.tvChannel)
 
   const handleTvClick = () => {
-    useStore.getState().startActivity('tv', true)
+    useStore.getState().toggleTv()
   }
 
   return (
@@ -1466,6 +1598,7 @@ export const COLLIDERS: [number, number, number, number][] = [
   [8.4, 3.1, 9.1, 3.8],
   [-8.1, 1.5, -6.4, 4.2],
   [-8.1, -1.1, -6.4, 1.6],
+  [-3.82, 1.88, -1.68, 3.20], // Khu vực Tủ lạnh, Đảo bếp & Ghế bar ăn sáng (chừa thoáng lối pet & cửa chính)
   [-9.65, 0.35, -8.05, 4.58], // Gầm cầu thang (chỉ vào cầu thang từ chiếu nghỉ z = 4.92)
   [0.2, -0.6, 0.9, 0.1],
   [2.7, 0.0, 5.6, 0.7],

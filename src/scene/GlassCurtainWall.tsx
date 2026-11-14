@@ -115,7 +115,7 @@ export function GlassCurtainWall({
       />
       <B
         p={isZ ? [pos[0] - L / 2 + 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] - L / 2 + 0.018]}
-        s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
+        s={isZ ? [0.036, H - 0.072, 0.045] : [0.045, H - 0.072, 0.036]}
         c={frameColor}
         rough={0.26}
         metal={0.78}
@@ -123,7 +123,7 @@ export function GlassCurtainWall({
       />
       <B
         p={isZ ? [pos[0] + L / 2 - 0.018, pos[1], pos[2]] : [pos[0], pos[1], pos[2] + L / 2 - 0.018]}
-        s={isZ ? [0.036, H, 0.045] : [0.045, H, 0.036]}
+        s={isZ ? [0.036, H - 0.072, 0.045] : [0.045, H - 0.072, 0.036]}
         c={frameColor}
         rough={0.26}
         metal={0.78}

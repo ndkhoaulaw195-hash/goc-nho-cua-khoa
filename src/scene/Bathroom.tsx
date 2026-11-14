@@ -69,24 +69,50 @@ function BathroomDoorway() {
 function Bathtub() {
   const bathBubbles = useStore((s) => s.bathBubbles)
   const bubblesRef = useRef<THREE.Group>(null)
+  const waterSurfaceRef = useRef<THREE.Mesh>(null)
 
   useFrame(({ clock }) => {
-    if (!bubblesRef.current) return
     const t = clock.elapsedTime
+    if (waterSurfaceRef.current) {
+      if (bathBubbles) {
+        waterSurfaceRef.current.position.y = 0.525 + Math.sin(t * 2.4) * 0.008
+        waterSurfaceRef.current.scale.setScalar(1 + Math.sin(t * 3.1) * 0.014)
+      } else {
+        waterSurfaceRef.current.position.y = 0.5
+        waterSurfaceRef.current.scale.setScalar(0.98)
+      }
+    }
+    if (!bubblesRef.current) return
     bubblesRef.current.visible = bathBubbles
     if (bathBubbles) {
       bubblesRef.current.children.forEach((b, i) => {
-        b.position.y = 0.52 + Math.sin(t * 2.2 + i * 1.4) * 0.02
-        b.scale.setScalar(0.04 + Math.sin(t * 1.8 + i) * 0.012)
+        b.position.y = 0.53 + Math.sin(t * 2.2 + i * 1.4) * 0.025
+        b.scale.setScalar(0.042 + Math.sin(t * 1.8 + i) * 0.014)
       })
     }
   })
 
   return (
     <Interact
+      id="bathtub"
       zone="interior_f1"
-      hint="🛁 Bồn tắm"
-      onClick={() => useStore.getState().startActivity('bath', true)}
+      category="CONTAINER_INFO"
+      label="Bồn tắm Thư giãn"
+      infoTitle="Bồn tắm Sứ Ấm áp & Muối Khoáng"
+      infoBody="Xả nước ấm cùng lớp bọt xà phòng bồng bềnh và muối khoáng thư giãn."
+      customStandOffset={[-12.4, 0, -1.6]}
+      userData={{ customStandOffset: [-12.4, 0, -1.6] }}
+      hint={bathBubbles ? '🛁 Bồn tắm · Tắt bọt nước' : '🛁 Bồn tắm · Xả nước & bọt'}
+      onClick={() => {
+        const st = useStore.getState()
+        const curAct = st.activeChar === 'girl' ? st.girlActivity : st.boyActivity
+        if (curAct === 'bath') {
+          st.toggleBathBubbles()
+        } else {
+          if (!st.bathBubbles) st.toggleBathBubbles()
+          st.startActivity('bath', true)
+        }
+      }}
     >
       <G p={[-13.8, 0, -1.6]}>
         {/* Thảm chùi chân mềm mại dưới sàn (#B6B7B5, lì roughness ~0.85) */}
@@ -97,15 +123,17 @@ function Bathtub() {
         {/* Lòng bồn tắm khoét rỗng (#EAE7E0) */}
         <Cyl p={[0, 0.38, 0]} rt={0.61} rb={0.51} h={0.62} c="#EAE7E0" seg={36} rough={0.28} />
 
-        {/* Mặt nước ấm trong dịu trung tính */}
-        <mesh position={[0, 0.52, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        {/* Mặt nước ấm trong dịu trung tính có hiệu ứng sóng nhẹ khi bật bọt */}
+        <mesh ref={waterSurfaceRef} position={[0, 0.52, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[0.59, 32]} />
           <meshStandardMaterial
             color="#5E7487"
+            emissive={bathBubbles ? '#38B2AC' : '#000000'}
+            emissiveIntensity={bathBubbles ? 0.18 : 0}
             roughness={0.1}
             metalness={0.08}
             transparent
-            opacity={0.42}
+            opacity={bathBubbles ? 0.48 : 0.32}
           />
         </mesh>
 
@@ -194,15 +222,27 @@ function VanityAndWasher() {
   const laundryRunning = useStore((s) => s.laundryRunning)
   const bathMirrorLightOn = useStore((s) => s.bathMirrorLightOn)
   const streamRef = useRef<THREE.Group>(null)
+  const basinRippleRef = useRef<THREE.Mesh>(null)
   const drumRef = useRef<THREE.Group>(null)
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
+    const sinkActive = Date.now() < sinkWaterUntil
     if (streamRef.current) {
-      const active = Date.now() < sinkWaterUntil
-      streamRef.current.visible = active
-      if (active) {
-        streamRef.current.scale.y = 0.85 + Math.sin(t * 24) * 0.15
+      streamRef.current.visible = sinkActive
+      if (sinkActive) {
+        streamRef.current.scale.set(
+          1 + Math.sin(t * 28) * 0.08,
+          0.88 + Math.sin(t * 24) * 0.14,
+          1 + Math.cos(t * 28) * 0.08,
+        )
+      }
+    }
+    if (basinRippleRef.current) {
+      basinRippleRef.current.visible = sinkActive
+      if (sinkActive) {
+        const s = 0.72 + ((t * 1.8) % 1) * 0.38
+        basinRippleRef.current.scale.setScalar(s)
       }
     }
     if (drumRef.current && laundryRunning) {
@@ -214,9 +254,20 @@ function VanityAndWasher() {
     <group>
       {/* 1. Khu vực Bàn Lavabo & Gương LED cảm ứng */}
       <Interact
+        id="lavabo"
         zone="interior_f1"
-        hint="🪞 Bàn Lavabo"
-        onClick={() => useStore.getState().startActivity('wash', true)}
+        category="CONTAINER_INFO"
+        label="Bàn Lavabo"
+        infoTitle="Bàn Lavabo & Vòi Rửa Cảm Ứng"
+        infoBody="Mặt đá sứ trắng sạch sẽ kèm vòi xả nước chảy tự động và gương LED Halo."
+        customStandOffset={[-12.4, 0, -4.4]}
+        userData={{ customStandOffset: [-12.4, 0, -4.4] }}
+        hint="🪞 Bàn Lavabo · Xả nước rửa tay"
+        onClick={() => {
+          const st = useStore.getState()
+          st.triggerSinkWater()
+          st.startActivity('wash', true)
+        }}
       >
         <G p={[-12.4, 0, -5.5]}>
           {/* Tủ Lavabo Warm Taupe/Greige (#B7AFA5) */}
@@ -230,10 +281,14 @@ function VanityAndWasher() {
           <Cyl p={[0, 0.95, -0.19]} rt={0.022} h={0.26} c="#2B2D2F" metal={0.65} rough={0.3} />
           <Cyl p={[0, 1.16, -0.12]} r={[Math.PI / 2, 0, 0]} rt={0.018} h={0.18} c="#2B2D2F" metal={0.65} rough={0.3} />
 
-          {/* Dòng nước xả từ vòi xuống chậu */}
+          {/* Dòng nước xả từ vòi xuống chậu & gợn sóng mặt nước */}
           <group ref={streamRef} position={[0, 1.02, -0.04]} visible={false}>
-            <Cyl p={[0, 0, 0]} rt={0.012} h={0.16} c="#B6B7B5" emissive="#D6D1C9" ei={1.1} />
+            <Cyl p={[0, 0, 0]} rt={0.013} h={0.17} c="#9AEBFF" emissive="#7FE8E0" ei={1.15} opacity={0.78} />
           </group>
+          <mesh ref={basinRippleRef} position={[0, 0.955, 0.01]} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+            <ringGeometry args={[0.08, 0.14, 24]} />
+            <meshBasicMaterial color="#9AEBFF" transparent opacity={0.55} depthWrite={false} />
+          </mesh>
 
           {/* Bình nước rửa tay & Cốc cắm bàn chải */}
           <Cyl p={[-0.52, 0.93, 0.08]} rt={0.04} h={0.12} c="#D6D1C9" />
@@ -243,7 +298,12 @@ function VanityAndWasher() {
 
           {/* Gương tròn đèn LED Halo cảm ứng 3000K (#FFAE52) */}
           <Interact
+            id="bath_mirror_light"
             zone="interior_f1"
+            category="ELECTRONIC"
+            label="Đèn gương Halo"
+            customStandOffset={[-12.4, 0, -4.4]}
+            userData={{ customStandOffset: [-12.4, 0, -4.4] }}
             hint={bathMirrorLightOn ? '✨ Tắt đèn gương Halo' : '✨ Bật đèn gương Halo'}
             onClick={() => {
               useStore.getState().toggleBathMirrorLight()
@@ -259,9 +319,9 @@ function VanityAndWasher() {
               <mesh position={[0, 0, -0.008]}>
                 <ringGeometry args={[0.55, 0.64, 40]} />
                 <meshStandardMaterial
-                  color="#FFAE52"
-                  emissive="#FFAE52"
-                  emissiveIntensity={bathMirrorLightOn ? 1.5 : 0.05}
+                  color={bathMirrorLightOn ? '#FFAE52' : '#2B2D2F'}
+                  emissive={bathMirrorLightOn ? '#FFAE52' : '#000000'}
+                  emissiveIntensity={bathMirrorLightOn ? 1.65 : 0}
                 />
               </mesh>
               <Cyl r={[Math.PI / 2, 0, 0]} rt={0.58} h={0.025} c="#2B2D2F" metal={0.75} rough={0.25} />
@@ -276,15 +336,21 @@ function VanityAndWasher() {
 
       {/* 2. Máy giặt quần áo cửa trước thông minh (Smart Front-Load Washer) */}
       <Interact
+        id="laundry"
         zone="interior_f1"
-        hint="🧺 Máy giặt"
+        category="ELECTRONIC"
+        label="Máy giặt Thông minh"
+        customStandOffset={[-10.8, 0, -4.4]}
+        userData={{ customStandOffset: [-10.8, 0, -4.4] }}
+        hint={laundryRunning ? '🧺 Tắt máy giặt' : '🧺 Bật máy giặt'}
         onClick={() => {
           const st = useStore.getState()
+          const next = !st.laundryRunning
+          st.setLaundryRunning(next)
+          st.notify(next ? '🧺 Khởi động chu trình giặt thông minh' : '🧺 Đã dừng máy giặt')
           const curAct = st.activeChar === 'girl' ? st.girlActivity : st.boyActivity
-          if (curAct !== 'laundry') {
+          if (next && curAct !== 'laundry') {
             st.startActivity('laundry', true)
-          } else {
-            st.toggleLaundry()
           }
         }}
       >
@@ -296,8 +362,21 @@ function VanityAndWasher() {
 
           {/* Bảng điều khiển cảm ứng LED hiển thị thời gian & chế độ giặt */}
           <B p={[0, 0.78, 0.325]} s={[0.62, 0.12, 0.02]} c="#2B2D2F" />
-          {/* Màn hình hiển thị số LED (#FFD7A3) */}
-          <B p={[-0.14, 0.78, 0.336]} s={[0.16, 0.05, 0.005]} c="#FFD7A3" emissive="#FFD7A3" ei={laundryRunning ? 1.8 : 0.55} />
+          {/* Màn hình hiển thị số LED (#FFD7A3) & đèn báo trạng thái */}
+          <B
+            p={[-0.14, 0.78, 0.336]}
+            s={[0.16, 0.05, 0.005]}
+            c={laundryRunning ? '#FFD7A3' : '#2B2D2F'}
+            emissive={laundryRunning ? '#FFD7A3' : '#000000'}
+            ei={laundryRunning ? 1.85 : 0}
+          />
+          <B
+            p={[0.02, 0.78, 0.337]}
+            s={[0.022, 0.022, 0.006]}
+            c={laundryRunning ? '#5EEAD4' : '#3A3A3A'}
+            emissive={laundryRunning ? '#5EEAD4' : '#000000'}
+            ei={laundryRunning ? 1.8 : 0}
+          />
           {/* Núm xoay điều chỉnh chế độ */}
           <Cyl p={[0.14, 0.78, 0.34]} r={[Math.PI / 2, 0, 0]} rt={0.035} h={0.025} c="#D6D1C9" metal={0.75} />
 
@@ -406,7 +485,12 @@ function MasterBathLounge() {
 
         {/* 2. Gương soi toàn thân viền Matte Charcoal (#2B2D2F) & LED 3000K (#FFAE52) */}
         <Interact
+          id="bath_full_mirror_light"
           zone="interior_f1"
+          category="ELECTRONIC"
+          label="Đèn gương toàn thân"
+          customStandOffset={[-14.7, 0, 1.4]}
+          userData={{ customStandOffset: [-14.7, 0, 1.4] }}
           hint={bathFullMirrorLightOn ? '✨ Tắt đèn gương toàn thân' : '✨ Bật đèn gương toàn thân'}
           onClick={() => useStore.getState().toggleBathFullMirrorLight()}
         >
@@ -414,9 +498,9 @@ function MasterBathLounge() {
             <B
               p={[0.01, 0, 0]}
               s={[0.02, 2.24, 0.94]}
-              c="#FFAE52"
-              emissive="#FFAE52"
-              ei={bathFullMirrorLightOn ? 1.5 : 0.05}
+              c={bathFullMirrorLightOn ? '#FFAE52' : '#2B2D2F'}
+              emissive={bathFullMirrorLightOn ? '#FFAE52' : '#000000'}
+              ei={bathFullMirrorLightOn ? 1.65 : 0}
               shadow={false}
               polyOffset
             />

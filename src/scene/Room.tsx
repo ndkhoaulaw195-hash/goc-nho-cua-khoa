@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { type ThreeEvent } from '@react-three/fiber'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { ArchitectureShell } from './ArchitectureShell'
 import { B, Interact, Occluder } from './prims'
@@ -125,7 +125,11 @@ export function Room() {
       {/* Dải đèn LED hắt ngang đầu giường (#FFAE52): Click trực tiếp để bật/tắt */}
       <Interact
         zone="interior_f1"
-        hint={floor1HeadboardLedOn ? '✨ Tắt đèn LED đầu giường' : '✨ Bật đèn LED đầu giường'}
+        category="ELECTRONIC"
+        label="Đèn LED đầu giường"
+        customStandOffset={[-4.2, 0, -4.75]}
+        userData={{ customStandOffset: [-4.2, 0, -4.75] }}
+        hint={floor1HeadboardLedOn ? '✨ Đèn LED đầu giường · Tắt' : '✨ Đèn LED đầu giường · Bật'}
         onClick={() => useStore.getState().toggleFloor1HeadboardLed()}
       >
         <B
@@ -322,7 +326,62 @@ function Rug({
 export function Lights() {
   const darkMode = useStore((s) => s.darkMode)
   const weather = useStore((s) => s.weather)
+  const tvOn = useStore((s) => s.tvOn)
+  const floor1BedLampOn = useStore((s) => s.floor1BedLampOn)
+  const floor1DeskLampOn = useStore((s) => s.floor1DeskLampOn)
+  const floor1HeadboardLedOn = useStore((s) => s.floor1HeadboardLedOn)
+  const floor1FloorLampOn = useStore((s) => s.floor1FloorLampOn)
+  const floor2ReadingLampOn = useStore((s) => s.floor2ReadingLampOn)
+  const floor2ArchLightOn = useStore((s) => s.floor2ArchLightOn)
+  const girlLampOn = useStore((s) => s.girlLampOn)
+  const electronicStates = useStore((s) => s.electronicStates)
+
+  const f1PointRef = useRef<THREE.PointLight>(null)
+  const f2PointRef = useRef<THREE.PointLight>(null)
   const shadowResolution = 1024
+
+  const f1ActiveScore =
+    (tvOn ? 1 : 0) +
+    (floor1BedLampOn ? 1 : 0) +
+    (floor1DeskLampOn ? 1 : 0) +
+    (floor1HeadboardLedOn ? 1 : 0) +
+    (floor1FloorLampOn ? 1 : 0) +
+    (electronicStates.bath_mirror_light ? 0.5 : 0) +
+    (electronicStates.bath_full_mirror_light ? 0.5 : 0)
+
+  const f2ActiveScore =
+    (floor2ReadingLampOn ? 1 : 0) +
+    (floor2ArchLightOn ? 1 : 0) +
+    (girlLampOn ? 1 : 0) +
+    (electronicStates.girl_vanity_light ? 0.5 : 0) +
+    (electronicStates.girl_shelf_led ? 0.5 : 0)
+
+  const f1TargetIntensity = Math.min(
+    4.6,
+    (darkMode ? 2.1 : 1.7) + f1ActiveScore * (darkMode ? 0.3 : 0.16),
+  )
+  const f2TargetIntensity = Math.min(
+    4.2,
+    (darkMode ? 2.0 : 1.6) + f2ActiveScore * (darkMode ? 0.32 : 0.18),
+  )
+
+  useFrame((_, dt) => {
+    const k = 1 - Math.exp(-Math.min(dt, 0.05) * 6)
+    if (f1PointRef.current) {
+      f1PointRef.current.intensity = THREE.MathUtils.lerp(
+        f1PointRef.current.intensity,
+        f1TargetIntensity,
+        k,
+      )
+    }
+    if (f2PointRef.current) {
+      f2PointRef.current.intensity = THREE.MathUtils.lerp(
+        f2PointRef.current.intensity,
+        f2TargetIntensity,
+        k,
+      )
+    }
+  })
 
   // Ánh sáng studio ban ngày rõ nét sân vườn khi nhìn từ trong ra & giảm nhẹ AmbientLight ban đêm để nổi bật đèn vàng ấm nội thất qua kính phản quang
   const hemiSky = darkMode
@@ -374,9 +433,9 @@ export function Lights() {
         shadow-camera-bottom={-19}
         shadow-camera-near={3}
         shadow-camera-far={62}
-        shadow-radius={3.0}
-        shadow-bias={-0.00025}
-        shadow-normalBias={0.02}
+        shadow-radius={2.5}
+        shadow-bias={-0.00075}
+        shadow-normalBias={0.075}
       />
 
       {/* Ánh sáng viền (Rim Light) tách khối kiến trúc & giữ đường nét góc trái ở cả Night & Day Mode */}
@@ -388,16 +447,18 @@ export function Lights() {
 
       {/* 2 nguồn PointLight đại diện cho không gian Tầng 1 và Tầng 2 / không gian chung (castShadow={false}) */}
       <pointLight
+        ref={f1PointRef}
         position={[-1.5, 3.65, 0.2]}
-        intensity={darkMode ? 3.2 : 2.3}
+        intensity={f1TargetIntensity}
         distance={24}
         decay={1.45}
         color={darkMode ? '#FFAE52' : '#FFD59B'}
         castShadow={false}
       />
       <pointLight
+        ref={f2PointRef}
         position={[-0.8, 7.6, 0.2]}
-        intensity={darkMode ? 3.0 : 2.15}
+        intensity={f2TargetIntensity}
         distance={22}
         decay={1.45}
         color={darkMode ? '#FFAE52' : '#FFD59B'}
