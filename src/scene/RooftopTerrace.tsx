@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import {
   FLOOR2_Y,
@@ -150,7 +150,7 @@ function TerracePergola({ darkMode, deckTop }: { darkMode: boolean; deckTop: num
 export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
   const Y = FLOOR2_Y // 4.35
   const DECK_TOP = Y + 0.31 // 4.66
-  const [lanternOn, setLanternOn] = useState(true)
+  const lanternOn = useStore((s) => s.electronicStates?.rooftop_lantern ?? true)
   const palette = useMemo(() => getHousePalette(darkMode), [darkMode])
   const trimColor = TRIM_BLACK
   const slabColor = palette.extWall
@@ -266,17 +266,18 @@ export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
           category="SEAT"
           label="Ghế Lounge Sân thượng"
           hint="🪑 Ngồi ghế Lounge Sân thượng"
-          customStandOffset={[-12.2, 4.35, 2.3]}
+          customStandOffset={[-12.2, 4.35, 2.75]}
           customSitAnchor={{ pos: [-14.05, 4.68, 1.95], yaw: 0.42, pose: 'sit' }}
           userData={{
-            customStandOffset: [-12.2, 4.35, 2.3],
+            customStandOffset: [-12.2, 4.35, 2.75],
             customSitAnchor: { pos: [-14.05, 4.68, 1.95], yaw: 0.42 },
           }}
           onClick={() => {
             const st = useStore.getState()
+            const actor = st.userRole ?? st.activeChar ?? 'boy'
             st.setDynamicSeatTarget({
               id: 'rooftop_lounge',
-              char: st.activeChar,
+              char: actor,
               pos: [-14.05, 4.68, 1.95],
               yaw: 0.42,
               pose: 'sit',
@@ -319,17 +320,15 @@ export function RooftopTerrace({ darkMode }: { darkMode: boolean }) {
           userData={{ customStandOffset: [-12.2, 4.35, 3.15] }}
           hint={lanternOn ? '🏮 Tắt đèn lồng & Ngắm cảnh Sân thượng' : '🏮 Thắp đèn lồng & Thưởng trà Sân thượng'}
           onClick={() => {
-            setLanternOn((v) => {
-              const next = !v
-              useStore
-                .getState()
-                .notify(
-                  next
-                    ? '🍵 Thưởng trà ấm dưới dàn lam gỗ Pergola Sân thượng!'
-                    : '🏮 Đã tắt đèn lồng Sân thượng',
-                )
-              return next
-            })
+            const st = useStore.getState()
+            const cur = st.electronicStates?.rooftop_lantern ?? true
+            const next = !cur
+            st.toggleElectronicState?.('rooftop_lantern', next)
+            st.notify(
+              next
+                ? '🍵 Thưởng trà ấm dưới dàn lam gỗ Pergola Sân thượng!'
+                : '🏮 Đã tắt đèn lồng Sân thượng',
+            )
           }}
         >
           <G p={[-0.05, 0.02, 0.35]}>
