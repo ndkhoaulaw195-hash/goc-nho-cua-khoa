@@ -2393,9 +2393,10 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
             autoTargetMeta.current = null
             walkWatchdog.current = 0
             st.setAutoIntent('girl', null)
-            activeEnjoyDur.current = 10 + Math.random() * 5
-            autoEnjoyTimer.current = activeEnjoyDur.current
-            autoNextTimer.current = 1.2
+            const enjoyDur = 10 + Math.random() * 5
+            activeEnjoyDur.current = enjoyDur
+            autoEnjoyTimer.current = enjoyDur
+            autoNextTimer.current = enjoyDur
             executeInteraction(autoMeta, { forChar: 'girl', fromAuto: true })
             return
           } else if (walkWatchdog.current >= 25.0) {
