@@ -1337,7 +1337,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         LIVE_ACTORS.khoaYaw = spawn.yaw
         LIVE_ACTORS.khoaWorldPos = [spawn.pos[0], spawn.pos[1], spawn.pos[2]]
         st.setAutoIntent('boy', null)
-        if (st.dynamicSeatTarget?.char === 'boy') {
+        const activeBoySeat =
+          st.dynamicSeatTargets?.boy ??
+          (st.dynamicSeatTarget?.char === 'boy' ? st.dynamicSeatTarget : null)
+        if (activeBoySeat) {
           st.clearCharacterPosture('boy')
         }
         if (st.boyActivity !== 'idle') {
@@ -1405,7 +1408,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       }
     }
 
-    const isBoyDynamicSeated = st.dynamicSeatTarget?.char === 'boy'
+    const boyDynamicSeat =
+      st.dynamicSeatTargets?.boy ??
+      (st.dynamicSeatTarget?.char === 'boy' ? st.dynamicSeatTarget : null)
+    const isBoyDynamicSeated = Boolean(boyDynamicSeat)
 
     if (st.orientCommand && st.orientCommand.char === 'boy' && st.orientCommand.tick !== lastOrientTick.current) {
       lastOrientTick.current = st.orientCommand.tick
@@ -1447,8 +1453,8 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
 
     // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2 <-> Sân vườn) & Dynamic Seat & Utility AI
     if (st.boyActivity === 'idle') {
-      if (isBoyDynamicSeated && st.dynamicSeatTarget) {
-        const seat = st.dynamicSeatTarget
+      if (boyDynamicSeat) {
+        const seat = boyDynamicSeat
         const isLie = seat.pose === 'lie'
         const isRecline = seat.pose === 'recline'
         const approxFloorY = seat.pos[1] > 2.5 ? 4.35 : seat.pos[2] > 6.3 ? -0.15 : 0
@@ -1784,10 +1790,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     }
     const isBoySleeping =
       ((st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active') ||
-      (isBoyDynamicSeated && st.dynamicSeatTarget?.pose === 'lie')
+      boyDynamicSeat?.pose === 'lie'
     if (isBoySleeping) {
       root.current.rotation.x = -Math.PI / 2
-      root.current.rotation.y = isBoyDynamicSeated && st.dynamicSeatTarget ? st.dynamicSeatTarget.yaw : 0.05
+      root.current.rotation.y = boyDynamicSeat ? boyDynamicSeat.yaw : 0.05
       root.current.rotation.z = 0
     } else if (
       orientTargetYaw.current !== null &&

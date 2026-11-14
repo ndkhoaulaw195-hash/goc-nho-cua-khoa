@@ -374,7 +374,10 @@ function InteractionEngineController() {
 
       const curChar = st.userRole || st.activeChar || 'boy'
       const act = curChar === 'boy' ? st.boyActivity : st.girlActivity
-      const isDynamicSeated = st.dynamicSeatTarget?.char === curChar
+      const isDynamicSeated = Boolean(
+        st.dynamicSeatTargets?.[curChar] ??
+          (st.dynamicSeatTarget?.char === curChar ? st.dynamicSeatTarget : null),
+      )
 
       if (
         e.code === 'KeyW' ||
@@ -1054,7 +1057,11 @@ function FirstPerson() {
         const cur = useStore.getState()
         const curChar = cur.userRole || cur.activeChar || 'boy'
         const act = curChar === 'boy' ? cur.boyActivity : cur.girlActivity
-        if (act !== 'idle' || cur.dynamicSeatTarget?.char === curChar) {
+        const isCurDynamicSeated = Boolean(
+          cur.dynamicSeatTargets?.[curChar] ??
+            (cur.dynamicSeatTarget?.char === curChar ? cur.dynamicSeatTarget : null),
+        )
+        if (act !== 'idle' || isCurDynamicSeated) {
           cur.clearCharacterPosture(curChar)
           if (act !== 'idle') {
             cur.startActivity('idle', true, curChar)
@@ -1270,7 +1277,9 @@ function FirstPerson() {
       lastMouseOrbitAt.current = performance.now()
     }
 
-    const dynamicSeat = st.dynamicSeatTarget?.char === char ? st.dynamicSeatTarget : null
+    const dynamicSeat =
+      st.dynamicSeatTargets?.[char] ??
+      (st.dynamicSeatTarget?.char === char ? st.dynamicSeatTarget : null)
 
     let eyeH = 1.48
     let eyeForward = 0.08
