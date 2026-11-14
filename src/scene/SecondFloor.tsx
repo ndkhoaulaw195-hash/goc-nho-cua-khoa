@@ -242,7 +242,13 @@ function FloorAndBeams({ showFloor2 }: { showFloor2: boolean }) {
     const x = THREE.MathUtils.clamp(p.x, -10.2, 9.2)
     const z = THREE.MathUtils.clamp(p.z, -5.1, 4.3)
     const ctrlChar = st.userRole || st.activeChar
-    if (st.dynamicSeatTarget?.char === ctrlChar || (ctrlChar === 'boy' ? st.boyActivity !== 'idle' : st.girlActivity !== 'idle')) {
+    const stWithSeats = st as typeof st & {
+      dynamicSeatTargets?: Partial<Record<'boy' | 'girl', typeof st.dynamicSeatTarget>>
+    }
+    const ctrlDynSeat =
+      stWithSeats.dynamicSeatTargets?.[ctrlChar] ??
+      (st.dynamicSeatTarget?.char === ctrlChar ? st.dynamicSeatTarget : null)
+    if (ctrlDynSeat || (ctrlChar === 'boy' ? st.boyActivity !== 'idle' : st.girlActivity !== 'idle')) {
       st.clearCharacterPosture(ctrlChar)
     }
     st.setAvatarTarget([x, Y, z])
@@ -2253,7 +2259,12 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
       orientUntil.current = t + 0.65
     }
 
-    const dynSeat = st.dynamicSeatTarget
+    const stWithSeats = st as typeof st & {
+      dynamicSeatTargets?: Partial<Record<'boy' | 'girl', typeof st.dynamicSeatTarget>>
+    }
+    const dynSeat =
+      stWithSeats.dynamicSeatTargets?.girl ??
+      (st.dynamicSeatTarget?.char === 'girl' ? st.dynamicSeatTarget : null)
     const isGirlDynamicSeated = Boolean(dynSeat && dynSeat.char === 'girl')
     if (isGirlDynamicSeated && !wasDynamicSeated.current) {
       seatSavedStandPos.current = [walkPos.current[0], walkPos.current[1]]
@@ -2393,9 +2404,10 @@ function GirlfriendAvatar({ hideIfUpstairs = false }: { hideIfUpstairs?: boolean
             autoTargetMeta.current = null
             walkWatchdog.current = 0
             st.setAutoIntent('girl', null)
-            activeEnjoyDur.current = 10 + Math.random() * 5
-            autoEnjoyTimer.current = activeEnjoyDur.current
-            autoNextTimer.current = 1.2
+            const enjoyDur = 10 + Math.random() * 5
+            activeEnjoyDur.current = enjoyDur
+            autoEnjoyTimer.current = enjoyDur
+            autoNextTimer.current = enjoyDur
             executeInteraction(autoMeta, { forChar: 'girl', fromAuto: true })
             return
           } else if (walkWatchdog.current >= 25.0) {

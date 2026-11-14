@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { ArchitecturalTree, HedgeRow, NaturalPlantCluster } from './Botanicals'
@@ -247,7 +247,7 @@ export function LuxuryLandscaping({
   darkMode: boolean
   onYardClick?: (e: ThreeEvent<MouseEvent>) => void
 }) {
-  const [yardLightsOn, setYardLightsOn] = useState(true)
+  const yardLightsOn = useStore((s) => s.electronicStates?.yard_lights ?? true)
   const lawnColor = darkMode ? '#2C3D28' : '#4C6442'
   const lawnAccent = darkMode ? '#34482F' : '#5B7450'
   const patioDark = darkMode ? '#252930' : '#3A3F47'
@@ -268,13 +268,13 @@ export function LuxuryLandscaping({
 
   const handleToggleYardLights = (e?: ThreeEvent<MouseEvent>) => {
     if (e && !isValidClick(e.clientX, e.clientY)) return
-    setYardLightsOn((prev) => {
-      const next = !prev
-      useStore.getState().notify(
-        next ? '💡 Bật đèn trụ sân vườn & LED hồ bơi' : '💡 Tắt đèn trụ sân vườn & LED hồ bơi',
-      )
-      return next
-    })
+    const st = useStore.getState()
+    const cur = st.electronicStates?.yard_lights ?? true
+    const next = !cur
+    st.toggleElectronicState?.('yard_lights', next)
+    st.notify(
+      next ? '💡 Bật đèn trụ sân vườn & LED hồ bơi' : '💡 Tắt đèn trụ sân vườn & LED hồ bơi',
+    )
   }
 
   const yardClickHandler = onYardClick
@@ -335,17 +335,23 @@ export function LuxuryLandscaping({
 
       {/* Đáy hồ ốp gạch mosaic xanh ngọc tự nhiên & Mặt nước ngọc bích */}
       <B p={[-1.4, -0.31, 10.9]} s={[2.98, 0.04, 9.2]} map={mosaicPondMap} c={darkMode ? '#A2E8E0' : '#FFFFFF'} rough={0.28} shadow={false} />
-      <B p={[-2.85, -0.205, 10.9]} s={[0.045, 0.045, 9.035]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
-      <B p={[0.05, -0.205, 10.9]} s={[0.045, 0.045, 9.035]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
-      <B p={[-1.4, -0.205, 15.44]} s={[2.92, 0.045, 0.045]} c="#5EEAD4" emissive="#38B2AC" ei={darkMode ? 1.4 : 0.65} shadow={false} />
-      <B
-        p={[-1.4, -0.205, 6.36]}
-        s={[2.92, 0.045, 0.045]}
-        c={yardLightsOn ? '#5EEAD4' : '#1E2A30'}
-        emissive={yardLightsOn ? '#38B2AC' : '#000000'}
-        ei={yardLightsOn ? (darkMode ? 1.4 : 0.65) : 0}
-        shadow={false}
-      />
+      {/* 4 cạnh dải LED ngọc bích viền hồ cá Koi đồng bộ theo công tắc đèn sân vườn */}
+      {[
+        { p: [-2.85, -0.205, 10.9] as V3, s: [0.045, 0.045, 9.035] as V3 },
+        { p: [0.05, -0.205, 10.9] as V3, s: [0.045, 0.045, 9.035] as V3 },
+        { p: [-1.4, -0.205, 15.44] as V3, s: [2.92, 0.045, 0.045] as V3 },
+        { p: [-1.4, -0.205, 6.36] as V3, s: [2.92, 0.045, 0.045] as V3 },
+      ].map((edge, idx) => (
+        <B
+          key={`pond-led-${idx}`}
+          p={edge.p}
+          s={edge.s}
+          c={yardLightsOn ? '#5EEAD4' : '#1E2A30'}
+          emissive={yardLightsOn ? '#38B2AC' : '#000000'}
+          ei={yardLightsOn ? (darkMode ? 1.4 : 0.65) : 0}
+          shadow={false}
+        />
+      ))}
       <mesh position={[-1.4, -0.195, 10.9]} rotation={[-Math.PI / 2, 0, 0]} material={SHARED_WATER_MAT}>
         <planeGeometry args={[2.96, 9.16]} />
       </mesh>
@@ -519,8 +525,12 @@ export function LuxuryLandscaping({
         category="SEAT"
         label="Sofa sưởi ấm Firepit"
         hint="🛋️ Ngồi Sofa sưởi ấm ngoài trời"
-        customStandOffset={[-10.8, -0.15, 9.85]}
+        customStandOffset={[-10.8, -0.15, 10.12]}
         customSitAnchor={{ pos: [-11.2, 0.05, 9.28], yaw: 0, pose: 'sit' }}
+        userData={{
+          customStandOffset: [-10.8, -0.15, 10.12],
+          customSitAnchor: { pos: [-11.2, 0.05, 9.28], yaw: 0, pose: 'sit' },
+        }}
         onClick={(e) => {
           if (e && !isValidClick(e.clientX, e.clientY)) return
           const st = useStore.getState()
@@ -935,7 +945,7 @@ function FirepitTable({ pos, darkMode }: { pos: V3; darkMode: boolean }) {
       category="ELECTRONIC"
       label="Lò sưởi Firepit ngoài trời"
       hint={fireLit ? '🔥 Tắt lửa Firepit ngoài trời' : '🔥 Thắp lửa Firepit ngoài trời'}
-      customStandOffset={[-9.9, -0.15, 11.2]}
+      customStandOffset={[-9.65, -0.15, 11.2]}
       onClick={(e) => {
         if (e && !isValidClick(e.clientX, e.clientY)) return
         useStore.getState().toggleFirepit()
@@ -1232,7 +1242,7 @@ function BollardLightsGroup({ darkMode, lightsOn }: { darkMode: boolean; lightsO
 }
 
 function WaterFeatureWall({ pos, darkMode }: { pos: V3; darkMode: boolean }) {
-  const [waterfallOn, setWaterfallOn] = useState(true)
+  const waterfallOn = useStore((s) => s.electronicStates?.waterfall ?? true)
   const sheetMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const rippleGroupRef = useRef<THREE.Group>(null)
   const foamMatRef = useRef<THREE.MeshStandardMaterial>(null)
@@ -1268,11 +1278,11 @@ function WaterFeatureWall({ pos, darkMode }: { pos: V3; darkMode: boolean }) {
       customStandOffset={[5.15, -0.15, 7.65]}
       onClick={(e) => {
         if (e && !isValidClick(e.clientX, e.clientY)) return
-        setWaterfallOn((prev) => {
-          const next = !prev
-          useStore.getState().notify(next ? '🌊 Bật thác nước tràn hồ bơi' : '🌊 Tắt thác nước tràn')
-          return next
-        })
+        const st = useStore.getState()
+        const cur = st.electronicStates?.waterfall ?? true
+        const next = !cur
+        st.toggleElectronicState?.('waterfall', next)
+        st.notify(next ? '🌊 Bật thác nước tràn hồ bơi' : '🌊 Tắt thác nước tràn')
       }}
     >
       <group position={pos}>

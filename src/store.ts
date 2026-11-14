@@ -277,7 +277,8 @@ interface State {
 
   // Universal Archetype Interaction Engine states & actions
   dynamicSeatTarget: DynamicSeatTarget | null
-  setDynamicSeatTarget: (seat: DynamicSeatTarget | null) => void
+  dynamicSeatTargets: Record<ActiveChar, DynamicSeatTarget | null>
+  setDynamicSeatTarget: (seat: DynamicSeatTarget | null, forChar?: ActiveChar) => void
   clearCharacterPosture: (char?: ActiveChar) => void
   orientCommand: OrientCommand | null
   setOrientCommand: (char: ActiveChar, yaw: number) => void
@@ -680,6 +681,7 @@ export const useStore = create<State>()(
           const curCharAct = char === 'boy' ? s.boyActivity : s.girlActivity
 
           if (act === 'idle') {
+            const otherChar: ActiveChar = char === 'boy' ? 'girl' : 'boy'
             return {
               boyActivity: char === 'boy' ? 'idle' : s.boyActivity,
               boyPhase: char === 'boy' ? 'active' : s.boyPhase,
@@ -688,6 +690,11 @@ export const useStore = create<State>()(
               ...(s.activeChar === char
                 ? { activity: 'idle', activityPhase: 'active', isUserInitiated: false }
                 : {}),
+              dynamicSeatTargets: { ...s.dynamicSeatTargets, [char]: null },
+              dynamicSeatTarget:
+                s.dynamicSeatTarget && s.dynamicSeatTarget.char === char
+                  ? s.dynamicSeatTargets[otherChar] ?? null
+                  : s.dynamicSeatTarget,
               wardrobeOpen: false,
               girlWardrobeOpen: false,
               activePhoto: null,
@@ -789,8 +796,11 @@ export const useStore = create<State>()(
             activePhoto: fromUser ? null : s.activePhoto,
             wardrobeOpen: fromUser && act === 'wardrobe',
             girlWardrobeOpen: fromUser && act === 'girl_wardrobe',
+            dynamicSeatTargets: { ...s.dynamicSeatTargets, [char]: null },
             dynamicSeatTarget:
-              s.dynamicSeatTarget && s.dynamicSeatTarget.char === char ? null : s.dynamicSeatTarget,
+              s.dynamicSeatTarget && s.dynamicSeatTarget.char === char
+                ? s.dynamicSeatTargets[char === 'boy' ? 'girl' : 'boy'] ?? null
+                : s.dynamicSeatTarget,
             containerCard: fromUser ? null : s.containerCard,
             girlOutfitId:
               !fromUser && act === 'girl_wardrobe'
@@ -891,10 +901,11 @@ export const useStore = create<State>()(
           girlWardrobeOpen: s.activeChar === 'girl' ? false : s.girlWardrobeOpen,
           ...(avatarTarget !== null
             ? {
+                dynamicSeatTargets: { ...s.dynamicSeatTargets, [s.activeChar]: null },
                 dynamicSeatTarget:
                   s.dynamicSeatTarget && s.dynamicSeatTarget.char !== s.activeChar
                     ? s.dynamicSeatTarget
-                    : null,
+                    : s.dynamicSeatTargets[s.activeChar === 'boy' ? 'girl' : 'boy'] ?? null,
                 containerCard: null,
               }
             : {}),
@@ -1046,6 +1057,7 @@ export const useStore = create<State>()(
             girlWardrobeOpen: false,
             activePhoto: null,
             dynamicSeatTarget: null,
+            dynamicSeatTargets: { boy: null, girl: null },
             activeTargetUi: null,
             containerCard: null,
             walkthroughSpawn: null,
@@ -1066,6 +1078,7 @@ export const useStore = create<State>()(
           wardrobeOpen: false,
           girlWardrobeOpen: false,
           dynamicSeatTarget: null,
+          dynamicSeatTargets: { boy: null, girl: null },
           activeTargetUi: null,
           containerCard: null,
           viewPreset: 'overview',
@@ -1520,10 +1533,28 @@ export const useStore = create<State>()(
 
       // Universal Archetype Interaction Engine states & actions
       dynamicSeatTarget: null,
-      setDynamicSeatTarget: (dynamicSeatTarget) => set({ dynamicSeatTarget }),
+      dynamicSeatTargets: { boy: null, girl: null },
+      setDynamicSeatTarget: (seat, forChar) =>
+        set((s) => {
+          const targetChar: ActiveChar = seat?.char ?? forChar ?? s.userRole ?? s.activeChar ?? 'boy'
+          const nextMap: Record<ActiveChar, DynamicSeatTarget | null> = {
+            ...s.dynamicSeatTargets,
+            [targetChar]: seat,
+          }
+          const otherChar: ActiveChar = targetChar === 'boy' ? 'girl' : 'boy'
+          return {
+            dynamicSeatTargets: nextMap,
+            dynamicSeatTarget: seat ?? nextMap[otherChar] ?? null,
+          }
+        }),
       clearCharacterPosture: (char?: ActiveChar) =>
         set((s) => {
           const targetChar = char ?? s.activeChar
+          const otherChar: ActiveChar = targetChar === 'boy' ? 'girl' : 'boy'
+          const nextMap: Record<ActiveChar, DynamicSeatTarget | null> = char
+            ? { ...s.dynamicSeatTargets, [targetChar]: null }
+            : { boy: null, girl: null }
+          const remaining = char ? nextMap[otherChar] : null
           return {
             boyActivity: targetChar === 'boy' ? 'idle' : s.boyActivity,
             boyPhase: targetChar === 'boy' ? 'active' : s.boyPhase,
@@ -1533,9 +1564,10 @@ export const useStore = create<State>()(
             activityPhase: s.activeChar === targetChar ? 'active' : s.activityPhase,
             wardrobeOpen: targetChar === 'boy' ? false : s.wardrobeOpen,
             girlWardrobeOpen: targetChar === 'girl' ? false : s.girlWardrobeOpen,
+            dynamicSeatTargets: nextMap,
             dynamicSeatTarget:
               s.dynamicSeatTarget && (!char || s.dynamicSeatTarget.char === targetChar)
-                ? null
+                ? remaining
                 : s.dynamicSeatTarget,
             containerCard: null,
           }
@@ -1581,6 +1613,9 @@ export const useStore = create<State>()(
         girl_lamp: true,
         girl_vanity_light: true,
         girl_shelf_led: true,
+        yard_lights: true,
+        waterfall: true,
+        rooftop_lantern: true,
       },
       toggleElectronicState: (id: string, next?: boolean) => {
         const s = get()
