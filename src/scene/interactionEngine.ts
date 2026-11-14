@@ -147,6 +147,8 @@ export function registerWalkabilityCheckers(
 // Pre-allocated scratch math objects (zero-GC inside useFrame hot paths)
 const _box = new THREE.Box3()
 const _nodeBox = new THREE.Box3()
+const _instMat = new THREE.Matrix4()
+const _instWorldMat = new THREE.Matrix4()
 const _vecCenter = new THREE.Vector3()
 const _vecSize = new THREE.Vector3()
 const _vecWorld = new THREE.Vector3()
@@ -166,6 +168,10 @@ const bounceColorScratch = new THREE.Color(0xffcf7d)
 
 function makeSyntheticClickEvent(): ThreeEvent<MouseEvent> {
   return {
+    clientX: undefined,
+    clientY: undefined,
+    delta: 0,
+    isSynthetic: true,
     stopPropagation: () => {},
     preventDefault: () => {},
     nativeEvent: {} as MouseEvent,
@@ -218,12 +224,26 @@ function computeVisibleBox3(root: THREE.Object3D, out: THREE.Box3): THREE.Box3 {
       // Allow nested structural meshes only if root itself has no direct meshes yet;
       // still inspect children unless it's another distinct interactable item if root already has geometry
     }
-    const mesh = node as THREE.Mesh
-    if (mesh.isMesh && mesh.geometry) {
-      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
-      if (mesh.geometry.boundingBox) {
-        _nodeBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld)
-        out.union(_nodeBox)
+    const instMesh = node as THREE.InstancedMesh
+    if (instMesh.isInstancedMesh && instMesh.geometry) {
+      if (!instMesh.geometry.boundingBox) instMesh.geometry.computeBoundingBox()
+      if (instMesh.geometry.boundingBox && instMesh.count > 0) {
+        const count = Math.min(instMesh.count, 512)
+        for (let i = 0; i < count; i++) {
+          instMesh.getMatrixAt(i, _instMat)
+          _instWorldMat.multiplyMatrices(instMesh.matrixWorld, _instMat)
+          _nodeBox.copy(instMesh.geometry.boundingBox).applyMatrix4(_instWorldMat)
+          out.union(_nodeBox)
+        }
+      }
+    } else {
+      const mesh = node as THREE.Mesh
+      if (mesh.isMesh && mesh.geometry) {
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
+        if (mesh.geometry.boundingBox) {
+          _nodeBox.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld)
+          out.union(_nodeBox)
+        }
       }
     }
     const children = node.children
@@ -737,7 +757,7 @@ function classifyArchetype(
       category: overrideCat ?? 'CONTAINER_INFO',
       label: override?.label ?? 'Quầy bếp & Pha chế',
       icon: override?.icon ?? '🍳',
-      linkedStation: override?.linkedStation ?? 'drink',
+      linkedStation: override?.linkedStation,
       infoTitle: override?.infoTitle ?? 'Quầy Bếp & Đảo Đá Marble',
       infoBody: override?.infoBody ?? 'Không gian pha trà, cà phê và chuẩn bị những bữa ăn ấm cúng trong nhà.',
     }
@@ -1189,13 +1209,28 @@ function cloneMaterialWithEmissive(mat: THREE.Material): THREE.Material {
     if (cloned.emissive.r + cloned.emissive.g + cloned.emissive.b < 0.05) {
       cloned.emissive.copy(bounceColorScratch)
     } else {
-      cloned.emissive.lerp(bounceColorScratch, 0.35)
+      cloned.emissive.lerp(bounceColorScratch, 0.25)
     }
-    cloned.emissiveIntensity = Math.min(0.65, baseIntensity + 0.22)
+    cloned.emissiveIntensity = Math.min(3.5, baseIntensity + 0.25)
     cloned.userData.__origHighlightBaseEi = baseIntensity
     return cloned
   }
   return mat
+}
+
+function pulseHighlightMaterial(mat: THREE.Material | THREE.Material[], pulse: number): void {
+  if (Array.isArray(mat)) {
+    for (let i = 0; i < mat.length; i++) {
+      const m = mat[i]
+      if (m instanceof THREE.MeshStandardMaterial) {
+        const baseEi = (m.userData.__origHighlightBaseEi as number) ?? 0
+        m.emissiveIntensity = Math.min(3.5, baseEi + pulse)
+      }
+    }
+  } else if (mat instanceof THREE.MeshStandardMaterial) {
+    const baseEi = (mat.userData.__origHighlightBaseEi as number) ?? 0
+    mat.emissiveIntensity = Math.min(3.5, baseEi + pulse)
+  }
 }
 
 function disposeHighlightMaterial(mat: THREE.Material | THREE.Material[], base: THREE.Material | THREE.Material[]): void {
@@ -1287,10 +1322,7 @@ function updateHighlightPulse(root: THREE.Object3D, elapsedTime: number): void {
           continue
         }
         const h = rec.highlightMat
-        if (h instanceof THREE.MeshStandardMaterial) {
-          const baseEi = (h.userData.__origHighlightBaseEi as number) ?? 0
-          h.emissiveIntensity = Math.min(0.7, baseEi + pulse)
-        }
+        pulseHighlightMaterial(h, pulse)
       }
     }
     const children = node.children
@@ -1655,15 +1687,15 @@ export function executeInteraction(
       }
 
       // Ghế động ngoài STATIONS cố định (Ghế Sofa ngoài trời, Ghế tắm nắng, Ghế Sân thượng...)
-      const prevSeat = useStore.getState().dynamicSeatTarget
+      const prevSeat = useStore.getState().dynamicSeatTargets[char]
       if (!opts.fromAuto && meta.originalOnClick) {
         meta.originalOnClick(syntheticClick)
       }
-      const afterSeat = useStore.getState().dynamicSeatTarget
-      // Nếu hàm gốc chưa tự set dynamicSeatTarget thì engine tự đặt tư thế ngồi/ngả
+      const afterSeat = useStore.getState().dynamicSeatTargets[char]
+      // Nếu hàm gốc chưa tự set dynamicSeatTarget cho nhân vật này thì engine tự đặt tư thế ngồi/ngả
       if (!afterSeat || (afterSeat === prevSeat && afterSeat.id !== meta.id)) {
         const seatTarget = buildDynamicSeatTarget(meta, char)
-        useStore.getState().setDynamicSeatTarget(seatTarget)
+        useStore.getState().setDynamicSeatTarget(seatTarget, char)
         if (!opts.fromAuto) {
           useStore.getState().notify(`${meta.icon} ${meta.label}`)
         }
@@ -1684,7 +1716,7 @@ export function executeInteraction(
           meta.isActive = storeAfter
         }
       } else {
-        if (meta.originalOnClick) {
+        if (!opts.fromAuto && meta.originalOnClick) {
           meta.originalOnClick(syntheticClick)
           meta.isActive = !meta.isActive
           useStore.getState().toggleElectronicState(meta.id, meta.isActive)

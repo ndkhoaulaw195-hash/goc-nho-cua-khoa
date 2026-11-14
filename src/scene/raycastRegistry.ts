@@ -181,14 +181,22 @@ export function recordPointerDown(clientX: number, clientY: number): void {
   hasPointerDown = true
 }
 
-/** Xác nhận click hợp lệ (di chuyển <= 5px và giữ chuột <= 250ms mặc định) */
+/** Xác nhận click hợp lệ (di chuyển <= 5px và giữ chuột <= 250ms mặc định; cho phép sự kiện tổng hợp [F]/Queue) */
 export function isValidClick(
-  clientX: number,
-  clientY: number,
+  clientX?: number,
+  clientY?: number,
   maxDistPx = 5,
   maxDurationMs = 250,
 ): boolean {
-  if (!hasPointerDown) return true
+  if (
+    !hasPointerDown ||
+    clientX === undefined ||
+    clientY === undefined ||
+    !Number.isFinite(clientX) ||
+    !Number.isFinite(clientY)
+  ) {
+    return true
+  }
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
   const dist = Math.hypot(clientX - pointerDownX, clientY - pointerDownY)
   const duration = now - pointerDownTime
