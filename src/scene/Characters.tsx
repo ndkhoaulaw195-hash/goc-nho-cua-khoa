@@ -8,6 +8,12 @@ import { broadcastPosSync, REMOTE_ACTORS } from '../presence'
 import { openBookPages } from './textures'
 import { Interact } from './prims'
 import { isValidClick } from './raycastRegistry'
+import {
+  executeInteraction,
+  getPetProximityDirectives,
+  pickUtilityAutoTarget,
+  type InteractionMeta,
+} from './interactionEngine'
 
 function Capsule({
   p = [0, 0, 0],
@@ -1263,17 +1269,24 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
   const prevActivity = useRef<Activity>('idle')
   const phaseTimer = useRef(0)
   const walkWatchdog = useRef(0)
-  const autoIdleTimer = useRef(1.4)
-  const autoSeqIdx = useRef(0)
-  const outdoorStrollTarget = useRef<V3 | null>(null)
-  const outdoorStrollYaw = useRef<number | null>(null)
-  const outdoorStrollPause = useRef(0)
-  const outdoorStrollIdx = useRef(0)
+  const autoTargetMeta = useRef<InteractionMeta | null>(null)
+  const autoRecentIds = useRef<string[]>([])
+  const autoNextTimer = useRef(1.8)
+  const autoEnjoyTimer = useRef(0)
+  const activeEnjoyDur = useRef(12.0)
+  const lastOrientTick = useRef(0)
+  const orientTargetYaw = useRef<number | null>(null)
+  const orientUntil = useRef(0)
+  const wasDynamicSeated = useRef(false)
+  const seatSavedStandPos = useRef<{ x: number; z: number; floorY: number } | null>(null)
   const lastSpinTick = useRef(outfitSpinTick)
   const spinUntil = useRef(0)
   const lastPosBroadcast = useRef(0)
   const lastSpawnTick = useRef(0)
 
+  const orientQuat = useMemo(() => new THREE.Quaternion(), [])
+  const orientYAxis = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+  const orientEuler = useMemo(() => new THREE.Euler(0, 0, 0, 'YXZ'), [])
   const outfit = useMemo(() => OUTFITS.find((o) => o.id === outfitId) || OUTFITS[0], [outfitId])
   const bookTex = useMemo(() => openBookPages(readBookPage), [readBookPage])
 
@@ -1307,9 +1320,11 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         walkFloorY.current = spawn.pos[1]
         walkYaw.current = spawn.yaw
         walkPhase.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
+        autoTargetMeta.current = null
+        autoEnjoyTimer.current = 0
+        orientTargetYaw.current = null
+        wasDynamicSeated.current = false
+        seatSavedStandPos.current = null
         walkWatchdog.current = 0
         phaseTimer.current = 0
         prevActivity.current = 'idle'
@@ -1321,6 +1336,10 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         LIVE_ACTORS.khoaFloorY = spawn.pos[1]
         LIVE_ACTORS.khoaYaw = spawn.yaw
         LIVE_ACTORS.khoaWorldPos = [spawn.pos[0], spawn.pos[1], spawn.pos[2]]
+        st.setAutoIntent('boy', null)
+        if (st.dynamicSeatTarget?.char === 'boy') {
+          st.clearCharacterPosture('boy')
+        }
         if (st.boyActivity !== 'idle') {
           st.startActivity('idle', true, 'boy')
         }
@@ -1386,108 +1405,230 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
       }
     }
 
-    if ((moveX !== 0 || moveZ !== 0) && st.boyActivity !== 'idle') {
-      st.startActivity('idle', true, 'boy')
+    const isBoyDynamicSeated = st.dynamicSeatTarget?.char === 'boy'
+
+    if (st.orientCommand && st.orientCommand.char === 'boy' && st.orientCommand.tick !== lastOrientTick.current) {
+      lastOrientTick.current = st.orientCommand.tick
+      orientTargetYaw.current = st.orientCommand.yaw
+      orientUntil.current = t + 0.55
+    }
+
+    if (isBoyDynamicSeated && !wasDynamicSeated.current) {
+      wasDynamicSeated.current = true
+      seatSavedStandPos.current = {
+        x: walkPos.current[0],
+        z: walkPos.current[1],
+        floorY: walkFloorY.current,
+      }
+    } else if (!isBoyDynamicSeated && wasDynamicSeated.current) {
+      wasDynamicSeated.current = false
+      if (seatSavedStandPos.current) {
+        const saved = seatSavedStandPos.current
+        const blockedSaved =
+          saved.floorY > 2.0 ? isBlockedTier2(saved.x, saved.z, 0.16) : isBlocked(saved.x, saved.z, 0.16)
+        if (!blockedSaved) {
+          walkPos.current = [saved.x, saved.z]
+          walkFloorY.current = saved.floorY
+        }
+        seatSavedStandPos.current = null
+      }
+    }
+
+    if ((moveX !== 0 || moveZ !== 0) && (st.boyActivity !== 'idle' || isBoyDynamicSeated)) {
+      orientTargetYaw.current = null
+      if (isBoyDynamicSeated) {
+        st.clearCharacterPosture('boy')
+      }
+      if (st.boyActivity !== 'idle') {
+        st.startActivity('idle', true, 'boy')
+      }
       return
     }
 
-    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2 <-> Sân vườn)
+    // 1. Chế độ Đứng/Đi bộ tự do đa tầng (Tầng 1 <-> Cầu thang <-> Tầng 2 <-> Sân vườn) & Dynamic Seat & Utility AI
     if (st.boyActivity === 'idle') {
-      let moving = false
-
-      if (isControllingBoy && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
-        walkWatchdog.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
-        moving = stepCharacterWalk(
-          walkPos,
-          walkFloorY,
-          walkYaw,
-          walkPhase,
-          moveX,
-          moveZ,
-          Boolean(kb.ShiftLeft || kb.ShiftRight),
-          st.avatarTarget,
-          () => st.setAvatarTarget(null),
-          delta,
-          [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
-          LIVE_ACTORS.girlFloorY,
-        )
-        if (moving) autoIdleTimer.current = 4.0
-      } else if (st.boyAutoLife) {
-        if (outdoorStrollTarget.current) {
-          walkWatchdog.current += delta
-          const [ox, , oz] = outdoorStrollTarget.current
-          const distOutdoor = Math.hypot(walkPos.current[0] - ox, walkPos.current[1] - oz)
-          if (distOutdoor > 0.25 && walkWatchdog.current < 28.0) {
-            moving = stepCharacterWalk(
-              walkPos,
-              walkFloorY,
-              walkYaw,
-              walkPhase,
-              0,
-              0,
-              false,
-              outdoorStrollTarget.current,
-              () => {
-                outdoorStrollTarget.current = null
-              },
-              delta,
-              [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
-              LIVE_ACTORS.girlFloorY,
-            )
-          } else {
-            outdoorStrollTarget.current = null
-            walkWatchdog.current = 0
-            walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
-          }
-        } else if (outdoorStrollPause.current > 0) {
-          walkWatchdog.current = 0
-          outdoorStrollPause.current -= delta
-          if (outdoorStrollYaw.current !== null) {
-            const diff = Math.atan2(
-              Math.sin(outdoorStrollYaw.current - walkYaw.current),
-              Math.cos(outdoorStrollYaw.current - walkYaw.current),
-            )
-            walkYaw.current += diff * Math.min(1, delta * 4)
-          }
-          headY = Math.sin(t * 0.85) * 0.28
-          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+      if (isBoyDynamicSeated && st.dynamicSeatTarget) {
+        const seat = st.dynamicSeatTarget
+        const isLie = seat.pose === 'lie'
+        const isRecline = seat.pose === 'recline'
+        const approxFloorY = seat.pos[1] > 2.5 ? 4.35 : seat.pos[2] > 6.3 ? -0.15 : 0
+        walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+        walkYaw.current = seat.yaw
+        targetRotY = seat.yaw
+        if (isLie) {
+          targetPos = [seat.pos[0], Math.max(seat.pos[1], approxFloorY + 0.45), seat.pos[2]]
+          targetRotX = -Math.PI / 2
+          lHipX = 0.06
+          rHipX = 0.06
+          rHipZ = -0.04
+          lKneeX = 0.14
+          rKneeX = 0.14
+          lArmX = -0.32 + Math.sin(t * 1.8) * 0.02
+          rArmX = -0.32 + Math.sin(t * 1.8) * 0.02
+          lArmZ = 0.24
+          rArmZ = -0.24
+          headX = 0.12
+          headY = Math.sin(t * 0.8) * 0.08
+        } else if (isRecline) {
+          // Ngả lưng thư giãn trên ghế tắm nắng Sundeck (~33°), tịnh tiến nhẹ về trước để hông nằm đúng mặt đệm
+          const forwardShift = 0.32
+          targetPos = [
+            seat.pos[0] + Math.sin(seat.yaw) * forwardShift,
+            seat.pos[1] - 0.56,
+            seat.pos[2] + Math.cos(seat.yaw) * forwardShift,
+          ]
+          targetRotX = -0.58
+          lHipX = -0.92
+          rHipX = -0.92
+          lKneeX = 0.18
+          rKneeX = 0.18
+          lArmX = -0.34 + Math.sin(t * 1.3) * 0.03
+          rArmX = -0.34 + Math.sin(t * 1.3) * 0.03
+          lArmZ = 0.22
+          rArmZ = -0.22
+          headX = 0.18
+          headY = Math.sin(t * 0.7) * 0.1
         } else {
-          walkWatchdog.current = 0
-          outdoorStrollYaw.current = null
-          autoIdleTimer.current -= delta
-          if (autoIdleTimer.current <= 0) {
-            const nextAct = AUTO_SEQUENCE_BOY[autoSeqIdx.current % AUTO_SEQUENCE_BOY.length]
-            autoSeqIdx.current += 1
-            autoIdleTimer.current = 1.4
-            if (nextAct === 'pet') {
-              st.petDog(autoSeqIdx.current % 2 === 0 ? 'mochi' : 'bo', false, 'boy')
-            } else {
-              st.startActivity(nextAct, false, 'boy')
-            }
-            return
+          const sitRootY = Math.max(approxFloorY - 0.30, seat.pos[1] - 0.65)
+          targetPos = [seat.pos[0], sitRootY, seat.pos[2]]
+          targetRotX = 0
+          lHipX = -1.42
+          rHipX = -1.42
+          lKneeX = 1.42
+          rKneeX = 1.42
+          lArmX = -0.45
+          rArmX = -0.45 + Math.sin(t * 1.4) * 0.05
+          headY = Math.sin(t * 0.7) * 0.14
+        }
+
+        if (st.boyAutoLife) {
+          autoEnjoyTimer.current -= delta
+          if (autoEnjoyTimer.current <= 0) {
+            st.clearCharacterPosture('boy')
+            autoNextTimer.current = 1.4
           }
         }
       } else {
-        walkWatchdog.current = 0
-        outdoorStrollTarget.current = null
-        outdoorStrollYaw.current = null
-        outdoorStrollPause.current = 0
-        walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
-      }
+        let moving = false
 
-      const swing = moving ? Math.sin(walkPhase.current) * 0.56 : 0
-      const bob = moving ? Math.abs(Math.sin(walkPhase.current)) * 0.036 : Math.sin(t * 2) * 0.006
-      targetPos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
-      targetRotY = walkYaw.current
-      lHipX = swing
-      rHipX = -swing
-      lKneeX = Math.max(0, -swing * 0.7)
-      rKneeX = Math.max(0, swing * 0.7)
-      lArmX = -swing * 0.65
-      rArmX = swing * 0.65
+        if (isControllingBoy && (moveX !== 0 || moveZ !== 0 || st.avatarTarget)) {
+          walkWatchdog.current = 0
+          autoTargetMeta.current = null
+          autoEnjoyTimer.current = 0
+          if (moveX !== 0 || moveZ !== 0 || st.avatarTarget) {
+            orientTargetYaw.current = null
+          }
+          if (st.autoIntent?.boy) {
+            st.setAutoIntent('boy', null)
+          }
+          moving = stepCharacterWalk(
+            walkPos,
+            walkFloorY,
+            walkYaw,
+            walkPhase,
+            moveX,
+            moveZ,
+            Boolean(kb.ShiftLeft || kb.ShiftRight),
+            st.avatarTarget,
+            () => st.setAvatarTarget(null),
+            delta,
+            [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
+            LIVE_ACTORS.girlFloorY,
+          )
+          if (moving) autoNextTimer.current = 4.5
+        } else if (st.boyAutoLife) {
+          if (autoTargetMeta.current) {
+            const autoMeta = autoTargetMeta.current
+            walkWatchdog.current += delta
+            const stand = autoMeta.standOffset
+            const center = autoMeta.center
+            const distStand = Math.hypot(walkPos.current[0] - stand[0], walkPos.current[1] - stand[2])
+            const distCenter = Math.hypot(walkPos.current[0] - center[0], walkPos.current[1] - center[2])
+            const sameFloor = Math.abs(walkFloorY.current - autoMeta.floorY) < 0.85
+            const midStair = walkFloorY.current >= 0.08 && walkFloorY.current <= 4.27
+
+            if (!midStair && sameFloor && (distStand < 0.7 || (distCenter < 1.4 && distStand < 2.2))) {
+              autoTargetMeta.current = null
+              walkWatchdog.current = 0
+              walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+              autoRecentIds.current = [
+                autoMeta.id,
+                ...autoRecentIds.current.filter((itemId) => itemId !== autoMeta.id),
+              ].slice(0, 6)
+              st.setAutoIntent('boy', null)
+              executeInteraction(autoMeta, { forChar: 'boy', fromAuto: true })
+              const enjoy = 10 + Math.random() * 5
+              autoEnjoyTimer.current = enjoy
+              autoNextTimer.current = enjoy
+            } else if (walkWatchdog.current < 24.0) {
+              moving = stepCharacterWalk(
+                walkPos,
+                walkFloorY,
+                walkYaw,
+                walkPhase,
+                0,
+                0,
+                false,
+                stand,
+                () => {
+                  // Khi stepCharacterWalk chạm điểm đứng standOffset -> kiểm tra lại ở frame sau
+                },
+                delta,
+                [LIVE_ACTORS.girlPos[0], LIVE_ACTORS.girlPos[2]],
+                LIVE_ACTORS.girlFloorY,
+              )
+            } else {
+              autoRecentIds.current = [
+                autoMeta.id,
+                ...autoRecentIds.current.filter((itemId) => itemId !== autoMeta.id),
+              ].slice(0, 6)
+              autoTargetMeta.current = null
+              walkWatchdog.current = 0
+              st.setAutoIntent('boy', null)
+              autoNextTimer.current = 2.0
+            }
+          } else {
+            walkWatchdog.current = 0
+            if (autoEnjoyTimer.current > 0) {
+              autoEnjoyTimer.current -= delta
+            }
+            autoNextTimer.current -= delta
+            if (autoNextTimer.current <= 0) {
+              const nextMeta = pickUtilityAutoTarget('boy', st.darkMode, autoRecentIds.current)
+              if (nextMeta) {
+                autoTargetMeta.current = nextMeta
+                st.setAutoIntent('boy', {
+                  icon: nextMeta.icon,
+                  label: nextMeta.label,
+                  targetId: nextMeta.id,
+                })
+              } else {
+                autoNextTimer.current = 2.0
+              }
+            }
+            walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+          }
+        } else {
+          walkWatchdog.current = 0
+          autoTargetMeta.current = null
+          autoEnjoyTimer.current = 0
+          if (st.autoIntent?.boy) {
+            st.setAutoIntent('boy', null)
+          }
+          walkPhase.current = THREE.MathUtils.lerp(walkPhase.current, 0, delta * 8)
+        }
+
+        const swing = moving ? Math.sin(walkPhase.current) * 0.56 : 0
+        const bob = moving ? Math.abs(Math.sin(walkPhase.current)) * 0.036 : Math.sin(t * 2) * 0.006
+        targetPos = [walkPos.current[0], walkFloorY.current + bob, walkPos.current[1]]
+        targetRotY = walkYaw.current
+        lHipX = swing
+        rHipX = -swing
+        lKneeX = Math.max(0, -swing * 0.7)
+        rKneeX = Math.max(0, swing * 0.7)
+        lArmX = -swing * 0.65
+        rArmX = swing * 0.65
+      }
     } else {
       // 2. Đi bộ đa tầng (kể cả leo cầu thang lên Tầng 2 hoặc xuống Tầng 1) tới đồ vật rồi tương tác
       const entry = getStationEntryForChar(st.boyActivity, 'boy')
@@ -1582,6 +1723,7 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
 
         if (phaseTimer.current >= enterDur) {
           phaseTimer.current = 0
+          activeEnjoyDur.current = 10 + Math.random() * 5
           st.setActivityPhase('active', 'boy')
         }
       } else {
@@ -1613,34 +1755,21 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
         showRemote = pose.showRemote
         showBook = pose.showBook
 
-        const maxDur = AUTO_DURATION[st.boyActivity]
         const isOneShot =
           st.boyActivity === 'drink' ||
           st.boyActivity === 'darts' ||
           st.boyActivity === 'feed'
+        const maxDur = isOneShot
+          ? AUTO_DURATION[st.boyActivity]
+          : Math.max(AUTO_DURATION[st.boyActivity], activeEnjoyDur.current)
         if (phaseTimer.current >= maxDur) {
           if (st.isUserInitiated && isOneShot && st.activeChar === 'boy') {
             st.returnOverview()
             return
           } else if (st.boyAutoLife) {
-            if (autoSeqIdx.current > 0 && autoSeqIdx.current % 3 === 0) {
-              const spot = OUTDOOR_STROLL_SPOTS[outdoorStrollIdx.current % OUTDOOR_STROLL_SPOTS.length]
-              outdoorStrollIdx.current += 1
-              outdoorStrollTarget.current = spot.pos
-              outdoorStrollYaw.current = spot.lookYaw
-              outdoorStrollPause.current = 5.0
-              walkWatchdog.current = 0
-              autoIdleTimer.current = 0.8
-              st.startActivity('idle', false, 'boy')
-              return
-            }
-            const nextAct = AUTO_SEQUENCE_BOY[autoSeqIdx.current % AUTO_SEQUENCE_BOY.length]
-            autoSeqIdx.current += 1
-            if (nextAct === 'pet') {
-              st.petDog(autoSeqIdx.current % 2 === 0 ? 'mochi' : 'bo', false, 'boy')
-            } else {
-              st.startActivity(nextAct, false, 'boy')
-            }
+            st.setAutoIntent('boy', null)
+            autoNextTimer.current = 1.5
+            st.startActivity('idle', false, 'boy')
             return
           }
         }
@@ -1650,19 +1779,40 @@ export function Avatar({ p, ry = 0 }: { p: V3; ry?: number }) {
     root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, targetPos[0], k)
     root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, targetPos[1], k)
     root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, targetPos[2], k)
+    if (root.current.rotation.order !== 'YXZ') {
+      root.current.rotation.order = 'YXZ'
+    }
     const isBoySleeping =
-      (st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active'
+      ((st.boyActivity === 'sleep' || st.boyActivity === 'girl_sleep') && st.boyPhase === 'active') ||
+      (isBoyDynamicSeated && st.dynamicSeatTarget?.pose === 'lie')
     if (isBoySleeping) {
       root.current.rotation.x = -Math.PI / 2
-      root.current.rotation.y = 0.05
+      root.current.rotation.y = isBoyDynamicSeated && st.dynamicSeatTarget ? st.dynamicSeatTarget.yaw : 0.05
       root.current.rotation.z = 0
+    } else if (
+      orientTargetYaw.current !== null &&
+      t < orientUntil.current &&
+      !isBoyDynamicSeated &&
+      st.boyActivity === 'idle'
+    ) {
+      orientQuat.setFromAxisAngle(orientYAxis, orientTargetYaw.current)
+      root.current.quaternion.slerp(orientQuat, Math.min(1, delta * 12))
+      orientEuler.setFromQuaternion(root.current.quaternion, 'YXZ')
+      walkYaw.current = orientEuler.y
     } else {
+      if (orientTargetYaw.current !== null && t >= orientUntil.current) {
+        if (!isBoyDynamicSeated && st.boyActivity === 'idle') {
+          walkYaw.current = orientTargetYaw.current
+        }
+        orientTargetYaw.current = null
+      }
       root.current.rotation.x = THREE.MathUtils.lerp(root.current.rotation.x, targetRotX, k)
       const rotDiff = Math.atan2(
         Math.sin(targetRotY - root.current.rotation.y),
         Math.cos(targetRotY - root.current.rotation.y),
       )
       root.current.rotation.y += rotDiff * k
+      root.current.rotation.z = THREE.MathUtils.lerp(root.current.rotation.z, 0, k)
     }
 
     LIVE_ACTORS.khoaPos = [root.current.position.x, root.current.position.z]
@@ -2002,6 +2152,7 @@ export function Dog({
   const routineTimer = useRef(id === 'mochi' ? 5.5 : 7.5)
   const walkCycle = useRef(0)
   const curYaw = useRef(ry)
+  const followActiveRef = useRef(false)
 
   const heartGeo = useMemo(() => {
     const sh = new THREE.Shape()
@@ -2025,10 +2176,32 @@ export function Dog({
       (st.boyActivity === 'pet' || st.girlActivity === 'pet') && st.petTargetId === id
     const shouldSleepInKennel = st.darkMode
 
+    const cx = root.current.position.x
+    const cy = root.current.position.y
+    const cz = root.current.position.z
+    const petPos: V3 = [cx, cy, cz]
+    const curChar = st.userRole || st.activeChar || 'boy'
+    const primaryPos: V3 = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+    const primaryYaw = curChar === 'girl' ? LIVE_ACTORS.girlYaw : LIVE_ACTORS.khoaYaw
+    const secondaryPos: V3 = curChar === 'girl' ? LIVE_ACTORS.khoaWorldPos : LIVE_ACTORS.girlWorldPos
+    const secondaryYaw = curChar === 'girl' ? LIVE_ACTORS.khoaYaw : LIVE_ACTORS.girlYaw
+
+    let petDir = getPetProximityDirectives(id, petPos, primaryPos, primaryYaw)
+    let followedYaw = primaryYaw
+    if (!petDir.isNearby) {
+      const altDir = getPetProximityDirectives(id, petPos, secondaryPos, secondaryYaw)
+      if (altDir.isNearby) {
+        petDir = altDir
+        followedYaw = secondaryYaw
+      }
+    }
+    const isProximityExcited =
+      !isFeeding && !isBeingPetted && !shouldSleepInKennel && petDir.isNearby
+
     const routine = DOG_ROUTINES[id]
     const kennelSpot = routine.find((r) => r.kind === 'kennel') || routine[3]
 
-    if (!isFeeding && !isBeingPetted && !shouldSleepInKennel) {
+    if (!isFeeding && !isBeingPetted && !shouldSleepInKennel && !isProximityExcited) {
       routineTimer.current -= delta
       if (routineTimer.current <= 0) {
         routineIdx.current = (routineIdx.current + 1) % routine.length
@@ -2044,6 +2217,12 @@ export function Dog({
     let tz = activeSpot.pos[2]
     let targetYaw = activeSpot.yaw
 
+    const isPetWaterUnsafe = (x: number, z: number) =>
+      (x > 5.35 && x < 15.25 && z > 6.6 && z < 14.25) ||
+      (x > -2.96 && x < -2.55 && z > 7.8 && z < 13.2) ||
+      (x > -0.25 && x < 0.16 && z > 7.8 && z < 12.65) ||
+      (x > -2.96 && x < 0.16 && z > 14.75 && z < 15.6)
+
     if (isFeeding) {
       tx = feedPos[0]
       ty = feedPos[1]
@@ -2052,10 +2231,31 @@ export function Dog({
     } else if (isBeingPetted) {
       const [mx, mz] = LIVE_ACTORS.dogs[id].floorMeetPos
       tx = mx
-      ty = 0
+      ty = getGroundY(mx, mz)
       tz = mz
       const [epx, epz] = STATIONS.pet.entryPos
       targetYaw = Math.atan2(epx - mx, epz - mz)
+    } else if (isProximityExcited && petDir.followTarget) {
+      const sideSign = id === 'mochi' ? -0.32 : 0.32
+      const sideX = petDir.followTarget[0] + Math.cos(followedYaw) * sideSign
+      const sideZ = petDir.followTarget[2] - Math.sin(followedYaw) * sideSign
+      const rawX = petDir.followTarget[0]
+      const rawZ = petDir.followTarget[2]
+      if (!isBlocked(sideX, sideZ, 0.25) && !isPetWaterUnsafe(sideX, sideZ)) {
+        tx = sideX
+        tz = sideZ
+      } else if (!isBlocked(rawX, rawZ, 0.25) && !isPetWaterUnsafe(rawX, rawZ)) {
+        tx = rawX
+        tz = rawZ
+      } else {
+        tx = cx
+        tz = cz
+      }
+      ty = getGroundY(tx, tz)
+      targetYaw = petDir.lookAtYaw
+      if (cx > -6.2) {
+        LIVE_ACTORS.dogs[id].floorMeetPos = [cx, cz]
+      }
     } else {
       if (activeSpot.kind === 'stroll' && root.current.position.x > -6.2) {
         LIVE_ACTORS.dogs[id].floorMeetPos = [
@@ -2067,11 +2267,15 @@ export function Dog({
       }
     }
 
-    const cx = root.current.position.x
-    const cz = root.current.position.z
     const dist = Math.hypot(tx - cx, tz - cz)
-    const isWalking = dist > 0.06
+    if (isProximityExcited) {
+      if (dist > 0.42) followActiveRef.current = true
+      else if (dist <= 0.16) followActiveRef.current = false
+    } else {
+      followActiveRef.current = dist > 0.06
+    }
 
+    let isWalking = followActiveRef.current
     if (isWalking) {
       let wx = tx
       let wz = tz
@@ -2090,22 +2294,56 @@ export function Dog({
       const dx = wx - cx
       const dz = wz - cz
       const segDist = Math.hypot(dx, dz) || 1
-      const speed = isFeeding || isBeingPetted ? 2.15 : 1.35
+      const speed = isFeeding || isBeingPetted ? 2.15 : isProximityExcited ? 1.55 : 1.35
       const step = Math.min(segDist, speed * delta)
-      root.current.position.x += (dx / segDist) * step
-      root.current.position.z += (dz / segDist) * step
-      root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, ty, k)
+      const stepX = cx + (dx / segDist) * step
+      const stepZ = cz + (dz / segDist) * step
 
-      const moveYaw = Math.atan2(dx, dz)
-      const yawDiff = Math.atan2(Math.sin(moveYaw - curYaw.current), Math.cos(moveYaw - curYaw.current))
-      curYaw.current += yawDiff * Math.min(1, delta * 10)
-      walkCycle.current += delta * (isFeeding ? 16 : 11)
+      let moved = false
+      const currentlyInFurniture = isBlocked(cx, cz, 0.25)
+      if (
+        !isProximityExcited ||
+        currentlyInFurniture ||
+        (!isBlocked(stepX, stepZ, 0.25) && !isPetWaterUnsafe(stepX, stepZ))
+      ) {
+        root.current.position.x = stepX
+        root.current.position.z = stepZ
+        moved = true
+      } else if (!isBlocked(stepX, cz, 0.25) && !isPetWaterUnsafe(stepX, cz)) {
+        root.current.position.x = stepX
+        moved = true
+      } else if (!isBlocked(cx, stepZ, 0.25) && !isPetWaterUnsafe(cx, stepZ)) {
+        root.current.position.z = stepZ
+        moved = true
+      }
+
+      const groundAtPet = isProximityExcited
+        ? getGroundY(root.current.position.x, root.current.position.z)
+        : ty
+      root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, groundAtPet, k)
+
+      if (moved) {
+        const moveYaw = Math.atan2(root.current.position.x - cx, root.current.position.z - cz)
+        const yawDiff = Math.atan2(Math.sin(moveYaw - curYaw.current), Math.cos(moveYaw - curYaw.current))
+        curYaw.current += yawDiff * Math.min(1, delta * 10)
+        walkCycle.current += delta * (isFeeding ? 16 : isProximityExcited ? 13 : 11)
+      } else {
+        isWalking = false
+        followActiveRef.current = false
+        const yawDiff = Math.atan2(Math.sin(targetYaw - curYaw.current), Math.cos(targetYaw - curYaw.current))
+        curYaw.current += yawDiff * Math.min(1, delta * 9)
+      }
     } else {
-      root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, tx, k)
-      root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, ty, k)
-      root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, tz, k)
+      if (!isProximityExcited) {
+        root.current.position.x = THREE.MathUtils.lerp(root.current.position.x, tx, k)
+        root.current.position.z = THREE.MathUtils.lerp(root.current.position.z, tz, k)
+        root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, ty, k)
+      } else {
+        const groundAtPet = getGroundY(cx, cz)
+        root.current.position.y = THREE.MathUtils.lerp(root.current.position.y, groundAtPet, k)
+      }
       const yawDiff = Math.atan2(Math.sin(targetYaw - curYaw.current), Math.cos(targetYaw - curYaw.current))
-      curYaw.current += yawDiff * Math.min(1, delta * 8)
+      curYaw.current += yawDiff * Math.min(1, delta * (isProximityExcited ? 9 : 8))
     }
 
     root.current.rotation.y = curYaw.current
@@ -2116,9 +2354,9 @@ export function Dog({
     ]
 
     const isSleepingNow =
-      !isWalking && !isFeeding && !isBeingPetted && activeSpot.kind === 'kennel'
+      !isWalking && !isFeeding && !isBeingPetted && !isProximityExcited && activeSpot.kind === 'kennel'
     const isRestingOnCushion =
-      !isWalking && !isFeeding && !isBeingPetted && activeSpot.kind === 'cushion'
+      !isWalking && !isFeeding && !isBeingPetted && !isProximityExcited && activeSpot.kind === 'cushion'
     const isReceivingStrokes =
       isBeingPetted &&
       ((st.boyActivity === 'pet' && st.boyPhase !== 'walking') ||
@@ -2132,14 +2370,17 @@ export function Dog({
     if (blLeg.current) blLeg.current.rotation.x = THREE.MathUtils.lerp(blLeg.current.rotation.x, isWalking ? -legSwing : legTuck, k)
 
     if (body.current) {
-      const targetBodyY = isSleepingNow || isRestingOnCushion ? -0.055 : isReceivingStrokes ? -0.02 : 0
-      body.current.position.y = THREE.MathUtils.lerp(body.current.position.y, targetBodyY, k)
+      const bounceOffsetY = isProximityExcited && petDir.shouldBounce ? petDir.bounceOffsetY : 0
+      const baseBodyY = isSleepingNow || isRestingOnCushion ? -0.055 : isReceivingStrokes ? -0.02 : 0
+      const targetBodyY = baseBodyY + bounceOffsetY
+      const bodyK = bounceOffsetY > 0 ? Math.min(1, delta * 24) : k
+      body.current.position.y = THREE.MathUtils.lerp(body.current.position.y, targetBodyY, bodyK)
       body.current.scale.y = 1 + Math.sin((t + seed) * (isSleepingNow ? 1.2 : 2.2)) * 0.03
     }
 
     if (tail.current) {
-      const wagSpeed = isBeingPetted || isFeeding ? 15 : isSleepingNow ? 1.5 : 7.5
-      const wagAmp = isBeingPetted || isFeeding ? 0.65 : isSleepingNow ? 0.05 : 0.35
+      const wagSpeed = isBeingPetted || isFeeding ? 15 : isProximityExcited ? 14 : isSleepingNow ? 1.5 : 7.5
+      const wagAmp = isBeingPetted || isFeeding ? 0.65 : isProximityExcited ? 0.58 : isSleepingNow ? 0.05 : 0.35
       tail.current.rotation.y = Math.sin((t + seed) * wagSpeed) * wagAmp
     }
 
@@ -2152,6 +2393,10 @@ export function Dog({
         head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, -0.28 + Math.sin(t * 7.2) * 0.06, k)
         head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, Math.sin(t * 3.6) * 0.1, k)
         head.current.rotation.z = THREE.MathUtils.lerp(head.current.rotation.z, Math.sin(t * 7.2) * 0.12, k)
+      } else if (isProximityExcited && !isWalking) {
+        head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, -0.18 + Math.sin(t * 6) * 0.04, k)
+        head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, Math.sin((t + seed) * 2.2) * 0.12, k)
+        head.current.rotation.z = THREE.MathUtils.lerp(head.current.rotation.z, Math.sin((t + seed) * 3) * 0.06, k)
       } else if (isSleepingNow) {
         head.current.rotation.x = THREE.MathUtils.lerp(head.current.rotation.x, 0.28, k)
         head.current.rotation.y = THREE.MathUtils.lerp(head.current.rotation.y, 0.15, k)

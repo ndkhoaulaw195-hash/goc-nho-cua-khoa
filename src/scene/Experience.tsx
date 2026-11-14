@@ -15,7 +15,7 @@ import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Room, Lights } from './Room'
-import { Furniture } from './Furniture'
+import { Furniture, isBlocked, isBlockedTier2 } from './Furniture'
 import { Avatar, CORGI, Dog, PUG, getGroundY } from './Characters'
 import { FLOOR1_VIEW, FLOOR2_VIEW, HOME_VIEW, LIVE_ACTORS, STATIONS } from '../data/config'
 import { useStore, type Activity } from '../store'
@@ -33,6 +33,14 @@ import {
   recordPointerDown,
   setOrbitDragging,
 } from './raycastRegistry'
+import {
+  autoTagInteractionObjects,
+  projectInteractionOverlays,
+  registerWalkabilityCheckers,
+  stepInteractionVisualEffects,
+  stepProximityScan10Hz,
+  triggerActiveTargetFKey,
+} from './interactionEngine'
 
 /** Hiệu ứng hạt mưa rơi lãng mạn bên ngoài cửa sổ (Lofi Rain Effect) */
 function RainEffect() {
@@ -120,9 +128,9 @@ function SetupEnvironment() {
 }
 
 const POINTER_MOVE_THROTTLE_MS = 65
+const FP_CLICK_RANGE = 14.0
 const _occluderRaycaster = new THREE.Raycaster()
 const _closedShellRaycaster = new THREE.Raycaster()
-let lastInteractClickAt = 0
 
 function clearHoverState() {
   if (typeof document !== 'undefined' && document.body.style.cursor !== 'auto') {
@@ -293,25 +301,6 @@ function createVillaPointerEvents(store: RootStore): EventManager<HTMLElement> {
       if (e instanceof MouseEvent && !isValidClick(e.clientX, e.clientY, 5, 250)) {
         return
       }
-      if (e instanceof MouseEvent) {
-        rootState.events.compute?.(e as unknown as DomEvent, rootState)
-        const actMeshes = getActiveInteractableMeshes()
-        if (actMeshes.length > 0) {
-          _occluderRaycaster.ray.copy(rootState.raycaster.ray)
-          _occluderRaycaster.near = rootState.raycaster.near
-          _occluderRaycaster.far = 150
-          const actHits = _occluderRaycaster.intersectObjects(actMeshes, false)
-          if (actHits.length > 0 && isWithinFpInteractRange(useStore.getState(), actHits[0].point, actHits[0].distance)) {
-            const occluders = getVisibleOccluderMeshes()
-            const occHits =
-              occluders.length > 0 ? _occluderRaycaster.intersectObjects(occluders, false) : []
-            const firstOcc = occHits.find((h) => isOccluderHit(h.object))
-            if (!firstOcc || actHits[0].distance <= firstOcc.distance + 0.015) {
-              lastInteractClickAt = performance.now()
-            }
-          }
-        }
-      }
       const wasClosedOverview = isHouseClosedOverview()
       baseHandlers.onClick(e)
       if (wasClosedOverview && isHouseClosedOverview() && e instanceof MouseEvent) {
@@ -356,6 +345,143 @@ function PointerInteractionBridge() {
       setOrbitDragging(false)
     }
   }, [gl])
+  return null
+}
+
+/** Điều phối gắn nhãn đồ vật tự động, quét Proximity 10Hz, hiệu ứng nổi bật, chiếu 2D HUD và phím [F] / [WASD] */
+function InteractionEngineController() {
+  const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
+  const scanAccumRef = useRef(0)
+  const fallbackRaycasterRef = useRef(new THREE.Raycaster())
+
+  useEffect(() => {
+    registerWalkabilityCheckers(isBlocked, isBlockedTier2)
+    const timer = window.setTimeout(() => {
+      autoTagInteractionObjects()
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const dom = gl.domElement
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return
+      const st = useStore.getState()
+      if (st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null) {
+        return
+      }
+
+      const curChar = st.userRole || st.activeChar || 'boy'
+      const act = curChar === 'boy' ? st.boyActivity : st.girlActivity
+      const isDynamicSeated = st.dynamicSeatTarget?.char === curChar
+
+      if (
+        e.code === 'KeyW' ||
+        e.code === 'KeyA' ||
+        e.code === 'KeyS' ||
+        e.code === 'KeyD' ||
+        e.code === 'ArrowUp' ||
+        e.code === 'ArrowDown' ||
+        e.code === 'ArrowLeft' ||
+        e.code === 'ArrowRight'
+      ) {
+        if (act !== 'idle' || isDynamicSeated) {
+          st.clearCharacterPosture(curChar)
+        }
+        return
+      }
+
+      if (e.repeat) return
+
+      if (e.code === 'KeyF') {
+        triggerActiveTargetFKey()
+        return
+      }
+
+      if (e.code === 'KeyE') {
+        if (act !== 'idle' || isDynamicSeated) {
+          st.clearCharacterPosture(curChar)
+          if (act !== 'idle') {
+            st.startActivity('idle', true, curChar)
+          }
+          return
+        }
+
+        if (triggerActiveTargetFKey()) {
+          return
+        }
+
+        if (st.mode === 'fp' && document.pointerLockElement === dom && camera instanceof THREE.PerspectiveCamera) {
+          const hit = raycastCenterInteract(fallbackRaycasterRef.current, camera)
+          if (hit?.onInteractClick) {
+            hit.onInteractClick()
+            return
+          }
+        }
+
+        const curPos = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+        const dMochi = Math.hypot(
+          LIVE_ACTORS.dogs.mochi.pos[0] - curPos[0],
+          LIVE_ACTORS.dogs.mochi.pos[2] - curPos[2],
+        )
+        const dBo = Math.hypot(
+          LIVE_ACTORS.dogs.bo.pos[0] - curPos[0],
+          LIVE_ACTORS.dogs.bo.pos[2] - curPos[2],
+        )
+        if (Math.min(dMochi, dBo) < 2.4) {
+          st.petDog(dMochi <= dBo ? 'mochi' : 'bo', true, curChar)
+          return
+        }
+
+        if (st.mode === 'fp') {
+          let nearest: Exclude<Activity, 'idle' | 'pet'> | null = null
+          let bestDist = 3.6
+          ;(Object.keys(STATIONS) as Exclude<Activity, 'idle'>[]).forEach((item) => {
+            if (item === 'pet') return
+            if (item === 'wardrobe' && curChar !== 'boy') return
+            if (item === 'girl_wardrobe' && curChar !== 'girl') return
+            const ep = STATIONS[item].entryPos
+            const d = Math.hypot(ep[0] - curPos[0], ep[1] - curPos[2])
+            if (d < bestDist) {
+              bestDist = d
+              nearest = item
+            }
+          })
+          if (nearest) {
+            st.startActivity(nearest, true, curChar)
+          }
+        }
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [gl, camera])
+
+  useFrame(({ camera: activeCam, size, clock }, dt) => {
+    const delta = Math.min(dt, 0.05)
+    const st = useStore.getState()
+    const activeChar = st.userRole || st.activeChar || 'boy'
+    const activeCharPos = activeChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
+    const otherCharPos = activeChar === 'girl' ? LIVE_ACTORS.khoaWorldPos : LIVE_ACTORS.girlWorldPos
+
+    scanAccumRef.current += delta
+    if (scanAccumRef.current >= 0.1) {
+      scanAccumRef.current = scanAccumRef.current % 0.1
+      stepProximityScan10Hz(activeCharPos, otherCharPos)
+    }
+
+    stepInteractionVisualEffects(delta, clock.elapsedTime)
+    projectInteractionOverlays(
+      activeCam,
+      size.width,
+      size.height,
+      LIVE_ACTORS.khoaWorldPos,
+      LIVE_ACTORS.girlWorldPos,
+    )
+  })
+
   return null
 }
 
@@ -455,6 +581,7 @@ export function Experience() {
       camera={{ position: HOME_VIEW.pos, fov: 34, near: 0.2, far: 150 }}
     >
       <PointerInteractionBridge />
+      <InteractionEngineController />
       <BackgroundOptimizer isWindowFocused={isWindowFocused} />
       <SetupEnvironment />
       <Lights />
@@ -697,10 +824,11 @@ function isWithinFpInteractRange(
   st: ReturnType<typeof useStore.getState>,
   hitPoint: THREE.Vector3,
   rayDistance: number,
+  maxDist = FP_CLICK_RANGE,
 ): boolean {
   if (st.mode !== 'fp') return true
   if (st.fpPerspective === 'eye') {
-    return rayDistance <= MAX_FP_INTERACT_DIST
+    return rayDistance <= maxDist
   }
   const char = st.userRole || st.activeChar || 'boy'
   const charPos = char === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
@@ -709,12 +837,13 @@ function isWithinFpInteractRange(
     hitPoint.y - (charPos[1] + 1.0),
     hitPoint.z - charPos[2],
   )
-  return charDist <= MAX_FP_INTERACT_DIST
+  return charDist <= maxDist
 }
 
 function raycastInteractFromRay(
   raycaster: THREE.Raycaster,
   maxFar: number,
+  maxInteractDist = FP_CLICK_RANGE,
 ): { interactHint?: string; onInteractClick?: () => void } | null {
   const st = useStore.getState()
   if (st.pianoModalOpen || st.wardrobeOpen || st.girlWardrobeOpen || st.activePhoto !== null) return null
@@ -766,7 +895,7 @@ function raycastInteractFromRay(
     }
 
     if (interactData && (typeof interactData.onInteractClick === 'function' || typeof interactData.interactHint === 'string')) {
-      if (!isWithinFpInteractRange(st, hit.point, hit.distance)) {
+      if (!isWithinFpInteractRange(st, hit.point, hit.distance, maxInteractDist)) {
         return null
       }
       return interactData
@@ -783,7 +912,7 @@ function raycastCenterInteract(
   const isThird = st.fpPerspective === 'third'
   raycaster.setFromCamera(CENTER_NDC, camera)
   const maxFar = isThird ? st.fpDistance + MAX_FP_INTERACT_DIST + 1.5 : MAX_FP_INTERACT_DIST
-  return raycastInteractFromRay(raycaster, maxFar)
+  return raycastInteractFromRay(raycaster, maxFar, MAX_FP_INTERACT_DIST)
 }
 
 function FirstPerson() {
@@ -798,6 +927,7 @@ function FirstPerson() {
   const actualArmDistRef = useRef(useStore.getState().fpDistance)
   const lastMouseOrbitAt = useRef(performance.now())
   const dragging = useRef(false)
+  const dragButton = useRef(-1)
   const hasLastMouse = useRef(false)
   const lastMouse = useRef<[number, number]>([0, 0])
   const dragMovedDist = useRef(0)
@@ -805,7 +935,6 @@ function FirstPerson() {
   const isLockedRef = useRef(false)
   const lastUnlockAtRef = useRef(0)
   const raycasterRef = useRef(new THREE.Raycaster())
-  const clickNdcRef = useRef(new THREE.Vector2())
   const springRaycasterRef = useRef(new THREE.Raycaster())
   const springDirRef = useRef(new THREE.Vector3())
   const targetPivotVec = useRef(new THREE.Vector3())
@@ -855,7 +984,7 @@ function FirstPerson() {
         springRaycasterRef.current.set(smoothPivot.current, springDirRef.current)
         springRaycasterRef.current.near = 0.15
         springRaycasterRef.current.far = st.fpDistance + 0.3
-        const hits = springRaycasterRef.current.intersectObjects(armOccluders, true)
+        const hits = springRaycasterRef.current.intersectObjects(armOccluders, false)
         if (hits.length > 0 && hits[0].distance < st.fpDistance) {
           initArmDist = Math.max(0.55, hits[0].distance - 0.28)
         }
@@ -887,6 +1016,7 @@ function FirstPerson() {
         window.dispatchEvent(new CustomEvent('gta-lock-change', { detail: locked }))
       }
       dragging.current = false
+      dragButton.current = -1
       hasLastMouse.current = false
       setOrbitDragging(false)
       if (!locked && lastCenterHintRef.current !== null) {
@@ -895,22 +1025,8 @@ function FirstPerson() {
       }
     }
 
-    const requestGtaLock = () => {
-      const cur = useStore.getState()
-      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
-      if (document.pointerLockElement === dom) return
-      try {
-        const maybePromise = dom.requestPointerLock?.() as unknown as Promise<void> | undefined
-        if (maybePromise && typeof maybePromise.catch === 'function') {
-          maybePromise.catch(() => {})
-        }
-      } catch {
-        // Trình duyệt có thể từ chối requestPointerLock khi chưa có tương tác trực tiếp
-      }
-    }
-
+    // Tuyệt đối không ép requestPointerLock() để con trỏ chuột luôn hiển thị bình thường trong Tầm mắt
     syncLockState(document.pointerLockElement === dom)
-    requestGtaLock()
 
     const onPointerLockChange = () => {
       syncLockState(document.pointerLockElement === dom)
@@ -938,55 +1054,11 @@ function FirstPerson() {
         const cur = useStore.getState()
         const curChar = cur.userRole || cur.activeChar || 'boy'
         const act = curChar === 'boy' ? cur.boyActivity : cur.girlActivity
-        if (act !== 'idle') {
-          cur.startActivity('idle', true, curChar)
-        }
-      } else if (e.code === 'KeyE') {
-        const cur = useStore.getState()
-        const curChar = cur.userRole || cur.activeChar || 'boy'
-        const act = curChar === 'boy' ? cur.boyActivity : cur.girlActivity
-        if (act !== 'idle') {
-          cur.startActivity('idle', true, curChar)
-          return
-        }
-
-        if (document.pointerLockElement === dom) {
-          const hit = raycastCenterInteract(raycasterRef.current, camera)
-          if (hit?.onInteractClick) {
-            hit.onInteractClick()
-            return
+        if (act !== 'idle' || cur.dynamicSeatTarget?.char === curChar) {
+          cur.clearCharacterPosture(curChar)
+          if (act !== 'idle') {
+            cur.startActivity('idle', true, curChar)
           }
-        }
-
-        const curPos = curChar === 'girl' ? LIVE_ACTORS.girlWorldPos : LIVE_ACTORS.khoaWorldPos
-        const dMochi = Math.hypot(
-          LIVE_ACTORS.dogs.mochi.pos[0] - curPos[0],
-          LIVE_ACTORS.dogs.mochi.pos[2] - curPos[2],
-        )
-        const dBo = Math.hypot(
-          LIVE_ACTORS.dogs.bo.pos[0] - curPos[0],
-          LIVE_ACTORS.dogs.bo.pos[2] - curPos[2],
-        )
-        if (Math.min(dMochi, dBo) < 2.4) {
-          cur.petDog(dMochi <= dBo ? 'mochi' : 'bo', true, curChar)
-          return
-        }
-
-        let nearest: Exclude<Activity, 'idle' | 'pet'> | null = null
-        let bestDist = 3.6
-        ;(Object.keys(STATIONS) as Exclude<Activity, 'idle'>[]).forEach((item) => {
-          if (item === 'pet') return
-          if (item === 'wardrobe' && curChar !== 'boy') return
-          if (item === 'girl_wardrobe' && curChar !== 'girl') return
-          const ep = STATIONS[item].entryPos
-          const d = Math.hypot(ep[0] - curPos[0], ep[1] - curPos[2])
-          if (d < bestDist) {
-            bestDist = d
-            nearest = item
-          }
-        })
-        if (nearest) {
-          cur.startActivity(nearest, true, curChar)
         }
       }
     }
@@ -1002,12 +1074,14 @@ function FirstPerson() {
     const onPointerLeave = () => {
       hasLastMouse.current = false
       dragging.current = false
+      dragButton.current = -1
       setOrbitDragging(false)
     }
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0 && e.button !== 2) return
       dragging.current = true
+      dragButton.current = e.button
       hasLastMouse.current = true
       lastMouse.current = [e.clientX, e.clientY]
       dragMovedDist.current = 0
@@ -1062,21 +1136,24 @@ function FirstPerson() {
         const dy = THREE.MathUtils.clamp(e.clientY - lastMouse.current[1], -120, 120)
         lastMouse.current = [e.clientX, e.clientY]
         dragMovedDist.current += Math.hypot(dx, dy)
-        if (dragMovedDist.current > 3) {
+        const isRightButton = dragButton.current === 2
+        if (dragMovedDist.current > 5 || (isRightButton && dragMovedDist.current > 1)) {
           setOrbitDragging(true)
-        }
-        yaw.current -= dx * 0.0042
-        pitch.current = THREE.MathUtils.clamp(pitch.current + dy * 0.0042, PITCH_MIN, PITCH_MAX)
-        if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-          lastMouseOrbitAt.current = performance.now()
-          orientCancelledRef.current = true
-          orientTimerRef.current = 0
+          clearHoverState()
+          yaw.current -= dx * 0.0042
+          pitch.current = THREE.MathUtils.clamp(pitch.current + dy * 0.0042, PITCH_MIN, PITCH_MAX)
+          if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+            lastMouseOrbitAt.current = performance.now()
+            orientCancelledRef.current = true
+            orientTimerRef.current = 0
+          }
         }
       }
     }
 
     const onMouseUp = () => {
       dragging.current = false
+      dragButton.current = -1
       hasLastMouse.current = false
       setOrbitDragging(false)
     }
@@ -1088,30 +1165,6 @@ function FirstPerson() {
       e.preventDefault()
       const deltaNorm = THREE.MathUtils.clamp(e.deltaY, -160, 160) * 0.0045
       cur.setFpDistance(cur.fpDistance + deltaNorm)
-    }
-
-    const onCanvasClick = (e: MouseEvent) => {
-      if (document.pointerLockElement === dom) return
-      const cur = useStore.getState()
-      if (cur.pianoModalOpen || cur.wardrobeOpen || cur.girlWardrobeOpen || cur.activePhoto !== null) return
-      if (!isValidClick(e.clientX, e.clientY, 5, 250)) return
-      if (performance.now() - lastInteractClickAt < 100) return
-
-      const rect = dom.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        clickNdcRef.current.set(
-          ((e.clientX - rect.left) / rect.width) * 2 - 1,
-          -((e.clientY - rect.top) / rect.height) * 2 + 1,
-        )
-        raycasterRef.current.setFromCamera(clickNdcRef.current, camera)
-        const hit = raycastInteractFromRay(raycasterRef.current, 150)
-        if (hit && (typeof hit.onInteractClick === 'function' || typeof hit.interactHint === 'string')) {
-          lastInteractClickAt = performance.now()
-          return
-        }
-      }
-
-      requestGtaLock()
     }
 
     // Chặn pointermove/click tọa độ đóng băng của R3F khi đang Pointer Lock để tránh click nhầm vị trí cũ
@@ -1138,7 +1191,6 @@ function FirstPerson() {
     dom.addEventListener('pointerdown', onPointerDown)
     dom.addEventListener('contextmenu', onContextMenu)
     dom.addEventListener('wheel', onWheel, { passive: false })
-    dom.addEventListener('click', onCanvasClick)
     dom.addEventListener('pointermove', suppressLockedPointerMove, true)
     dom.addEventListener('click', suppressLockedClick, true)
     document.addEventListener('mousedown', onMouseDown)
@@ -1157,7 +1209,6 @@ function FirstPerson() {
       dom.removeEventListener('pointerdown', onPointerDown)
       dom.removeEventListener('contextmenu', onContextMenu)
       dom.removeEventListener('wheel', onWheel)
-      dom.removeEventListener('click', onCanvasClick)
       dom.removeEventListener('pointermove', suppressLockedPointerMove, true)
       dom.removeEventListener('click', suppressLockedClick, true)
       document.removeEventListener('mousedown', onMouseDown)
@@ -1219,9 +1270,22 @@ function FirstPerson() {
       lastMouseOrbitAt.current = performance.now()
     }
 
+    const dynamicSeat = st.dynamicSeatTarget?.char === char ? st.dynamicSeatTarget : null
+
     let eyeH = 1.48
     let eyeForward = 0.08
-    if (currentAct === 'sleep' || currentAct === 'girl_sleep') {
+    if (dynamicSeat) {
+      if (dynamicSeat.pose === 'lie') {
+        eyeH = 0.38
+        eyeForward = 0.05
+      } else if (dynamicSeat.pose === 'recline') {
+        eyeH = 1.24
+        eyeForward = 0.08
+      } else {
+        eyeH = 1.38
+        eyeForward = 0.08
+      }
+    } else if (currentAct === 'sleep' || currentAct === 'girl_sleep') {
       eyeH = currentPhase === 'active' ? 0.38 : 1.48
       eyeForward = 0.05
     } else if (currentAct === 'bath') {
@@ -1257,8 +1321,10 @@ function FirstPerson() {
     const isTapWalking = !isManualKeyMove && (isWalking || Boolean(st.avatarTarget))
 
     // Khi mới chuyển sang ngồi/nằm/tương tác đồ vật, chỉ xoay nhẹ 1 lần trong ~0.45s đầu (tắt ngay nếu chuột di chuyển) để tự do xoay 360°
-    const activeStateKey = `${currentAct}:${currentPhase}`
-    if (currentAct !== 'idle' && currentPhase === 'active') {
+    const activeStateKey = dynamicSeat
+      ? `dynamic:${dynamicSeat.id}:${dynamicSeat.pose}`
+      : `${currentAct}:${currentPhase}`
+    if ((currentAct !== 'idle' && currentPhase === 'active') || dynamicSeat) {
       if (prevActiveStateRef.current !== activeStateKey) {
         prevActiveStateRef.current = activeStateKey
         orientTimerRef.current = 0.45
@@ -1266,11 +1332,18 @@ function FirstPerson() {
       }
       if (orientTimerRef.current > 0 && !orientCancelledRef.current && !dragging.current && !snapped && !isManualKeyMove) {
         orientTimerRef.current = Math.max(0, orientTimerRef.current - delta)
-        const station = STATIONS[currentAct]
-        if (station) {
-          const ldx = station.fpTarget[0] - station.fpPos[0]
-          const ldz = station.fpTarget[2] - station.fpPos[2]
-          const targetYaw = Math.atan2(-ldx, -ldz)
+        let targetYaw: number | null = null
+        if (dynamicSeat) {
+          targetYaw = dynamicSeat.yaw + Math.PI
+        } else if (currentAct !== 'idle') {
+          const station = STATIONS[currentAct]
+          if (station) {
+            const ldx = station.fpTarget[0] - station.fpPos[0]
+            const ldz = station.fpTarget[2] - station.fpPos[2]
+            targetYaw = Math.atan2(-ldx, -ldz)
+          }
+        }
+        if (targetYaw !== null) {
           const diff = Math.atan2(Math.sin(targetYaw - yaw.current), Math.cos(targetYaw - yaw.current))
           yaw.current += diff * Math.min(1, delta * 6.5)
         }
