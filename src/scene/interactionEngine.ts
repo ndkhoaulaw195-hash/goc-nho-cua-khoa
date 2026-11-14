@@ -1564,6 +1564,9 @@ function readStoreElectronicForMetaId(id: string): boolean | null {
   if (id.startsWith('girl_lamp')) return st.girlLampOn
   if (id.startsWith('girl_vanity_light')) return st.girlVanityLightOn
   if (id.startsWith('girl_shelf_led')) return st.girlShelfLedOn
+  if (id.startsWith('yard_lights') || id.startsWith('waterfall') || id.startsWith('rooftop_lantern')) {
+    return st.electronicStates[id] ?? true
+  }
   return null
 }
 
